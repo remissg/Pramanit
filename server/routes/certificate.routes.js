@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { processBatch } = require('../controllers/certificate.controller');
+const certificateController = require('../controllers/certificate.controller');
+const { authenticateToken } = require('./auth.routes');
 
 // Configure Multer
 const storage = multer.diskStorage({
@@ -17,12 +18,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Define routes
-router.post(
-    '/upload',
-    upload.fields([{ name: 'template', maxCount: 1 }, { name: 'data', maxCount: 1 }]),
-    processBatch
-);
+router.post('/prepare-batch', authenticateToken, upload.single('template'), certificateController.prepareBatch);
+router.post('/process-single', authenticateToken, certificateController.processSingle);
 
-router.post('/test-email', upload.none(), require('../controllers/certificate.controller').sendTestEmail);
+router.post('/upload', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.processCertificates);
+router.post('/test-email', authenticateToken, certificateController.sendEmail);
+router.post('/preview-batch', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.previewBatch);
+router.get('/verify/:id', certificateController.verifyCertificate);
 
 module.exports = router;

@@ -16,7 +16,8 @@ const sendEmail = async (to, subject, text, attachments) => {
             from: process.env.EMAIL_USER,
             to,
             subject,
-            text, // customized body
+            html, // Use HTML body
+            text: html.replace(/<[^>]*>?/gm, ''), // Fallback plain text
             attachments,
         };
 

@@ -1,9 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileSpreadsheet, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, Image as ImageIcon, X, PenTool } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import CertificateDesigner from './CertificateDesigner';
 
-const FileUpload = ({ onFilesSelected, files }) => {
+const FileUpload = ({ onFilesSelected, files, onlyTemplate = false }) => {
+    const [isDesigning, setIsDesigning] = useState(false);
+
     const onDrop = useCallback((acceptedFiles) => {
         // Separate files based on type
         const newFiles = { ...files };
@@ -11,30 +14,65 @@ const FileUpload = ({ onFilesSelected, files }) => {
         acceptedFiles.forEach(file => {
             if (file.type.startsWith('image/')) {
                 newFiles.template = file;
-            } else if (file.type.includes('csv') || file.type.includes('sheet') || file.name.endsWith('.csv')) {
+            } else if (
+                !onlyTemplate && (
+                    file.type.includes('csv') ||
+                    file.type.includes('sheet') ||
+                    file.type.includes('excel') ||
+                    file.type.includes('vnd.ms-excel') ||
+                    file.name.endsWith('.csv') ||
+                    file.name.endsWith('.xlsx') ||
+                    file.name.endsWith('.xls')
+                )
+            ) {
                 newFiles.data = file;
             }
         });
 
         onFilesSelected(newFiles);
-    }, [files, onFilesSelected]);
+    }, [files, onFilesSelected, onlyTemplate]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
-        accept: {
+        accept: onlyTemplate ? { 'image/*': ['.png', '.jpg', '.jpeg'] } : {
             'image/*': ['.png', '.jpg', '.jpeg'],
-            'text/csv': ['.csv']
+            'text/csv': ['.csv'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+            'application/vnd.ms-excel': ['.xls']
         }
     });
 
     const removeFile = (type) => {
         const newFiles = { ...files };
-        delete newFiles[type];
+        newFiles[type] = null;
         onFilesSelected(newFiles);
     };
 
+    const handleDesignSave = (file) => {
+        const newFiles = { ...files, template: file };
+        onFilesSelected(newFiles);
+        setIsDesigning(false);
+    };
+
+    if (isDesigning) {
+        return <CertificateDesigner onSave={handleDesignSave} onCancel={() => setIsDesigning(false)} />;
+    }
+
     return (
         <div className="w-full max-w-2xl mx-auto space-y-6">
+            {/* Mode Toggle / Action Chips */}
+            {!files.template && (
+                <div className="flex justify-center gap-4 mb-4">
+                    <button
+                        onClick={() => setIsDesigning(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-violet-200 text-violet-700 rounded-full shadow-sm hover:bg-violet-50 hover:border-violet-300 transition-all font-medium"
+                    >
+                        <PenTool size={16} />
+                        Create from Scratch
+                    </button>
+                </div>
+            )}
+
             <div
                 {...getRootProps()}
                 className={`
@@ -52,7 +90,7 @@ const FileUpload = ({ onFilesSelected, files }) => {
                             {isDragActive ? "Drop files here..." : "Drag & drop your files here"}
                         </p>
                         <p className="text-sm text-gray-400 mt-1">
-                            Upload Certificate Template (PNG/JPG) & Recipient List (CSV)
+                            {onlyTemplate ? 'Upload Certificate Template (PNG/JPG)' : 'Upload Certificate Template (PNG/JPG) & Recipient List (CSV/Excel)'}
                         </p>
                     </div>
                 </div>

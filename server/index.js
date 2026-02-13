@@ -11,6 +11,9 @@ const port = process.env.PORT || 5000;
 const fs = require('fs');
 const path = require('path');
 const certificateRoutes = require('./routes/certificate.routes');
+const { router: authRoutes } = require('./routes/auth.routes');
+const designRoutes = require('./routes/design.routes');
+const emailTemplateRoutes = require('./routes/emailTemplate.routes');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
@@ -24,6 +27,9 @@ app.use(express.json());
 
 // Routes
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/designs', designRoutes);
+app.use('/api/email-templates', emailTemplateRoutes);
 
 // Supabase client setup
 const supabaseUrl = process.env.SUPABASE_URL;
