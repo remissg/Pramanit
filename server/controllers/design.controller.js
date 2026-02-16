@@ -1,4 +1,4 @@
-const db = require('../utils/db');
+const Design = require('../models/Design'); // Mongoose Model
 
 const saveDesign = async (req, res) => {
     try {
@@ -9,14 +9,20 @@ const saveDesign = async (req, res) => {
             return res.status(400).json({ message: 'Name and design data are required' });
         }
 
-        const result = await db.query(
-            `INSERT INTO designs (user_id, name, design_json, preview_url) 
-             VALUES ($1, $2, $3, $4) 
-             RETURNING id, name, created_at`,
-            [userId, name, designJson, previewUrl]
-        );
+        const newDesign = new Design({
+            user: userId,
+            name,
+            design_json: designJson,
+            preview_url: previewUrl
+        });
 
-        res.status(201).json(result.rows[0]);
+        await newDesign.save();
+
+        res.status(201).json({
+            id: newDesign._id,
+            name: newDesign.name,
+            created_at: newDesign.created_at
+        });
     } catch (err) {
         console.error('Save design error:', err);
         res.status(500).json({ message: 'Failed to save design' });
@@ -26,11 +32,19 @@ const saveDesign = async (req, res) => {
 const getDesigns = async (req, res) => {
     try {
         const userId = req.user.id;
-        const result = await db.query(
-            'SELECT id, name, preview_url, created_at FROM designs WHERE user_id = $1 ORDER BY created_at DESC',
-            [userId]
-        );
-        res.json(result.rows);
+        const designs = await Design.find({ user: userId })
+            .select('id name preview_url created_at')
+            .sort({ created_at: -1 });
+
+        // Map _id to id for frontend compatibility if needed, though Mongoose usually handles this
+        const formattedDesigns = designs.map(d => ({
+            id: d._id,
+            name: d.name,
+            preview_url: d.preview_url,
+            created_at: d.created_at
+        }));
+
+        res.json(formattedDesigns);
     } catch (err) {
         console.error('Get designs error:', err);
         res.status(500).json({ message: 'Failed to fetch designs' });
@@ -42,16 +56,20 @@ const getDesignById = async (req, res) => {
         const { id } = req.params;
         const userId = req.user.id;
 
-        const result = await db.query(
-            'SELECT * FROM designs WHERE id = $1 AND user_id = $2',
-            [id, userId]
-        );
+        const design = await Design.findOne({ _id: id, user: userId });
 
-        if (result.rows.length === 0) {
+        if (!design) {
             return res.status(404).json({ message: 'Design not found' });
         }
 
-        res.json(result.rows[0]);
+        res.json({
+            id: design._id,
+            name: design.name,
+            user_id: design.user,
+            design_json: design.design_json,
+            preview_url: design.preview_url,
+            created_at: design.created_at
+        });
     } catch (err) {
         console.error('Get design error:', err);
         res.status(500).json({ message: 'Failed to fetch design' });
@@ -63,12 +81,9 @@ const deleteDesign = async (req, res) => {
         const { id } = req.params;
         const userId = req.user.id;
 
-        const result = await db.query(
-            'DELETE FROM designs WHERE id = $1 AND user_id = $2 RETURNING id',
-            [id, userId]
-        );
+        const design = await Design.findOneAndDelete({ _id: id, user: userId });
 
-        if (result.rows.length === 0) {
+        if (!design) {
             return res.status(404).json({ message: 'Design not found' });
         }
 
@@ -79,9 +94,41 @@ const deleteDesign = async (req, res) => {
     }
 };
 
+const cloneDesign = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const original = await Design.findOne({ _id: id, user: userId });
+
+        if (!original) {
+            return res.status(404).json({ message: 'Design not found' });
+        }
+
+        const newDesign = new Design({
+            user: userId,
+            name: `${original.name} (Copy)`,
+            design_json: original.design_json,
+            preview_url: original.preview_url
+        });
+
+        await newDesign.save();
+
+        res.status(201).json({
+            id: newDesign._id,
+            name: newDesign.name,
+            created_at: newDesign.created_at
+        });
+    } catch (err) {
+        console.error('Clone design error:', err);
+        res.status(500).json({ message: 'Failed to clone design' });
+    }
+};
+
 module.exports = {
     saveDesign,
     getDesigns,
     getDesignById,
-    deleteDesign
+    deleteDesign,
+    cloneDesign
 };

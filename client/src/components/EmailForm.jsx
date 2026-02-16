@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { Mail, Type, ShieldCheck, ChevronDown, Check, LayoutTemplate } from 'lucide-react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { Mail, Type, ShieldCheck, ChevronDown, Check, LayoutTemplate, Tag } from 'lucide-react';
+import axios from 'axios';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 const EmailForm = ({ config, onChange, templates = [] }) => {
     const [showTemplates, setShowTemplates] = useState(false);
+    const [showMergeTags, setShowMergeTags] = useState(false);
+    const quillRef = React.useRef(null);
+
+    const mergeTags = [
+        { label: 'Recipient Name', value: '{{name}}' },
+        { label: 'Event Name', value: '{{event_name}}' },
+        { label: 'Certificate Link', value: '{{certificate_link}}' },
+        { label: 'Issuer Name', value: '{{issuer_name}}' },
+        { label: 'Certificate ID', value: '{{cert_id}}' },
+    ];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,6 +33,20 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
             body: template.body_html
         });
         setShowTemplates(false);
+    };
+
+    const insertTag = (tag) => {
+        const quill = quillRef.current?.getEditor();
+        if (quill) {
+            const range = quill.getSelection();
+            if (range) {
+                quill.insertText(range.index, tag);
+                quill.setSelection(range.index + tag.length);
+            } else {
+                quill.insertText(quill.getLength() - 1, tag);
+            }
+        }
+        setShowMergeTags(false);
     };
 
     return (
@@ -106,7 +131,34 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                     <span className="text-[10px] lowercase font-black text-violet-500 ml-2">(Use {"{name}"} for dynamic recipient name)</span>
                 </label>
                 <div className="relative group bg-[var(--bg-input)] rounded-2xl border border-[var(--border-interactive)] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/50 overflow-hidden text-slate-900">
+                    <div className="bg-slate-50 border-b border-slate-200 p-2 flex justify-end">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowMergeTags(!showMergeTags)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-600 hover:text-violet-600 hover:border-violet-200 transition-all shadow-sm"
+                            >
+                                <Tag size={12} />
+                                Insert Merge Tag
+                                <ChevronDown size={12} className={`transition-transform ${showMergeTags ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showMergeTags && (
+                                <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    {mergeTags.map(tag => (
+                                        <button
+                                            key={tag.value}
+                                            onClick={() => insertTag(tag.value)}
+                                            className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                                        >
+                                            {tag.label} <span className="text-slate-400 font-medium ml-1">({tag.value})</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     <ReactQuill
+                        ref={quillRef}
                         theme="snow"
                         value={config.body || ''}
                         onChange={handleBodyChange}
@@ -143,6 +195,7 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
 
                                 await axios.post('http://localhost:5000/api/certificates/test-email', {
                                     email,
+                                    issuerName: config.issuerName,
                                     subject: config.subject,
                                     body: config.body
                                 });

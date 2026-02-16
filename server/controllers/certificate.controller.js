@@ -7,25 +7,58 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { PDFDocument } = require('pdf-lib');
 const { sendEmail } = require('../utils/emailService');
+const User = require('../models/User');
+const Design = require('../models/Design');
+const IssuanceHistory = require('../models/IssuanceHistory');
+const Verification = require('../models/Verification');
 
-const db = require('../utils/db');
+const logIssuance = async (userId, designId, totalSent, recipientListRef) => {
+    try {
+        await IssuanceHistory.create({
+            user: userId,
+            design_id: designId || null,
+            total_certificates: totalSent,
+            recipient_emails: Array.isArray(recipientListRef) ? recipientListRef : [recipientListRef] // Store emails directly or ref string
+        });
+    } catch (e) {
+        console.error('Failed to log issuance history:', e);
+    }
+};
 
+const getSmtpConfig = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        if (user && user.smtp_host) {
+            return {
+                host: user.smtp_host,
+                port: user.smtp_port,
+                user: user.smtp_user,
+                pass: user.smtp_pass
+            };
+        }
+    } catch (e) {
+        console.error('Failed to fetch user SMTP config:', e);
+    }
+    return null;
+};
+
+// Verification schema implementation
 const saveVerification = async (record) => {
     try {
-        await db.query(`
-            INSERT INTO verifications (
-                cert_id, recipient_name, recipient_email, issuer_name, 
-                issue_date, data_hash, status, scan_count
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 0)
-        `, [
-            record.certId,
-            record.recipientName,
-            record.recipientEmail,
-            record.issuerName,
-            record.issueDate,
-            record.dataHash,
-            record.status
-        ]);
+        await Verification.create({
+            cert_id: record.certId,
+            recipient_name: record.recipientName,
+            recipient_email: record.recipientEmail,
+            issuer_id: record.issuerId,
+            issuer_name: record.issuerName,
+            issue_date: record.issueDate,
+            data_hash: record.dataHash,
+            status: record.status,
+            org_name: record.orgName,
+            issuer_designation: record.issuerDesignation,
+            org_logo_url: record.orgLogoUrl,
+            issuer_email: record.issuerEmail
+        });
     } catch (e) {
         console.error('Failed to save verification:', e);
     }
@@ -48,9 +81,6 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     pdfDoc.setKeywords(['CertiFlow', 'Verified', metadata.certId]);
     pdfDoc.setProducer('CertiFlow Pro');
     pdfDoc.setCreator('CertiFlow Engine');
-
-    // Add custom metadata (XMP equivalent is harder, so we stick to standard fields)
-    // We can also abuse the Producer field or others if needed
 
     return await pdfDoc.save();
 };
@@ -116,7 +146,7 @@ const prepareBatch = async (req, res) => {
 
 const processSingle = async (req, res) => {
     try {
-        const { templatePath, recipient, fields, subject, body, issuerName, qrConfig } = req.body;
+        const { templatePath, recipient, fields, subject, body, issuerName, qrConfig, designId } = req.body;
 
         if (!templatePath || !recipient) {
             return res.status(400).json({ message: 'Missing required data' });
@@ -131,9 +161,10 @@ const processSingle = async (req, res) => {
         const certId = crypto.randomUUID();
         const verifyUrl = `http://localhost:5173/verify/${certId}`;
         const dataHash = generateHash({
-            recipient: recipient.name || recipient.email,
-            fields: fields.filter(f => f.isVisible),
-            issuerName,
+            name: recipient.name || recipient.email,
+            email: recipient.email || '',
+            event: recipient.data?.Course || recipient.data?.Event || '', // Specific fields for fingerprint
+            issuerId: req.user.id,
             certId
         });
 
@@ -246,12 +277,20 @@ const processSingle = async (req, res) => {
             }
         }
 
+        // Fetch user branding details for verification
+        const branding = await User.findById(req.user.id);
+
         // Save Verification Record
         await saveVerification({
             certId,
             recipientName: recipient.name || 'Recipient',
             recipientEmail: recipient.email || '',
-            issuerName: issuerName || 'CertiFlow User',
+            issuerId: req.user.id, // Link to User model
+            issuerName: branding?.full_name || issuerName || 'CertiFlow User',
+            orgName: branding?.org_name || '',
+            issuerDesignation: branding?.designation || '',
+            orgLogoUrl: branding?.org_logo_url || '',
+            issuerEmail: branding?.email || '',
             issueDate: new Date().toISOString(),
             dataHash,
             status: 'active'
@@ -265,33 +304,58 @@ const processSingle = async (req, res) => {
             verifyUrl
         });
 
-        // Personalize body using all keys in recipient data
+        // Personalize body and subject using all keys in recipient data
         let personalizedBody = body || '';
+        let personalizedSubject = subject || '';
         const recData = recipient.data || recipient;
 
-        // Add verification info to personalization
-        const mergedData = { ...recData, cert_id: certId, verify_url: verifyUrl };
+        // Add verification info and issuer details to personalization
+        const mergedData = {
+            ...recData,
+            cert_id: certId,
+            verify_url: verifyUrl,
+            certificate_link: verifyUrl,
+            issuer_name: branding?.full_name || issuerName || 'CertiFlow User',
+            event_name: recData.Course || recData.course || recData.Event || recData.event || '',
+            name: recData.Name || recData.name || recipient.name || 'Recipient'
+        };
 
+        // Replace merge tags (case-insensitive)
         Object.keys(mergedData).forEach(key => {
+            const value = mergedData[key];
+            // Match both {{key}} and {{Key}} patterns (case-insensitive)
             const regex = new RegExp(`{{${key}}}`, 'gi');
-            personalizedBody = personalizedBody.replace(regex, mergedData[key]);
+            personalizedBody = personalizedBody.replace(regex, value);
+            personalizedSubject = personalizedSubject.replace(regex, value);
         });
 
-        if (recData.email) {
+        // ---------------------------------------------------------
+        // TYPO GUARD: Auto-correct "Congradulation" if present
+        // ---------------------------------------------------------
+        personalizedSubject = personalizedSubject.replace(/Congradulation/gi, 'Congratulations');
+        personalizedBody = personalizedBody.replace(/Congradulation/gi, 'Congratulations');
+
+
+        if (recData.email || recData.Email) {
+            const smtpConfig = await getSmtpConfig(req.user.id);
             await sendEmail(
-                recData.email,
-                subject || 'Your Certificate',
+                recData.email || recData.Email,
+                personalizedSubject || 'Your Certificate',
                 personalizedBody,
                 [
                     {
-                        filename: `certificate-${(recData.name || 'document').replace(/\s+/g, '_')}.pdf`,
+                        filename: `certificate-${(mergedData.name || 'document').replace(/\\s+/g, '_')}.pdf`,
                         content: Buffer.from(pdfContent),
                     },
-                ]
+                ],
+                smtpConfig
             );
         }
 
         res.json({ success: true, email: recData.email });
+
+        // Log issuance
+        await logIssuance(req.user.id, designId, 1, [recData.email]);
 
     } catch (error) {
         console.error('Process single error:', error);
@@ -376,6 +440,7 @@ const processCertificates = async (req, res) => {
                 personalizedBody = personalizedBody.replace(/{name}/gi, recipient.name);
 
                 if (recipient.email) {
+                    const smtpConfig = await getSmtpConfig(req.user.id);
                     await sendEmail(
                         recipient.email,
                         subject || 'Your Certificate',
@@ -385,7 +450,8 @@ const processCertificates = async (req, res) => {
                                 filename: `certificate-${recipient.name.replace(/\s+/g, '_')}.png`,
                                 content: buffer,
                             },
-                        ]
+                        ],
+                        smtpConfig
                     );
                     processResults.success.push(recipient.email);
                 }
@@ -405,33 +471,19 @@ const processCertificates = async (req, res) => {
 
         res.json({ message: 'Batch processing executed', results: processResults });
 
+        // Log issuance
+        if (processResults.success.length > 0) {
+            await logIssuance(
+                req.user.id,
+                req.body.designId,
+                processResults.success.length,
+                processResults.success
+            );
+        }
+
     } catch (error) {
         console.error('Processing error:', error);
         res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
-};
-
-const sendTestEmail = async (req, res) => {
-    try {
-        const { email, subject, body } = req.body;
-
-        if (!email) {
-            return res.status(400).json({ message: 'Target email is required.' });
-        }
-
-        let personalizedBody = body ? body.replace(/{{name}}/gi, 'Test User').replace(/{{.*?}}/g, '[Placeholder]') : 'Test Body';
-
-        await sendEmail(
-            email,
-            `[TEST] ${subject || 'No Subject'}`,
-            personalizedBody,
-            []
-        );
-
-        res.json({ message: 'Test email sent successfully' });
-    } catch (error) {
-        console.error('Test email error:', error);
-        res.status(500).json({ message: 'Failed to send test email', error: error.message });
     }
 };
 
@@ -599,32 +651,109 @@ const verifyCertificate = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Fetch record
-        const result = await db.query('SELECT * FROM verifications WHERE cert_id = $1', [id]);
+        // Fetch record using Mongoose
+        const record = await Verification.findOne({ cert_id: id });
 
-        if (result.rows.length === 0) {
+        if (!record) {
             return res.status(404).json({ message: 'Certificate not found or invalid id.' });
         }
 
-        const record = result.rows[0];
-
         // Increment scan count atomically
-        await db.query('UPDATE verifications SET scan_count = scan_count + 1 WHERE cert_id = $1', [id]);
+        const updatedRecord = await Verification.findOneAndUpdate(
+            { cert_id: id },
+            { $inc: { scan_count: 1 } },
+            { new: true }
+        );
 
-        // Map snake_case DB fields to camelCase for frontend
+        // Map Mongoose DB fields to camelCase for frontend
         res.json({
-            certId: record.cert_id,
-            recipientName: record.recipient_name,
-            recipientEmail: record.recipient_email,
-            issuerName: record.issuer_name,
-            issueDate: record.issue_date,
-            scanCount: (record.scan_count || 0) + 1, // Return incremented value
-            status: record.status
+            certId: updatedRecord.cert_id,
+            recipientName: updatedRecord.recipient_name,
+            recipientEmail: updatedRecord.recipient_email,
+            issuerName: updatedRecord.issuer_name,
+            orgName: updatedRecord.org_name,
+            issuerDesignation: updatedRecord.issuer_designation,
+            orgLogoUrl: updatedRecord.org_logo_url,
+            issuerEmail: updatedRecord.issuer_email,
+            issueDate: updatedRecord.issue_date,
+            scanCount: updatedRecord.scan_count,
+            status: updatedRecord.status
         });
 
     } catch (e) {
         console.error('Verify error:', e);
         res.status(500).json({ message: 'Failed to verify certificate.' });
+    }
+};
+
+const getIssuanceHistory = async (req, res) => {
+    try {
+        const history = await IssuanceHistory.find({ user: req.user.id })
+            .populate('design_id', 'name')
+            .sort({ timestamp: -1 });
+
+        // Transform for frontend
+        const formatted = history.map(h => ({
+            id: h._id,
+            design_name: h.design_id ? h.design_id.name : (h.design_name || 'Deleted Design'),
+            total_certificates: h.total_certificates,
+            total_sent: h.total_certificates, // Alias for frontend compatibility
+            timestamp: h.timestamp
+        }));
+
+        res.json(formatted);
+    } catch (err) {
+        console.error('Get issuance history error:', err);
+        res.status(500).json({ message: 'Failed to fetch issuance history' });
+    }
+};
+
+const sendTestEmail = async (req, res) => {
+    try {
+        const { email, subject, body, issuerName } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Email address required' });
+        }
+
+        // Fetch user branding details
+        const branding = await User.findById(req.user.id);
+
+        // Create sample data for testing
+        const sampleData = {
+            name: branding?.full_name || 'Test User',
+            course: 'Sample Course Name',
+            event_name: 'Sample Course Name',
+            issuer_name: issuerName || branding?.full_name || 'Your Name',
+            cert_id: 'TEST-CERT-ID-12345',
+            verify_url: 'https://example.com/verify/test',
+            certificate_link: 'https://example.com/verify/test'
+        };
+
+        // Replace merge tags (case-insensitive)
+        let personalizedBody = body || '';
+        let personalizedSubject = subject || '';
+
+        Object.keys(sampleData).forEach(key => {
+            const value = sampleData[key];
+            const regex = new RegExp(`{{${key}}}`, 'gi');
+            personalizedBody = personalizedBody.replace(regex, value);
+            personalizedSubject = personalizedSubject.replace(regex, value);
+        });
+
+        const smtpConfig = await getSmtpConfig(req.user.id);
+        await sendEmail(
+            email,
+            personalizedSubject || 'Test Email',
+            personalizedBody,
+            [],
+            smtpConfig
+        );
+
+        res.json({ message: 'Test email sent successfully' });
+    } catch (error) {
+        console.error('Send test email error:', error);
+        res.status(500).json({ message: 'Failed to send test email', error: error.message });
     }
 };
 
@@ -634,5 +763,6 @@ module.exports = {
     previewBatch,
     prepareBatch,
     processSingle,
-    verifyCertificate
+    verifyCertificate,
+    getIssuanceHistory
 };

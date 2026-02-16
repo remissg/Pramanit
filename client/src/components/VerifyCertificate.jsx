@@ -150,17 +150,28 @@ const VerifyCertificate = ({ theme, setTheme }) => {
             <div className="relative z-10 max-w-4xl mx-auto pt-40 pb-20 px-6">
                 <div className="glass rounded-[3rem] p-8 md:p-12 border-[var(--glass-border)] shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
                     <div className="flex flex-col items-center text-center">
-                        <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center mb-6 shadow-emerald-500/10 shadow-2xl rotate-12 transition-transform hover:rotate-0 duration-500">
-                            <ShieldCheck size={40} />
+                        <div className="w-24 h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl transition-transform hover:scale-105 duration-500 overflow-hidden group">
+                            {certificate.orgLogoUrl ? (
+                                <img src={certificate.orgLogoUrl} alt={certificate.orgName} className="w-full h-full object-contain p-2" />
+                            ) : (
+                                <ShieldCheck size={48} className="text-emerald-400" />
+                            )}
+                            <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <ShieldCheck size={32} className="text-white drop-shadow-lg" />
+                            </div>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black text-[var(--text-heading)] mb-2 tracking-tighter transition-colors">Verified Credential</h1>
-                        <p className="text-[var(--text-muted)] text-xs font-black uppercase tracking-[0.3em] mb-8 transition-colors">Authenticity Guaranteed by CertiFlow</p>
+                        <p className="text-[var(--text-muted)] text-[10px] font-black uppercase tracking-[0.4em] mb-10 transition-colors flex items-center gap-3">
+                            <span className="w-8 h-px bg-white/10"></span>
+                            Authenticity Guaranteed
+                            <span className="w-8 h-px bg-white/10"></span>
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-4 mb-12 justify-center">
                         <div className="px-4 py-2 bg-[var(--glass)] border border-[var(--glass-border)] rounded-2xl flex items-center gap-2">
                             <Eye size={14} className="text-slate-400" />
-                            <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{certificate.scanCount || 0} Verifications</span>
+                            <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{certificate.scanCount || 0} Total Scans</span>
                         </div>
                         <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-2">
                             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -170,28 +181,40 @@ const VerifyCertificate = ({ theme, setTheme }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InfoCard
+                            icon={ShieldCheck}
+                            label="Organization"
+                            value={certificate.orgName || 'Professional Institution'}
+                            color="emerald"
+                        />
+                        <InfoCard
+                            icon={User}
+                            label="Issued By (Signer)"
+                            value={certificate.issuerName || 'Authorized Official'}
+                            color="violet"
+                        />
+                        <InfoCard
+                            icon={ShieldCheck}
+                            label="Designation"
+                            value={certificate.issuerDesignation || 'Issuing Authority'}
+                            color="blue"
+                        />
+                        <InfoCard
+                            icon={Calendar}
+                            label="Issue Date"
+                            value={new Date(certificate.issueDate).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                            color="indigo"
+                        />
+                        <InfoCard
                             icon={User}
                             label="Recipient Name"
                             value={certificate.recipientName}
                             color="violet"
                         />
                         <InfoCard
-                            icon={ShieldCheck}
-                            label="Issued By"
-                            value={certificate.issuerName || 'CertiFlow Verified Issuer'}
+                            icon={Hash}
+                            label="Credential Status"
+                            value={certificate.status === 'active' ? 'Verified & Valid' : 'Inactive'}
                             color="emerald"
-                        />
-                        <InfoCard
-                            icon={Calendar}
-                            label="Issue Date"
-                            value={new Date(certificate.issueDate).toLocaleDateString(undefined, { dateStyle: 'long' })}
-                            color="blue"
-                        />
-                        <InfoCard
-                            icon={Mail}
-                            label="Recipient Email"
-                            value={certificate.recipientEmail || 'N/A'}
-                            color="indigo"
                         />
                     </div>
 
@@ -212,7 +235,20 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                             className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[var(--glass)] hover:bg-white/5 text-[var(--text-main)] border border-[var(--glass-border)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 group"
                         >
                             <Hash size={18} className="text-violet-500 group-hover:scale-110 transition-transform" />
-                            Copy Proof Link
+                            Copy Link
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (certificate.issuerEmail) {
+                                    window.location.href = `mailto:${certificate.issuerEmail}?subject=Verification%20Inquiry:%20${certificate.certId}`;
+                                } else {
+                                    alert('Issuer contact email not available.');
+                                }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-600/20 transition-all active:scale-95 group"
+                        >
+                            <Mail size={18} className="group-hover:scale-110 transition-transform" />
+                            Contact Organizer
                         </button>
                         <button
                             onClick={() => {
@@ -220,7 +256,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                 const params = new URLSearchParams({
                                     startTask: 'CERTIFICATION_NAME',
                                     name: 'Verified Professional Credential',
-                                    organizationName: certificate.issuerName || 'CertiFlow',
+                                    organizationName: certificate.orgName || certificate.issuerName || 'CertiFlow',
                                     issueYear: issueDate.getFullYear(),
                                     issueMonth: issueDate.getMonth() + 1,
                                     certId: certificate.certId,
@@ -236,7 +272,16 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                     </div>
                 </div>
 
-                <div className="mt-12 text-center space-y-4">
+                <div className="mt-12 text-center space-y-6">
+                    <div className="flex justify-center flex-col items-center gap-4">
+                        <p className="text-[var(--text-muted)] text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Powered by</p>
+                        <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-crosshair opacity-60 hover:opacity-100">
+                            <div className="w-5 h-5 bg-violet-600 rounded flex items-center justify-center p-1">
+                                <ShieldCheck className="text-white" size={12} />
+                            </div>
+                            <span className="text-sm font-black text-[var(--text-heading)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></span>
+                        </div>
+                    </div>
                     <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-lg mx-auto transition-colors">
                         This credential was generated using CertiFlow secure issuance engine.<br />
                         Tampering with this document will render the digital fingerprint invalid.

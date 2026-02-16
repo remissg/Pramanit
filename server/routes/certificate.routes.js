@@ -24,6 +24,7 @@ router.post('/process-single', authenticateToken, certificateController.processS
 router.post('/upload', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.processCertificates);
 router.post('/test-email', authenticateToken, certificateController.sendEmail);
 router.post('/preview-batch', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.previewBatch);
+router.get('/history', authenticateToken, certificateController.getIssuanceHistory);
 router.get('/verify/:id', certificateController.verifyCertificate);
 
 module.exports = router;

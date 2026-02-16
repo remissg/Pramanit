@@ -7,6 +7,7 @@ const FONTS = [
     { name: 'Inter', value: 'Inter' },
     { name: 'Montserrat', value: 'Montserrat' },
     { name: 'Outfit', value: 'Outfit' },
+    { name: 'Raleway', value: 'Raleway' },
     { name: 'Playfair Display', value: '"Playfair Display"' },
     { name: 'Serif', value: 'serif' },
     { name: 'Cursive', value: 'cursive' },
@@ -206,6 +207,7 @@ const CertificatePreview = ({
                                         />
                                     ))}
                                     <div className="w-px h-4 bg-[var(--border-interactive)] mx-1"></div>
+                                    <div className="w-px h-4 bg-[var(--border-interactive)] mx-1"></div>
                                     <div className="relative group/color w-8 h-8 flex items-center justify-center">
                                         <input
                                             type="color"
@@ -220,6 +222,30 @@ const CertificatePreview = ({
                                         >
                                             <Palette size={16} style={{ color: activeField.color }} className="drop-shadow-sm" />
                                         </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-main)]/50 rounded-lg border border-[var(--border-interactive)] focus-within:border-violet-500/50 transition-all ml-1 group/hex">
+                                        <span className="text-[10px] font-black text-violet-400 opacity-50 group-focus-within/hex:opacity-100 transition-opacity">#</span>
+                                        <input
+                                            type="text"
+                                            value={activeField.color.replace('#', '')}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+                                                if (val.length <= 6) {
+                                                    const newColor = val.length === 6 || val.length === 3 ? `#${val}` : activeField.color;
+                                                    updateField(activeField.id, { color: val.length === 6 || val.length === 3 ? `#${val}` : `#${val}`.padEnd(7, val[val.length - 1] || '0') });
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+                                                if (val.length < 6 && val.length > 0) {
+                                                    val = val.padEnd(6, val[val.length - 1]);
+                                                    updateField(activeField.id, { color: `#${val}` });
+                                                }
+                                            }}
+                                            className="bg-transparent text-[10px] font-mono font-black text-[var(--text-main)] w-[54px] outline-none transition-colors"
+                                            placeholder="FFFFFF"
+                                            title="Enter Hex Code"
+                                        />
                                     </div>
                                 </div>
 

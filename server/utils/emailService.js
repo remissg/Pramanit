@@ -1,28 +1,46 @@
 const nodemailer = require('nodemailer');
+const cryptoUtils = require('./cryptoUtils');
 
-const sendEmail = async (to, subject, text, attachments) => {
+const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
     try {
-        // Create a transporter
-        // For production, use environment variables for service, user, and pass
-        const transporter = nodemailer.createTransport({
-            service: 'gmail', // or use host/port for other providers
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
+        let transporterConfig;
+
+        if (customSmtp && customSmtp.host && customSmtp.user && customSmtp.pass) {
+            // Decrypt the custom SMTP password
+            const decryptedPass = cryptoUtils.decrypt(customSmtp.pass);
+
+            transporterConfig = {
+                host: customSmtp.host,
+                port: customSmtp.port || 587,
+                secure: customSmtp.port === 465,
+                auth: {
+                    user: customSmtp.user,
+                    pass: decryptedPass || customSmtp.pass, // Fallback to plain if decryption fails (for legacy migration)
+                },
+            };
+        } else {
+            transporterConfig = {
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS,
+                },
+            };
+        }
+
+        const transporter = nodemailer.createTransport(transporterConfig);
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: customSmtp?.user ? customSmtp.user : `"CertiFlow" <${process.env.EMAIL_USER}>`,
             to,
             subject,
-            html, // Use HTML body
+            html,
             text: html.replace(/<[^>]*>?/gm, ''), // Fallback plain text
             attachments,
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent: ' + info.response);
+        console.log('Email sent: ' + (info.response || 'success'));
         return info;
     } catch (error) {
         console.error('Error sending email:', error);
@@ -30,4 +48,36 @@ const sendEmail = async (to, subject, text, attachments) => {
     }
 };
 
-module.exports = { sendEmail };
+const sendVerificationEmail = async (to, token) => {
+    const verificationUrl = `http://localhost:5173/verify-email?token=${token}`;
+    const html = `
+        <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Certi<span style="color: #7c3aed;">Flow</span></h1>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px; tracking-tight: -0.01em;">Verify Your Account</h2>
+                <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
+                    Welcome to CertiFlow! Click the button below to verify your email and unlock full access to your workspace.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 32px;">
+                <a href="${verificationUrl}" style="display: inline-block; background: linear-gradient(to right, #7c3aed, #4f46e5); color: #ffffff; padding: 16px 40px; border-radius: 16px; font-weight: 800; text-decoration: none; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.2);">
+                    Verify Email Address
+                </a>
+            </div>
+
+            <div style="text-align: center; padding-top: 32px; border-top: 1px solid #f1f5f9;">
+                <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin: 0;">
+                    This link will expire in 24 hours. If you didn't sign up for CertiFlow, you can safely ignore this email.
+                </p>
+            </div>
+        </div>
+    `;
+
+    return sendEmail(to, 'Verify your CertiFlow Account', html);
+};
+
+module.exports = { sendEmail, sendVerificationEmail };

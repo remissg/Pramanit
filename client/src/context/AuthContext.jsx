@@ -38,12 +38,19 @@ export const AuthProvider = ({ children }) => {
         return res.data.user;
     };
 
-    const signup = async (email, password, orgName) => {
-        const res = await axios.post('http://localhost:5000/api/auth/signup', { email, password, orgName });
+    const signup = async (email, password, orgName, fullName, designation) => {
+        const res = await axios.post('http://localhost:5000/api/auth/signup', { email, password, orgName, fullName, designation });
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
         setUser(res.data.user);
         return res.data.user;
+    };
+
+    const updateSession = (userData, userToken) => {
+        localStorage.setItem('token', userToken);
+        setToken(userToken);
+        setUser(userData);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
     };
 
     const logout = () => {
@@ -54,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, signup, logout, loading, updateSession }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { createClient } = require('@supabase/supabase-js');
+const db = require('./utils/db');
+
+
 
 dotenv.config();
 
@@ -32,9 +34,11 @@ app.use('/api/designs', designRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 
 // Supabase client setup
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-// const supabase = createClient(supabaseUrl, supabaseKey); // Uncomment when valid credentials are set
+// Supabase client setup (Legacy - Moved to MongoDB)
+// const supabaseUrl = process.env.SUPABASE_URL;
+// const supabaseKey = process.env.SUPABASE_KEY;
+// const supabase = createClient(supabaseUrl, supabaseKey); 
+
 
 app.get('/', (req, res) => {
   res.send('CertiFlow Server is running');

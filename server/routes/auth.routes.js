@@ -22,6 +22,9 @@ const authenticateToken = (req, res, next) => {
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 router.get('/profile', authenticateToken, authController.getProfile);
+router.post('/update-profile', authenticateToken, authController.updateProfile);
+router.get('/verify-email', authController.verifyEmail);
+router.post('/resend-verification', authenticateToken, authController.resendVerification);
 
 module.exports = {
     router,

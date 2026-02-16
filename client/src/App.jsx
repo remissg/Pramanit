@@ -5,12 +5,13 @@ import EmailForm from './components/EmailForm';
 import BatchPreview from './components/BatchPreview';
 import ManualRecipientEntry from './components/ManualRecipientEntry';
 import axios from 'axios';
-import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe } from 'lucide-react';
+import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe, LayoutTemplate } from 'lucide-react';
 import CustomSelect from './components/CustomSelect';
 import Papa from 'papaparse';
 
 import * as XLSX from 'xlsx';
 
+import { useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -19,7 +20,92 @@ import logo from './assets/CertiFlow logo (1).png';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import VerifyEmailPage from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
+
+const VerificationNotice = () => {
+  const { logout, user } = useAuth();
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  const getMailboxUrl = (email) => {
+    if (!email) return null;
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (domain?.includes('gmail')) return { name: 'Gmail', url: 'https://mail.google.com/', icon: 'Mail' };
+    if (domain?.includes('outlook') || domain?.includes('hotmail') || domain?.includes('live')) return { name: 'Outlook', url: 'https://outlook.live.com/', icon: 'Mail' };
+    if (domain?.includes('yahoo')) return { name: 'Yahoo Mail', url: 'https://mail.yahoo.com/', icon: 'Mail' };
+    if (domain?.includes('icloud')) return { name: 'iCloud Mail', url: 'https://www.icloud.com/mail/', icon: 'Mail' };
+    return null;
+  };
+
+  const mailbox = getMailboxUrl(user?.email);
+
+  const handleResend = async () => {
+    try {
+      setResending(true);
+      await axios.post('http://localhost:5000/api/auth/resend-verification');
+      setResent(true);
+      setTimeout(() => setResent(false), 5000);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to resend verification email.');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-[var(--bg-card)] border border-[var(--border-muted)] rounded-3xl p-8 shadow-2xl text-center animate-in fade-in zoom-in duration-300">
+        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Mail className="text-amber-500" size={40} />
+        </div>
+        <h2 className="text-2xl font-black text-[var(--text-heading)] mb-4 leading-tight">Verify Your Email</h2>
+        <p className="text-[var(--text-muted)] mb-8 font-medium leading-relaxed">
+          Your account at <strong>{user?.email}</strong> is not verified yet. Please check your inbox and click the verification link to unlock all features.
+        </p>
+
+        <div className="space-y-4">
+          {mailbox && (
+            <a
+              href={mailbox.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-2xl shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+            >
+              Open {mailbox.name}
+              <Globe size={18} className="group-hover:translate-x-1 transition-transform" />
+            </a>
+          )}
+
+          <button
+            onClick={() => window.location.reload()}
+            className={`w-full py-4 ${mailbox ? 'bg-[var(--bg-input)] text-[var(--text-main)] border border-[var(--border-muted)]' : 'bg-violet-600 text-white shadow-lg shadow-violet-500/20'} hover:bg-violet-500/10 hover:text-violet-500 hover:border-violet-500/20 font-black rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2`}
+          >
+            I've Verified My Email
+          </button>
+
+          <div className="pt-4 border-t border-[var(--border-muted)] mt-6 space-y-3">
+            <button
+              onClick={handleResend}
+              disabled={resending || resent}
+              className="text-xs font-bold text-violet-500 hover:text-violet-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+            >
+              {resending ? <Loader size={12} className="animate-spin" /> : resent ? <CheckCircle size={12} /> : null}
+              {resent ? 'Verification Link Sent!' : 'Didn\'t get the email? Resend Link'}
+            </button>
+            <button
+              onClick={logout}
+              className="text-xs font-bold text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+            >
+              Sign out and try another email
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const RequireAuth = ({ children }) => {
   const { user, loading } = useAuth();
@@ -34,7 +120,11 @@ const RequireAuth = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user.isVerified) {
+    return <VerificationNotice />;
   }
 
   return children;
@@ -119,13 +209,10 @@ function App() {
           />
           {/* Public Routing */}
           <Route path="/verify/:id" element={<VerifyCertificate theme={theme} setTheme={setTheme} />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
             path="/"
-            element={
-              <PublicRoute>
-                <LandingPageWrapper theme={theme} setTheme={setTheme} />
-              </PublicRoute>
-            }
+            element={<LandingPageWrapper theme={theme} setTheme={setTheme} />}
           />
         </Routes>
       </AuthProvider>
@@ -154,6 +241,8 @@ function MainApp({ theme, setTheme }) {
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState({ template: null, data: null });
   const [recipientSource, setRecipientSource] = useState('bulk'); // 'bulk' | 'manual'
+  const abortBatchRef = useRef(false); // Ref to signal abort
+
 
   const handleStartWithTemplate = async (templateUrl, templateName) => {
     try {
@@ -162,7 +251,8 @@ function MainApp({ theme, setTheme }) {
       const file = new File([blob], `${templateName}.png`, { type: 'image/png' });
       setFiles(prev => ({ ...prev, template: file }));
       setShowApp(true);
-      setStep(1); // Start at file upload step but template is ready
+      setRecipientSource('manual'); // Assume manual entry if starting from template
+      setStep(2); // Jump directly to Designer since templates are blank
     } catch (error) {
       console.error("Failed to load template:", error);
       setShowApp(true);
@@ -365,6 +455,7 @@ function MainApp({ theme, setTheme }) {
 
     try {
       // 1. Prepare (Upload Template once)
+      abortBatchRef.current = false; // Reset abort signal
       const prepData = new FormData();
       prepData.append('template', files.template);
       const prepRes = await axios.post('http://localhost:5000/api/certificates/prepare-batch', prepData);
@@ -376,7 +467,13 @@ function MainApp({ theme, setTheme }) {
 
       // 2. Process one-by-one for progress tracking
       for (let i = 0; i < selectedRecipients.length; i++) {
+        if (abortBatchRef.current) {
+          setStatus('idle'); // Or 'cancelled' if we had a specific state
+          alert(`Batch stopped. Sent ${results.success.length} certificates.`);
+          break;
+        }
         const recipient = selectedRecipients[i];
+
         try {
           await axios.post('http://localhost:5000/api/certificates/process-single', {
             templatePath,
@@ -474,7 +571,17 @@ function MainApp({ theme, setTheme }) {
                   style={{ width: `${(progress.current / progress.total) * 100}%` }}
                 />
               </div>
-              <p className="text-[10px] font-black text-violet-400 tracking-[0.2em] uppercase">Please do not close this tab</p>
+              <p className="text-[10px] font-black text-violet-400 tracking-[0.2em] uppercase mb-6">Please do not close this tab</p>
+
+              <button
+                onClick={() => {
+                  abortBatchRef.current = true;
+                  // Optional: immediate visual feedback, though loop break handles it
+                }}
+                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+              >
+                Stop Sending
+              </button>
             </div>
           </div>
         )}
@@ -482,6 +589,21 @@ function MainApp({ theme, setTheme }) {
         <div className="text-center mb-10 md:mb-16 px-4 md:px-6">
           <h2 className="text-3xl md:text-6xl font-black text-[var(--text-heading)] tracking-tighter mb-4 transition-colors">Certificate <span className="text-violet-500">Generator</span></h2>
           <p className="text-[var(--text-muted)] text-[10px] md:text-sm font-bold max-w-xl mx-auto transition-colors uppercase tracking-widest">Transform your template into professional credentials.</p>
+
+          {user && !user.isVerified && (
+            <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl max-w-2xl mx-auto animate-in slide-in-from-top-4 duration-500 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-amber-500 font-bold text-xs">
+                <ShieldCheck size={18} />
+                <span>Your account is unverified. Please check your email to verify your identity.</span>
+              </div>
+              <button
+                onClick={() => alert("Verification email resent! (Mock)")}
+                className="px-4 py-2 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+              >
+                Resend Email
+              </button>
+            </div>
+          )}
         </div>
 
         <div className={`flex justify-between items-center relative px-12 max-w-3xl mx-auto ${step === 2 ? 'mb-8 md:mb-16' : 'mb-6 md:mb-16'}`}>

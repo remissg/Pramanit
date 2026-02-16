@@ -6,6 +6,7 @@ const { authenticateToken } = require('./auth.routes');
 router.post('/', authenticateToken, designController.saveDesign);
 router.get('/', authenticateToken, designController.getDesigns);
 router.get('/:id', authenticateToken, designController.getDesignById);
+router.post('/:id/clone', authenticateToken, designController.cloneDesign);
 router.delete('/:id', authenticateToken, designController.deleteDesign);
 
 module.exports = router;

@@ -1,29 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock } from 'lucide-react';
 import axios from 'axios';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const Dashboard = ({ theme, setTheme }) => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('designs'); // 'designs' | 'email-templates'
+    const { user, token } = useAuth();
+    const [activeTab, setActiveTab] = useState('designs'); // 'designs' | 'email-templates' | 'history' | 'settings'
     const [designs, setDesigns] = useState([]);
     const [emailTemplates, setEmailTemplates] = useState([]);
+    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showSmtpPass, setShowSmtpPass] = useState(false);
+    const [settings, setSettings] = useState({
+        orgName: user?.orgName || '',
+        orgLogoUrl: user?.orgLogo || '',
+        fullName: user?.fullName || '',
+        designation: user?.designation || '',
+        smtpHost: '',
+        smtpPort: 587,
+        smtpUser: '',
+        smtpPass: ''
+    });
     const [searchTerm, setSearchTerm] = useState('');
 
     // Modal State for Email Templates
     const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [showSmtpGuide, setShowSmtpGuide] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [templateForm, setTemplateForm] = useState({ name: '', subject: '', bodyHtml: '', isDefault: false });
 
     useEffect(() => {
+        if (user) {
+            setSettings(prev => ({
+                ...prev,
+                orgName: user.orgName || user.org_name || '',
+                orgLogoUrl: user.orgLogo || user.org_logo_url || '',
+                fullName: user.fullName || user.full_name || '',
+                designation: user.designation || '',
+            }));
+        }
+    }, [user]);
+
+    useEffect(() => {
         fetchData();
+        fetchProfile();
     }, [activeTab]);
+
+    const fetchProfile = async () => {
+        try {
+            const res = await axios.get('http://localhost:5000/api/auth/profile');
+            const data = res.data;
+            setSettings(prev => ({
+                ...prev,
+                orgName: data.org_name || '',
+                orgLogoUrl: data.org_logo_url || '',
+                fullName: data.full_name || '',
+                designation: data.designation || '',
+                smtpHost: data.smtp_host || '',
+                smtpPort: data.smtp_port || 587,
+                smtpUser: data.smtp_user || '',
+                // smtpPass is kept as is (empty or what user types)
+            }));
+        } catch (err) {
+            console.error('Failed to fetch profile', err);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -31,14 +78,38 @@ const Dashboard = ({ theme, setTheme }) => {
             if (activeTab === 'designs') {
                 const res = await axios.get('http://localhost:5000/api/designs');
                 setDesigns(res.data);
-            } else {
+            } else if (activeTab === 'email-templates') {
                 const res = await axios.get('http://localhost:5000/api/email-templates');
                 setEmailTemplates(res.data);
+            } else if (activeTab === 'history') {
+                const res = await axios.get('http://localhost:5000/api/certificates/history');
+                setHistory(res.data);
             }
         } catch (err) {
             console.error('Failed to fetch data', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            const res = await axios.post('http://localhost:5000/api/auth/update-profile', settings);
+            alert('Settings updated successfully!');
+        } catch (err) {
+            console.error('Failed to update settings', err);
+            alert('Failed to update settings');
+        }
+    };
+
+    const handleClone = async (id) => {
+        try {
+            const res = await axios.post(`http://localhost:5000/api/designs/${id}/clone`);
+            setDesigns([res.data, ...designs]);
+            alert('Design cloned successfully!');
+        } catch (err) {
+            console.error('Failed to clone design', err);
+            alert('Failed to clone design');
         }
     };
 
@@ -108,7 +179,9 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const filteredItems = activeTab === 'designs'
         ? designs.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        : emailTemplates.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        : activeTab === 'email-templates'
+            ? emailTemplates.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            : history.filter(h => (h.design_name || 'Generic').toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="min-h-screen bg-[var(--bg-main)] font-sans text-[var(--text-main)] transition-colors duration-500">
@@ -133,7 +206,7 @@ const Dashboard = ({ theme, setTheme }) => {
                             />
                         </div>
                         <button
-                            onClick={() => activeTab === 'designs' ? window.location.href = '/' : openTemplateModal()}
+                            onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
                             className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-violet-600/20 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
                         >
                             <Plus size={18} />
@@ -156,29 +229,242 @@ const Dashboard = ({ theme, setTheme }) => {
                     >
                         Email Templates
                     </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                    >
+                        Issuance History
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                    >
+                        Settings
+                    </button>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <Loader className="text-violet-500 animate-spin" size={32} />
                     </div>
+                ) : activeTab === 'settings' ? (
+                    <div className="max-w-4xl mx-auto w-full space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        {/* Branding Section */}
+                        <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-10 overflow-hidden relative group">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+                            <div className="relative">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 bg-violet-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                                        <Globe size={24} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-[var(--text-heading)]">Organization Branding</h2>
+                                        <p className="text-sm text-[var(--text-muted)] font-bold">Customize how your certificates and emails appear to recipients.</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Organization Name</label>
+                                        <input
+                                            type="text"
+                                            value={settings.orgName}
+                                            onChange={(e) => setSettings({ ...settings, orgName: e.target.value })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="Enter Org Name"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Logo URL</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={settings.orgLogoUrl}
+                                                onChange={(e) => setSettings({ ...settings, orgLogoUrl: e.target.value })}
+                                                className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold pr-12"
+                                                placeholder="https://..."
+                                            />
+                                            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-violet-500">
+                                                <Upload size={18} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Full Name (Signer)</label>
+                                        <input
+                                            type="text"
+                                            value={settings.fullName}
+                                            onChange={(e) => setSettings({ ...settings, fullName: e.target.value })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="e.g. John Doe"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Designation</label>
+                                        <input
+                                            type="text"
+                                            value={settings.designation}
+                                            onChange={(e) => setSettings({ ...settings, designation: e.target.value })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="e.g. Director of Operations"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* SMTP Section */}
+                        <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-10 overflow-hidden relative group">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+                            <div className="relative">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                        <Shield size={24} />
+                                    </div>
+                                    <div className="flex-1 flex justify-between items-start">
+                                        <div>
+                                            <h2 className="text-2xl font-black text-[var(--text-heading)]">Custom SMTP Settings</h2>
+                                            <p className="text-sm text-[var(--text-muted)] font-bold">Send emails from your own domain (e.g. hello@yourbrand.com)</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowSmtpGuide(true)}
+                                            className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all group/info"
+                                            title="How this works"
+                                        >
+                                            <Info size={20} className="group-hover/info:scale-110 transition-transform" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">SMTP Host</label>
+                                        <input
+                                            type="text"
+                                            value={settings.smtpHost}
+                                            onChange={(e) => setSettings({ ...settings, smtpHost: e.target.value })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="smtp.gmail.com"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">SMTP Port</label>
+                                        <input
+                                            type="number"
+                                            value={settings.smtpPort}
+                                            onChange={(e) => setSettings({ ...settings, smtpPort: parseInt(e.target.value) })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="587"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">SMTP User</label>
+                                        <input
+                                            type="text"
+                                            value={settings.smtpUser}
+                                            onChange={(e) => setSettings({ ...settings, smtpUser: e.target.value })}
+                                            className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
+                                            placeholder="hello@yourbrand.com"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">SMTP Password</label>
+                                        <div className="relative group/pass">
+                                            <input
+                                                type={showSmtpPass ? 'text' : 'password'}
+                                                value={settings.smtpPass}
+                                                onChange={(e) => setSettings({ ...settings, smtpPass: e.target.value })}
+                                                className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold pr-12 transition-all focus:border-violet-500/50"
+                                                placeholder="••••••••••••"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowSmtpPass(!showSmtpPass)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-violet-500 transition-colors"
+                                            >
+                                                {showSmtpPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-12 flex justify-end">
+                                    <button
+                                        onClick={handleSaveSettings}
+                                        className="px-12 py-5 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-3xl shadow-xl shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-3"
+                                    >
+                                        <Save size={20} />
+                                        Save All Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ) : filteredItems.length === 0 ? (
-                    <div className="text-center py-20 bg-[var(--glass)] rounded-[2.5rem] border border-[var(--glass-border)] animate-in zoom-in-95 duration-500">
+                    <div className="text-center py-20 bg-[var(--glass)] rounded-[2.5rem] border border-[var(--border-interactive)] animate-in zoom-in-95 duration-500">
                         <div className="w-20 h-20 bg-violet-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                            {activeTab === 'designs' ? <LayoutTemplate className="text-violet-400" size={32} /> : <Mail className="text-violet-400" size={32} />}
+                            {activeTab === 'designs' ? <LayoutTemplate className="text-violet-400" size={32} /> : activeTab === 'email-templates' ? <Mail className="text-violet-400" size={32} /> : <History className="text-violet-400" size={32} />}
                         </div>
                         <h3 className="text-xl font-black text-[var(--text-heading)] mb-2">No {activeTab.replace('-', ' ')} found</h3>
-                        <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">It looks empty here. Start by creating your first {activeTab === 'designs' ? 'certificate design' : 'email template'}.</p>
-                        <button
-                            onClick={() => activeTab === 'designs' ? window.location.href = '/' : openTemplateModal()}
-                            className="text-violet-400 hover:text-violet-300 font-bold underline underline-offset-4 transition-colors"
-                        >
-                            Create New
-                        </button>
+                        <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">It looks empty here. {activeTab !== 'history' ? `Start by creating your first ${activeTab === 'designs' ? 'certificate design' : 'email template'}.` : 'You haven\'t issued any certificates yet.'}</p>
+                        {activeTab !== 'history' && (
+                            <button
+                                onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
+                                className="text-violet-400 hover:text-violet-300 font-bold underline underline-offset-4 transition-colors"
+                            >
+                                Create New
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredItems.map((item) => (
+                        {activeTab === 'history' ? (
+                            <div className="col-span-full bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-white/5">
+                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Date</th>
+                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Design</th>
+                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Total Sent</th>
+                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Destination</th>
+                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredItems.map((record) => (
+                                                <tr key={record.id} className="hover:bg-white/5 transition-colors group">
+                                                    <td className="px-8 py-5 text-sm font-bold text-[var(--text-main)] border-b border-white/5">
+                                                        {new Date(record.timestamp).toLocaleString()}
+                                                    </td>
+                                                    <td className="px-8 py-5 border-b border-white/5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 bg-violet-500/10 rounded-lg flex items-center justify-center">
+                                                                <LayoutTemplate size={14} className="text-violet-500" />
+                                                            </div>
+                                                            <span className="font-bold text-sm text-[var(--text-main)]">{record.design_name || 'Direct Generation'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-5 border-b border-white/5">
+                                                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-violet-600/10 text-violet-500 rounded-full text-xs font-black">
+                                                            <Users size={12} /> {record.total_sent}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-5 text-[var(--text-muted)] text-sm font-medium border-b border-white/5 truncate max-w-xs">
+                                                        {record.recipient_list_ref || 'Individual Send'}
+                                                    </td>
+                                                    <td className="px-8 py-5 text-right border-b border-white/5">
+                                                        <button className="p-2 hover:text-violet-500 transition-colors" title="View Details">
+                                                            <ExternalLink size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : filteredItems.map((item) => (
                             <div key={item.id} className="group bg-[var(--bg-card)] rounded-3xl border border-[var(--border-muted)] overflow-hidden hover:shadow-2xl hover:shadow-violet-900/10 hover:border-violet-500/30 transition-all duration-300 flex flex-col">
                                 {activeTab === 'designs' ? (
                                     <div className="aspect-video bg-slate-900 relative overflow-hidden">
@@ -195,11 +481,18 @@ const Dashboard = ({ theme, setTheme }) => {
                                         )}
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 backdrop-blur-sm">
                                             <button
-                                                onClick={() => navigate('/', { state: { loadDesign: item } })}
+                                                onClick={() => navigate('/generate', { state: { loadDesign: item } })}
                                                 className="p-3 bg-white text-slate-900 rounded-xl hover:scale-110 active:scale-95 transition-transform shadow-lg"
                                                 title="Edit Design"
                                             >
                                                 <Edit size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleClone(item.id)}
+                                                className="p-3 bg-emerald-500 text-white rounded-xl hover:scale-110 active:scale-95 transition-transform shadow-lg"
+                                                title="Clone Design"
+                                            >
+                                                <Copy size={18} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(item.id, 'designs')}
@@ -325,6 +618,128 @@ const Dashboard = ({ theme, setTheme }) => {
                             >
                                 <Save size={18} />
                                 Save Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SMTP Guide Modal */}
+            {showSmtpGuide && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-[var(--border-muted)] flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 overflow-hidden">
+                        <div className="p-8 border-b border-[var(--border-muted)] flex justify-between items-center bg-emerald-500/5">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
+                                    <Info size={24} />
+                                </div>
+                                <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight">SMTP Setup Guide</h2>
+                            </div>
+                            <button onClick={() => setShowSmtpGuide(false)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar">
+                            <section className="space-y-4">
+                                <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Globe size={18} /> 1. Professional Appearance
+                                </h3>
+                                <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)]">
+                                    <p className="text-[var(--text-main)] font-bold leading-relaxed">
+                                        Currently, certificates come from <code className="text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded">no-reply@certiflow.com</code>. Once you set your own SMTP:
+                                    </p>
+                                    <ul className="mt-4 space-y-2 text-[var(--text-muted)] font-medium">
+                                        <li className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                                            <span className="font-bold">From:</span> awards@yourcompany.com
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                                            <span className="font-bold">Sender Name:</span> Your Organization Name
+                                        </li>
+                                    </ul>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4">
+                                <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Shield size={18} /> 2. Avoiding Spam Filters
+                                </h3>
+                                <p className="text-[var(--text-muted)] font-bold leading-relaxed pl-7">
+                                    System emails often get flagged as "Promotions". By using your official mail server, you achieve a <span className="text-emerald-500">100% inbox delivery rate</span>.
+                                </p>
+                            </section>
+
+                            <section className="space-y-4">
+                                <h3 className="text-lg font-black text-violet-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Lock size={18} /> How to get your SMTP Password
+                                </h3>
+                                <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)] space-y-4">
+                                    <p className="text-xs text-[var(--text-muted)] font-bold italic">For security, major providers (Gmail, Outlook) require an <span className="text-violet-500 underline underline-offset-4 decoration-violet-500/30">App Password</span> instead of your regular one.</p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                        <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                                            <p className="text-xs font-black text-emerald-500 mb-2 uppercase tracking-[0.1em]">Google / Gmail</p>
+                                            <ol className="text-[11px] text-[var(--text-muted)] font-bold space-y-1">
+                                                <li>1. Enable <span className="text-[var(--text-main)]">2-Step Verification</span>.</li>
+                                                <li>2. Search for <span className="text-[var(--text-main)]">"App Passwords"</span> in Security.</li>
+                                                <li>3. Create one and use that 16-digit code here.</li>
+                                            </ol>
+                                        </div>
+                                        <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                                            <p className="text-xs font-black text-blue-500 mb-2 uppercase tracking-[0.1em]">Outlook / Microsoft</p>
+                                            <ol className="text-[11px] text-[var(--text-muted)] font-bold space-y-1">
+                                                <li>1. Go to <span className="text-[var(--text-main)]">Security Basics</span>.</li>
+                                                <li>2. Select <span className="text-[var(--text-main)]">Advanced Security Options</span>.</li>
+                                                <li>3. Click <span className="text-[var(--text-main)]">Create a new app password</span>.</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                    <div className="pt-2">
+                                        <p className="text-[10px] text-[var(--text-muted)] font-bold flex items-center gap-2">
+                                            <Info size={12} className="text-violet-500" />
+                                            Don't worry, your credentials are <span className="text-violet-500">AES-256 Encrypted</span> on our server.
+                                        </p>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4">
+                                <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Zap size={18} /> 3. How it Works
+                                </h3>
+                                <div className="space-y-4 pl-7">
+                                    <div className="relative border-l-2 border-emerald-500/30 pl-6 space-y-6">
+                                        <div>
+                                            <p className="font-black text-[var(--text-heading)]">Step A: One-Time Setup</p>
+                                            <p className="text-sm text-[var(--text-muted)] font-medium">Enter your details. (e.g., Gmail uses host <code className="text-violet-500">smtp.gmail.com</code>, port <code className="text-violet-500">587</code> + "App Password")</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-[var(--text-heading)]">Step B: Automatic Usage</p>
+                                            <p className="text-sm text-[var(--text-muted)] font-medium">Click "Issue & Mail" – CertiFlow logs into your server and sends the files instantly.</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-[var(--text-heading)]">Step C: Tracking</p>
+                                            <p className="text-sm text-[var(--text-muted)] font-medium">You can see sent emails directly in your provider's "Sent" folder.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <div className="bg-violet-600/10 p-6 rounded-3xl border border-violet-500/20 flex items-start gap-4">
+                                <Shield className="text-violet-500 mt-1 shrink-0" size={20} />
+                                <div>
+                                    <p className="font-black text-violet-500 text-sm italic">Encryption Shield Active</p>
+                                    <p className="text-xs text-[var(--text-muted)] font-bold mt-1">Your SMTP credentials are encrypted with AES-256 before being stored. Only the mail server ever sees your password.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-8 border-t border-[var(--border-muted)] bg-[var(--bg-input)]/50 flex justify-end">
+                            <button
+                                onClick={() => setShowSmtpGuide(false)}
+                                className="px-10 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
+                            >
+                                Got it, thanks!
                             </button>
                         </div>
                     </div>

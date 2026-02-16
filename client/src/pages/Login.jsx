@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, User, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Lock, Mail, User, ArrowRight, ShieldCheck, Sparkles, Briefcase, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/CertiFlow logo (1).png';
 
 const Login = () => {
@@ -9,11 +9,16 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [orgName, setOrgName] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [designation, setDesignation] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { login, signup } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || { pathname: '/' };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,9 +28,9 @@ const Login = () => {
             if (isLogin) {
                 await login(email, password);
             } else {
-                await signup(email, password, orgName);
+                await signup(email, password, orgName, fullName, designation);
             }
-            navigate('/');
+            navigate(from.pathname, { state: from.state, replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Authentication failed');
         } finally {
@@ -76,10 +81,43 @@ const Login = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {!isLogin && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 group">
+                                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest ml-1">Full Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={18} />
+                                        <input
+                                            type="text"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-slate-600 font-medium"
+                                            placeholder="Your Name"
+                                            required={!isLogin}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2 group">
+                                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest ml-1">Designation</label>
+                                    <div className="relative">
+                                        <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={18} />
+                                        <input
+                                            type="text"
+                                            value={designation}
+                                            onChange={(e) => setDesignation(e.target.value)}
+                                            className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-slate-600 font-medium"
+                                            placeholder="Job Title"
+                                            required={!isLogin}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!isLogin && (
                             <div className="space-y-2 group">
                                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest ml-1">Organization</label>
                                 <div className="relative">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={18} />
+                                    <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={18} />
                                     <input
                                         type="text"
                                         value={orgName}
@@ -109,16 +147,23 @@ const Login = () => {
 
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest ml-1">Password</label>
-                            <div className="relative">
+                            <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={18} />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-slate-600 font-medium"
+                                    className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-slate-600 font-medium"
                                     placeholder="••••••••"
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-violet-500 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
 
