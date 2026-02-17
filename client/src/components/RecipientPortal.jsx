@@ -80,7 +80,7 @@ export default function RecipientPortal({ theme, setTheme }) {
         const params = new URLSearchParams({
             startTask: "CERTIFICATION_NAME",
             name: certificate.issuerName + " Certification",
-            organizationName: certificate.orgName || "CertiFlow",
+            organizationName: certificate.orgName || "Pramanit",
             issueYear: new Date(certificate.issueDate).getFullYear(),
             issueMonth: new Date(certificate.issueDate).getMonth() + 1,
             certUrl: `http://localhost:5173/verify/${certificate.certId}`,
@@ -323,7 +323,7 @@ export default function RecipientPortal({ theme, setTheme }) {
                                 <h4 className="font-black text-sm uppercase tracking-widest">Digital Badge</h4>
                             </div>
                             <p className="text-sm font-bold opacity-90 leading-relaxed mb-6">
-                                Power your career with blockchain-grade verification. Every CertiFlow credential is unique and immutable.
+                                Power your career with blockchain-grade verification. Every Pramanit credential is unique and immutable.
                             </p>
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3 text-xs font-black">

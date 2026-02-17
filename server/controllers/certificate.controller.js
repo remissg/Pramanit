@@ -75,7 +75,7 @@ const drawWatermark = (ctx, canvasWidth, canvasHeight) => {
     ctx.fillStyle = 'rgba(100, 116, 139, 0.5)'; // Slate-500 with opacity
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('Verified by CertiFlow', canvasWidth / 2, canvasHeight - (canvasHeight * 0.03));
+    ctx.fillText('Verified by Pramanit', canvasWidth / 2, canvasHeight - (canvasHeight * 0.03));
 };
 
 const generateHash = (data) => {
@@ -92,9 +92,9 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     pdfDoc.setTitle('Verified Certificate');
     pdfDoc.setAuthor(metadata.issuerName);
     pdfDoc.setSubject(`Credential for ${metadata.recipientName}`);
-    pdfDoc.setKeywords(['CertiFlow', 'Verified', metadata.certId]);
-    pdfDoc.setProducer('CertiFlow Pro');
-    pdfDoc.setCreator('CertiFlow Engine');
+    pdfDoc.setKeywords(['Pramanit', 'Verified', metadata.certId]);
+    pdfDoc.setProducer('Pramanit Pro');
+    pdfDoc.setCreator('Pramanit Engine');
 
     return await pdfDoc.save();
 };
@@ -307,7 +307,7 @@ const processSingle = async (req, res) => {
             recipientName: recipient.name || 'Recipient',
             recipientEmail: recipient.email || '',
             issuerId: req.user.id, // Link to User model
-            issuerName: branding?.full_name || issuerName || 'CertiFlow User',
+            issuerName: branding?.full_name || issuerName || 'Pramanit User',
             orgName: branding?.org_name || '',
             issuerDesignation: branding?.designation || '',
             orgLogoUrl: branding?.org_logo_url || '',

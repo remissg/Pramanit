@@ -59,7 +59,7 @@ const issueCertificate = async (req, res) => {
             recipient_name,
             recipient_email,
             issuer_id: user._id,
-            issuer_name: user.full_name || user.org_name || 'CertiFlow Issuer',
+            issuer_name: user.full_name || user.org_name || 'Pramanit Issuer',
             issuer_email: user.email,
             issue_date: issue_date || new Date(),
             org_name: user.org_name,

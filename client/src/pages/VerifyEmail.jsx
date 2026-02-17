@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Loader, XCircle, CheckCircle, ArrowRight } from 'lucide-react';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 import { useAuth } from '../context/AuthContext';
 
 const VerifyEmail = () => {
@@ -53,7 +53,7 @@ const VerifyEmail = () => {
                         <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl">
                             <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />
                         </div>
-                        <h1 className="text-4xl font-black text-[var(--text-main)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></h1>
+                        <h1 className="text-4xl font-black text-[var(--text-main)] tracking-tighter">Pramanit</h1>
                     </div>
                 </div>
 

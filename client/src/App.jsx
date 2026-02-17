@@ -16,7 +16,7 @@ import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import VerifyCertificate from './components/VerifyCertificate';
-import logo from './assets/CertiFlow logo (1).png';
+import logo from './assets/Pramanit logo.png';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
@@ -178,7 +178,7 @@ import Watermark from './components/Watermark';
 
 function App() {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('certiflow-theme') || 'system';
+    return localStorage.getItem('pramanit-theme') || 'system';
   });
 
   useEffect(() => {
@@ -191,7 +191,7 @@ function App() {
     };
 
     applyTheme(theme);
-    localStorage.setItem('certiflow-theme', theme);
+    localStorage.setItem('pramanit-theme', theme);
 
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -407,7 +407,19 @@ function MainApp({ theme, setTheme }) {
     setAvailableHeaders(headers);
     setRawRows(rows);
 
-    // Generate dynamic fields from headers
+    // Auto-mapping for email/name tracking - Always update this for the recipient list
+    const nameKey = headers.find(h => /name|recipient|person/i.test(h)) || headers[0];
+    const emailKey = headers.find(h => /email|mail|address/i.test(h)) || headers[1];
+    setColumnMapping({ name: nameKey, email: emailKey });
+
+    // If fields already exist (e.g. from a saved design), DO NOT overwrite them
+    // This allows the user to apply a saved layout to new data
+    if (fields.length > 0) {
+      console.log("Preserving existing design fields");
+      return;
+    }
+
+    // Generate dynamic fields from headers ONLY if no design is loaded
     let primaryNameFound = false;
     const newFields = headers.map((header, index) => {
       const trimmedHeader = header.trim();
@@ -436,11 +448,6 @@ function MainApp({ theme, setTheme }) {
     setFields(newFields);
     const firstVisible = newFields.find(f => f.isVisible) || newFields[0];
     setActiveFieldId(firstVisible?.id);
-
-    // Auto-mapping for email/name tracking
-    const nameKey = headers.find(h => /name|recipient|person/i.test(h)) || headers[0];
-    const emailKey = headers.find(h => /email|mail|address/i.test(h)) || headers[1];
-    setColumnMapping({ name: nameKey, email: emailKey });
   };
 
   const handleFileChange = (newFiles) => {

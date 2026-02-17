@@ -4,12 +4,12 @@ import { Plus, Trash2, User, Mail, Sparkles, Hash } from 'lucide-react';
 const ManualRecipientEntry = ({ onDataChange }) => {
     // Load draft from localStorage if it exists
     const [headers, setHeaders] = useState(() => {
-        const saved = localStorage.getItem('certiflow_manual_headers');
+        const saved = localStorage.getItem('pramanit_manual_headers');
         return saved ? JSON.parse(saved) : ['Name', 'Email'];
     });
 
     const [rows, setRows] = useState(() => {
-        const saved = localStorage.getItem('certiflow_manual_rows');
+        const saved = localStorage.getItem('pramanit_manual_rows');
         return saved ? JSON.parse(saved) : [
             { Name: '', Email: '' },
             { Name: '', Email: '' }
@@ -22,8 +22,8 @@ const ManualRecipientEntry = ({ onDataChange }) => {
 
     const syncToParent = (currentHeaders, currentRows) => {
         onDataChange(currentHeaders, currentRows);
-        localStorage.setItem('certiflow_manual_headers', JSON.stringify(currentHeaders));
-        localStorage.setItem('certiflow_manual_rows', JSON.stringify(currentRows));
+        localStorage.setItem('pramanit_manual_headers', JSON.stringify(currentHeaders));
+        localStorage.setItem('pramanit_manual_rows', JSON.stringify(currentRows));
     };
 
     const addRow = () => {

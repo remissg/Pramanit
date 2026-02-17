@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, User, ArrowRight, ShieldCheck, Sparkles, Briefcase, Eye, EyeOff } from 'lucide-react';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -53,7 +53,7 @@ const Login = () => {
                         <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl group-hover/logo:scale-110 transition-transform duration-300">
                             <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />
                         </div>
-                        <h1 className="text-4xl font-black text-[var(--text-main)] tracking-tighter group-hover/logo:text-violet-400 transition-colors">Certi<span className="text-violet-500">Flow</span></h1>
+                        <h1 className="text-4xl font-black text-[var(--text-main)] tracking-tighter group-hover/logo:text-violet-400 transition-colors">Pramanit</h1>
                     </div>
                     <p className="text-[var(--text-muted)] font-medium text-lg">
                         {isLogin ? 'Welcome back to your workspace.' : 'Start issuing credentials today.'}

@@ -20,7 +20,7 @@ const UserSchema = new mongoose.Schema({
     api_key: { type: String, unique: true, sparse: true },
     webhook_url: { type: String, default: '' },
     social_settings: {
-        default_hashtags: { type: String, default: '#CertiFlow #Certified #Professional' },
+        default_hashtags: { type: String, default: '#Pramanit #Certified #Professional' },
         allow_sharing: { type: Boolean, default: true }
     },
     created_at: { type: Date, default: Date.now }

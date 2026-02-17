@@ -16,7 +16,7 @@ cloudinary.config({
  * @param {object} options - Cloudinary upload options
  * @returns {Promise<object>} - The upload result
  */
-const uploadToCDN = (file, folder = 'certiflow') => {
+const uploadToCDN = (file, folder = 'pramanit') => {
     return new Promise((resolve, reject) => {
         const uploadOptions = {
             folder,

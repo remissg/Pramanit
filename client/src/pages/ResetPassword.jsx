@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Lock, Loader, CheckCircle, ShieldCheck, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const ResetPassword = () => {
     const [searchParams] = useSearchParams();
@@ -54,10 +54,10 @@ const ResetPassword = () => {
                         onClick={() => navigate('/')}
                     >
                         <div className="w-12 h-12 bg-white shadow-xl rounded-2xl flex items-center justify-center p-2 group-hover:scale-110 transition-transform">
-                            <img src={logo} alt="CertiFlow Logo" className="w-full h-full object-contain" />
+                            <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                         </div>
                         <span className="text-3xl font-black tracking-tighter text-[var(--text-main)] transition-colors">
-                            Certi<span className="text-violet-500">Flow</span>
+                            Pramanit
                         </span>
                     </div>
                 </div>
@@ -70,7 +70,7 @@ const ResetPassword = () => {
                             <div className="relative z-10 mb-8">
                                 <h1 className="text-3xl font-black text-[var(--text-heading)] mb-2">New Password</h1>
                                 <p className="text-[var(--text-muted)] font-medium">
-                                    Set a strong password to secure your CertiFlow workspace.
+                                    Set a strong password to secure your Pramanit workspace.
                                 </p>
                             </div>
 

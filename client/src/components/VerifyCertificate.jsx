@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { CheckCircle, AlertCircle, Calendar, User, ShieldCheck, Mail, Hash, Sparkles, Linkedin, Eye, ArrowRight, Copy, Twitter, Instagram, MessageCircle, Download } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const InfoCard = ({ icon: Icon, label, value, color }) => {
     const colorStyles = {
@@ -103,7 +103,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         </div>
                         <div className="glass rounded-[3rem] p-12 border-[var(--glass-border)] shadow-2xl animate-in zoom-in-95 duration-500">
                             <h1 className="text-3xl font-black text-[var(--text-heading)] mb-2 tracking-tight transition-colors">Trust Standard Portal</h1>
-                            <p className="text-[var(--text-muted)] text-sm mb-10 font-bold uppercase tracking-widest transition-colors">Verify the authenticity of any CertiFlow Credential</p>
+                            <p className="text-[var(--text-muted)] text-sm mb-10 font-bold uppercase tracking-widest transition-colors">Verify the authenticity of any Pramanit Credential</p>
 
                             <form onSubmit={handleManualSearch} className="relative group">
                                 <input
@@ -297,7 +297,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                         const params = new URLSearchParams({
                                             startTask: 'CERTIFICATION_NAME',
                                             name: certName,
-                                            organizationName: certificate.orgName || 'CertiFlow Trusted Issuer',
+                                            organizationName: certificate.orgName || 'Pramanit Trusted Issuer',
                                             issueYear: issueDate.getFullYear(),
                                             issueMonth: issueDate.getMonth() + 1,
                                             certId: certificate.certId,
@@ -323,7 +323,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                             <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Suggested Post Caption</span>
                                             <button
                                                 onClick={() => {
-                                                    const hashtags = certificate.socialSettings?.default_hashtags || '#Learning #ProfessionalDevelopment #CertiFlow';
+                                                    const hashtags = certificate.socialSettings?.default_hashtags || '#Learning #ProfessionalDevelopment #Pramanit';
                                                     const caption = `I'm excited to announce that I've just completed the ${certificate.certificateTitle || 'certification'}! 🎓\n\nThanks to ${certificate.orgName} for the great experience.\n\nVerify my credential here: ${window.location.href}\n\n${hashtags}`;
                                                     navigator.clipboard.writeText(caption);
                                                     alert('Caption copied to clipboard!');

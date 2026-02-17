@@ -29,7 +29,7 @@ const Dashboard = ({ theme, setTheme }) => {
         smtpPort: 587,
         smtpUser: '',
         smtpPass: '',
-        defaultHashtags: '#CertiFlow #Certified #Professional',
+        defaultHashtags: '#Pramanit #Certified #Professional',
         allowSharing: true
     });
     const [searchTerm, setSearchTerm] = useState('');

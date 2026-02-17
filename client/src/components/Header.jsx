@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Sun, Moon, Monitor, LogOut, User, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const Header = ({ onGetStarted, theme, setTheme }) => {
     const { user, logout } = useAuth();

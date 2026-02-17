@@ -53,7 +53,7 @@ const DeveloperGuide = ({ isOpen, onClose }) => {
                 <div className="p-8 border-b border-[var(--border-muted)] flex justify-between items-center bg-[var(--bg-muted)]/50">
                     <div>
                         <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight mb-1">Developer API Guide</h2>
-                        <p className="text-sm font-bold text-[var(--text-muted)]">Integrate CertiFlow generation into your own apps.</p>
+                        <p className="text-sm font-bold text-[var(--text-muted)]">Integrate Pramanit generation into your own apps.</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -135,7 +135,7 @@ X-API-KEY: YOUR_KEY
   "event": "certificate.issued",
   "data": {
     "recipient_email": "jane@example.com",
-    "certificate_url": "https://certiflow.com/verify/...",
+    "certificate_url": "https://pramanit.io/verify/...",
     "issued_at": "2026-05-20T10:00:00Z"
   }
 }`} />

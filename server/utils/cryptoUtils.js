@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 // Use a secret from .env or a fallback for development
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'certiflow-ultra-secret-key-32chars!!'; // Must be 32 chars
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'pramanit-ultra-secret-key-32chars!!'; // Must be 32 chars
 const IV_LENGTH = 16; // For AES-256-CBC
 
 const encrypt = (text) => {

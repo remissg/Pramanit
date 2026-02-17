@@ -12,7 +12,7 @@ const { uploadToCDN } = require('../utils/cloudinaryService');
 const fs = require('fs');
 
 // Ideally move to .env
-const JWT_SECRET = process.env.JWT_SECRET || 'certiflow-secure-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'pramanit-secure-secret-key-2024';
 
 const generateToken = (user) => {
     return jwt.sign(

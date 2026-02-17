@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, ArrowLeft, Loader, CheckCircle, Sparkles } from 'lucide-react';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
@@ -34,10 +34,10 @@ const ForgotPassword = () => {
                         onClick={() => navigate('/')}
                     >
                         <div className="w-12 h-12 bg-white shadow-xl rounded-2xl flex items-center justify-center p-2 group-hover:scale-110 transition-transform">
-                            <img src={logo} alt="CertiFlow Logo" className="w-full h-full object-contain" />
+                            <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                         </div>
                         <span className="text-3xl font-black tracking-tighter text-[var(--text-main)] transition-colors">
-                            Certi<span className="text-violet-500">Flow</span>
+                            Pramanit
                         </span>
                     </div>
                 </div>

@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 //Ideally import from env
-const JWT_SECRET = process.env.JWT_SECRET || 'certiflow-secure-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'pramanit-secure-secret-key-2024';
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];

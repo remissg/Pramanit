@@ -1,7 +1,7 @@
 import { Github, Twitter, Linkedin, Heart, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const Footer = () => {
     const { user } = useAuth();
@@ -67,7 +67,7 @@ const Footer = () => {
 
                 <div className="pt-8 border-t border-[var(--glass-border)] flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-[var(--text-muted)] text-xs font-bold transition-colors">
-                        © {new Date().getFullYear()} CertiFlow INC. All rights reserved.
+                        © {new Date().getFullYear()} Pramanit INC. All rights reserved.
                     </p>
                     <div className="flex items-center gap-1 text-[var(--text-muted)] text-xs font-bold group hover:text-violet-400 transition-colors cursor-pointer">
                         Built with <Heart size={12} className="text-rose-500 group-hover:scale-125 transition-transform" /> for professionals

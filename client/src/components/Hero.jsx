@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Send, Layout, ShieldCheck, ArrowRight } from 'lucide-react';
-import logo from '../assets/CertiFlow logo (1).png';
+import logo from '../assets/Pramanit logo.png';
 
 const Hero = ({ onGetStarted }) => {
     return (
@@ -20,7 +20,7 @@ const Hero = ({ onGetStarted }) => {
                 </h1>
 
                 <p className="text-lg md:text-xl text-[var(--text-muted)] max-w-2xl mx-auto mb-10 font-bold leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 transition-colors">
-                    CertiFlow is the all-in-one professional toolkit for creating stunning certificates at scale. Upload, Design, and Send in seconds.
+                    Pramanit is the all-in-one professional toolkit for creating stunning certificates at scale. Upload, Design, and Send in seconds.
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-16 duration-1000">

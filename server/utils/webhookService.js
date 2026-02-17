@@ -17,7 +17,7 @@ const sendWebhook = async (url, event, payload) => {
         }, {
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'CertiFlow-Webhook-Generator/1.0'
+                'User-Agent': 'Pramanit-Webhook-Generator/1.0'
             },
             timeout: 5000 // 5 second timeout for delivery
         });
