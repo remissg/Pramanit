@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { Type, Move, Palette, Minus, Plus, Eye, Sparkles, CaseSensitive, Italic, Underline, Bold, Search, ChevronDown, Check, QrCode, Wand2, Loader } from 'lucide-react';
+import { Type, Move, Palette, Minus, Plus, Eye, Sparkles, CaseSensitive, Italic, Underline, Bold, Search, ChevronDown, Check, QrCode, Wand2, Loader, Save } from 'lucide-react';
 import axios from 'axios';
 import CustomSelect from './CustomSelect';
 
@@ -26,7 +26,9 @@ const CertificatePreview = ({
     onActiveFieldChange,
     previewData,
     qrConfig,
-    onQrConfigChange
+    onQrConfigChange,
+    onSave, // New Prop
+    isSaving // New Prop
 }) => {
     const [imageUrl, setImageUrl] = useState(null);
     const [scale, setScale] = useState(1);
@@ -141,6 +143,17 @@ const CertificatePreview = ({
                             <Type size={18} className="text-violet-400" />
                             Designer
                         </h3>
+
+                        {onSave && (
+                            <button
+                                onClick={onSave}
+                                disabled={isSaving}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSaving ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+                                <span className="hidden sm:inline">Save Design</span>
+                            </button>
+                        )}
 
                         <div className="flex items-center gap-2 flex-grow md:flex-grow-0 order-1 md:order-none">
                             <CustomSelect

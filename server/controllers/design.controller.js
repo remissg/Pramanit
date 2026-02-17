@@ -117,6 +117,7 @@ const cloneDesign = async (req, res) => {
         res.status(201).json({
             id: newDesign._id,
             name: newDesign.name,
+            preview_url: newDesign.preview_url,
             created_at: newDesign.created_at
         });
     } catch (err) {

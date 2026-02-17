@@ -266,7 +266,7 @@ const LandingPageWrapper = ({ theme, setTheme }) => {
 };
 
 function MainApp({ theme, setTheme }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const location = useLocation();
   const [showApp, setShowApp] = useState(false);
   const [step, setStep] = useState(1);
@@ -333,12 +333,34 @@ function MainApp({ theme, setTheme }) {
   useEffect(() => {
     if (location.state && location.state.loadDesign) {
       const design = location.state.loadDesign;
-      const { fields: loadedFields, qrConfig: loadedQr, emailConfig: loadedEmail } = design.design_json;
 
-      // Restore configuration
-      if (loadedFields) setFields(loadedFields);
-      if (loadedQr) setQrConfig(loadedQr);
-      if (loadedEmail) setEmailConfig(loadedEmail);
+      const loadDesignData = (data) => {
+        let designData = data;
+        if (typeof designData === 'string') {
+          try { designData = JSON.parse(designData); } catch (e) { console.error("Parse error", e); return; }
+        }
+        if (designData) {
+          const { fields: loadedFields, qrConfig: loadedQr, emailConfig: loadedEmail } = designData;
+          if (loadedFields) setFields(loadedFields);
+          if (loadedQr) setQrConfig(loadedQr);
+          if (loadedEmail) setEmailConfig(loadedEmail);
+        }
+      };
+
+      if (design.design_json) {
+        loadDesignData(design.design_json);
+      } else if (design.id || design._id) {
+        // Fetch full details if missing from list view
+        axios.get(`http://localhost:5000/api/designs/${design.id || design._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+          .then(res => {
+            if (res.data.design_json) {
+              loadDesignData(res.data.design_json);
+            }
+          })
+          .catch(err => console.error("Failed to fetch full design details", err));
+      }
 
       // Restore template file from preview URL (Base64)
       if (design.preview_url) {
@@ -356,7 +378,7 @@ function MainApp({ theme, setTheme }) {
       // Clear state so we don't re-trigger on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [location, token]);
 
   // Update recipients whenever rawRows or mapping changes
   useEffect(() => {
@@ -739,16 +761,7 @@ function MainApp({ theme, setTheme }) {
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl md:text-3xl font-black text-[var(--text-heading)] tracking-tight transition-colors">Customize Layout</h2>
-                {user && (
-                  <button
-                    onClick={handleSaveDesign}
-                    disabled={saving}
-                    className="text-xs font-bold bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-colors text-[var(--text-heading)] flex items-center gap-2"
-                  >
-                    {saving ? <Loader size={14} className="animate-spin" /> : <LayoutTemplate size={14} />}
-                    Save Design
-                  </button>
-                )}
+                <div></div>
               </div>
               <CertificatePreview
                 templateFile={files.template}
@@ -759,6 +772,8 @@ function MainApp({ theme, setTheme }) {
                 previewData={recipients[0]}
                 qrConfig={qrConfig}
                 onQrConfigChange={setQrConfig}
+                onSave={user ? handleSaveDesign : null}
+                isSaving={saving}
               />
               <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-12 border-t border-[var(--glass-border)] mt-8">
                 <button

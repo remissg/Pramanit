@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, Wand2, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, Wand2, Sparkles, Book, FileJson } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import DeveloperGuide from '../components/DeveloperGuide';
 
 const Dashboard = ({ theme, setTheme }) => {
     const navigate = useNavigate();
     const { user, token } = useAuth();
-    const [activeTab, setActiveTab] = useState('designs'); // 'designs' | 'email-templates' | 'history' | 'settings'
+    const [activeTab, setActiveTab] = useState('designs'); // 'designs' | 'email-templates' | 'history' | 'settings' | 'developer' | 'corrections'
+    const [showGuide, setShowGuide] = useState(false);
     const [designs, setDesigns] = useState([]);
     const [emailTemplates, setEmailTemplates] = useState([]);
     const [history, setHistory] = useState([]);
@@ -83,7 +85,7 @@ const Dashboard = ({ theme, setTheme }) => {
     useEffect(() => {
         fetchData();
         fetchProfile();
-    }, [activeTab]);
+    }, [activeTab, user]);
 
     const fetchProfile = async () => {
         try {
@@ -549,7 +551,16 @@ const Dashboard = ({ theme, setTheme }) => {
                         <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                             <div>
                                 <h3 className="text-2xl font-black text-[var(--text-heading)] mb-2 tracking-tight">Developer API</h3>
-                                <p className="text-[var(--text-muted)] font-bold text-sm">Empower your systems to issue certificates programmatically.</p>
+                                <div className="flex items-center gap-4">
+                                    <p className="text-[var(--text-muted)] font-bold text-sm">Empower your systems to issue certificates programmatically.</p>
+                                    <button
+                                        onClick={() => setShowGuide(true)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-500/10 hover:bg-violet-500 hover:text-white text-violet-500 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-violet-500/20"
+                                    >
+                                        <Book size={16} />
+                                        Read Guide
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -838,7 +849,21 @@ const Dashboard = ({ theme, setTheme }) => {
                                 )}
                                 {activeTab === 'designs' && (
                                     <div className="p-5 border-t border-[var(--border-muted)]">
-                                        <h3 className="font-bold text-lg text-[var(--text-heading)] mb-1 truncate">{item.name}</h3>
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h3 className="font-bold text-lg text-[var(--text-heading)] truncate pr-2">{item.name}</h3>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(item.id);
+                                                    alert('Design ID Copied! 📋');
+                                                }}
+                                                className="shrink-0 flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-input)] hover:bg-violet-500 hover:text-white text-[var(--text-muted)] rounded-lg text-[10px] font-mono border border-[var(--border-muted)] transition-all"
+                                                title="Copy Design ID"
+                                            >
+                                                ID: {item.id ? item.id.substring(0, 6) : '...'}
+                                                <Copy size={10} />
+                                            </button>
+                                        </div>
                                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">
                                             Edited {new Date(item.created_at).toLocaleDateString()}
                                         </p>
@@ -1109,6 +1134,9 @@ const Dashboard = ({ theme, setTheme }) => {
                     </div>
                 </div>
             )}
+
+            {/* Developer Guide Modal */}
+            <DeveloperGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
 
             <Footer />
         </div>
