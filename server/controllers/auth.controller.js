@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const User = require('../models/User'); // Mongoose Model
 const emailService = require('../utils/emailService');
 const cryptoUtils = require('../utils/cryptoUtils');
+const { uploadToCDN } = require('../utils/cloudinaryService');
+const fs = require('fs');
 
 // Ideally move to .env
 const JWT_SECRET = process.env.JWT_SECRET || 'certiflow-secure-secret-key-2024';
@@ -190,11 +192,22 @@ const updateProfile = async (req, res) => {
         if (orgName !== undefined) updateData.org_name = orgName;
         if (fullName !== undefined) updateData.full_name = fullName;
         if (designation !== undefined) updateData.designation = designation;
-        if (orgLogoUrl !== undefined) updateData.org_logo_url = orgLogoUrl;
-        if (smtpHost !== undefined) updateData.smtp_host = smtpHost;
-        if (smtpPort !== undefined) updateData.smtp_port = smtpPort;
-        if (smtpUser !== undefined) updateData.smtp_user = smtpUser;
         if (encryptedPass !== undefined) updateData.smtp_pass = encryptedPass;
+
+        // Handle Cloudinary upload for organization logo
+        if (req.file) {
+            try {
+                const cdnResult = await uploadToCDN(req.file.path, 'logos');
+                updateData.org_logo_url = cdnResult.secure_url;
+
+                // Cleanup local file after upload
+                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            } catch (uploadError) {
+                console.error('Cloudinary upload failed:', uploadError);
+            }
+        } else if (orgLogoUrl !== undefined) {
+            updateData.org_logo_url = orgLogoUrl;
+        }
 
         const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password_hash -verification_token');
 
@@ -206,6 +219,58 @@ const updateProfile = async (req, res) => {
     } catch (err) {
         console.error('Update profile error:', err);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            // We return 200 for security to avoid email enumeration
+            return res.json({ message: 'If an account with that email exists, we have sent a reset link.' });
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        user.reset_password_token = hashedToken;
+        user.reset_password_expires = Date.now() + 3600000; // 1 hour
+        await user.save();
+
+        await emailService.sendPasswordResetEmail(user.email, resetToken);
+
+        res.json({ message: 'Reset link sent to your email.' });
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        res.status(500).json({ message: 'Server error during password reset request' });
+    }
+};
+
+const resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+    try {
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await User.findOne({
+            reset_password_token: hashedToken,
+            reset_password_expires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired reset token' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password_hash = await bcrypt.hash(password, salt);
+        user.reset_password_token = undefined;
+        user.reset_password_expires = undefined;
+        await user.save();
+
+        res.json({ message: 'Password has been reset successfully. You can now log in.' });
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ message: 'Server error during password reset' });
     }
 };
 
@@ -237,11 +302,61 @@ const resendVerification = async (req, res) => {
     }
 };
 
+const getAllUsers = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admin only.' });
+        }
+
+        const users = await User.find({}).select('-password_hash -verification_token');
+        res.json(users.map(u => ({
+            id: u._id,
+            email: u.email,
+            orgName: u.org_name,
+            fullName: u.full_name,
+            role: u.role,
+            planType: u.plan_type,
+            isVerified: u.is_verified,
+            createdAt: u.created_at
+        })));
+    } catch (err) {
+        console.error('Get all users error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const toggleUserPlan = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admin only.' });
+        }
+
+        const { userId, planType } = req.body;
+        if (!userId || !planType) {
+            return res.status(400).json({ message: 'User ID and Plan Type are required' });
+        }
+
+        const user = await User.findByIdAndUpdate(userId, { plan_type: planType }, { new: true });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ message: `Plan updated to ${planType}`, user: { id: user._id, planType: user.plan_type } });
+    } catch (err) {
+        console.error('Toggle plan error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     signup,
     login,
     getProfile,
     verifyEmail,
     updateProfile,
-    resendVerification
+    resendVerification,
+    getAllUsers,
+    toggleUserPlan,
+    forgotPassword,
+    resetPassword
 };

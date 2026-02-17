@@ -17,6 +17,8 @@ const { router: authRoutes } = require('./routes/auth.routes');
 const designRoutes = require('./routes/design.routes');
 const emailTemplateRoutes = require('./routes/emailTemplate.routes');
 
+const externalRoutes = require('./routes/external.routes');
+
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -25,13 +27,16 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
+
+app.use('/api/external', externalRoutes);
 
 // Supabase client setup
 // Supabase client setup (Legacy - Moved to MongoDB)

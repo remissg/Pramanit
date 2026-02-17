@@ -7,6 +7,10 @@ import corporateTemplate from '../assets/corporate-template.png';
 import creativeTemplate from '../assets/creative-template.png';
 import academicTemplate from '../assets/academic-template.jpg';
 import premiumTemplate from '../assets/premium-template.png';
+import gradientTemplate from '../assets/gradient-modern.png';
+import patternTemplate from '../assets/pattern-tech.png';
+import minimalistTemplate from '../assets/minimalist-clean.png';
+import artisticTemplate from '../assets/artistic-watercolor.png';
 
 const LandingPage = ({ onGetStarted, theme, setTheme, onSelectTemplate }) => {
     const [filter, setFilter] = React.useState('All');
@@ -34,19 +38,31 @@ const LandingPage = ({ onGetStarted, theme, setTheme, onSelectTemplate }) => {
             id: 4,
             title: 'Minimalist Professional',
             category: 'Corporate',
-            image: 'https://images.unsplash.com/photo-1606761560479-6646793ee52a?q=80&w=1000',
+            image: minimalistTemplate,
         },
         {
             id: 5,
             title: 'Artistic Certificate',
             category: 'Creative',
-            image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000',
+            image: artisticTemplate,
         },
         {
             id: 6,
             title: 'Elite Recognition',
             category: 'Premium',
             image: premiumTemplate,
+        },
+        {
+            id: 7,
+            title: 'Modern Gradient',
+            category: 'Premium',
+            image: gradientTemplate,
+        },
+        {
+            id: 8,
+            title: 'Tech Geometric',
+            category: 'Corporate',
+            image: patternTemplate,
         }
     ];
 

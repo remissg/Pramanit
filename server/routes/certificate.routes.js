@@ -26,5 +26,9 @@ router.post('/test-email', authenticateToken, certificateController.sendEmail);
 router.post('/preview-batch', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.previewBatch);
 router.get('/history', authenticateToken, certificateController.getIssuanceHistory);
 router.get('/verify/:id', certificateController.verifyCertificate);
+router.get('/portal', certificateController.getRecipientPortal);
+router.post('/request-correction', certificateController.requestCorrection);
+router.get('/corrections', authenticateToken, certificateController.getCorrectionRequests);
+router.post('/corrections/action', authenticateToken, certificateController.handleCorrectionAction);
 
 module.exports = router;

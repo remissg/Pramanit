@@ -20,8 +20,12 @@ import logo from './assets/CertiFlow logo (1).png';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import VerifyEmailPage from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
+import RecipientPortal from './components/RecipientPortal';
+import AdminPanel from './components/AdminPanel';
 
 const VerificationNotice = () => {
   const { logout, user } = useAuth();
@@ -130,6 +134,26 @@ const RequireAuth = ({ children }) => {
   return children;
 };
 
+const ProtectedRoute = RequireAuth;
+
+const AdminGuard = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 // New: Prevent authenticated users from going to Landing or Login
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -209,7 +233,15 @@ function App() {
           />
           {/* Public Routing */}
           <Route path="/verify/:id" element={<VerifyCertificate theme={theme} setTheme={setTheme} />} />
+          <Route path="/portal" element={<RecipientPortal theme={theme} setTheme={setTheme} />} />
+          <Route path="/admin" element={
+            <AdminGuard>
+              <AdminPanel theme={theme} setTheme={setTheme} />
+            </AdminGuard>
+          } />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/"
             element={<LandingPageWrapper theme={theme} setTheme={setTheme} />}

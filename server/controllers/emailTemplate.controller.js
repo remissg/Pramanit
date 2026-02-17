@@ -41,65 +41,29 @@ const saveTemplate = async (req, res) => {
 const getTemplates = async (req, res) => {
     try {
         const userId = req.user.id;
-        let templates = await EmailTemplate.find({ user: userId })
-            .select('id name subject body_html is_default created_at')
-            .sort({ is_default: -1, created_at: -1 });
 
-        // If no templates, inject defaults
-        if (templates.length === 0) {
-            const defaults = [
-                {
-                    name: 'Professional',
-                    subject: 'Attached: Your Official Certificate for {{event_name}}',
-                    body_html: '<p>Dear <strong>{{name}}</strong>,</p><p>Congratulations on your accomplishment! Attached is your official certificate for <strong>{{event_name}}</strong>.</p><p>This credential serves as formal notification of your completion and achievement.</p><p>Best regards,<br><strong>{{issuer_name}}</strong></p>',
-                    is_default: true
-                },
-                {
-                    name: 'Casual / Modern',
-                    subject: 'You did it! 🎓 Your badge of honor is here',
-                    body_html: '<h1>Way to go, {{name}}! 🎉</h1><p>You\'ve successfully completed <strong>{{event_name}}</strong>. We\'re thrilled to share your well-deserved badge of honor with you.</p><p>Keep up the amazing work!</p><p>Cheers,<br>The Team at {{issuer_name}}</p>',
-                    is_default: false
-                },
-                {
-                    name: 'Academic',
-                    subject: 'Notification of Academic Completion: {{event_name}}',
-                    body_html: '<p>To <strong>{{name}}</strong>,</p><p>Please find attached your formal certificate of completion for the academic module <strong>{{event_name}}</strong>.</p><p>This document verifies your successful fulfillment of all required criteria as of today.</p><p>Sincerely,<br>Office of Academic Affairs<br><strong>{{issuer_name}}</strong></p>',
-                    is_default: false
-                }
-            ];
+        // Fetch both user templates and system templates
+        let templates = await EmailTemplate.find({
+            $or: [
+                { user: userId },
+                { is_system: true }
+            ]
+        })
+            .select('id name subject body_html is_default is_system created_at')
+            .sort({ is_system: -1, is_default: -1, created_at: -1 });
 
-            // Use insertMany for bulk creation
-            const createdDefaults = await EmailTemplate.insertMany(
-                defaults.map(t => ({
-                    user: userId,
-                    name: t.name,
-                    subject: t.subject,
-                    body_html: t.body_html,
-                    is_default: t.is_default
-                }))
-            );
+        // Map for consistent response
+        const formattedTemplates = templates.map(t => ({
+            id: t._id,
+            name: t.name,
+            subject: t.subject,
+            body_html: t.body_html,
+            is_default: t.is_default,
+            is_system: t.is_system,
+            created_at: t.created_at
+        }));
 
-            // Format for response
-            templates = createdDefaults.map(t => ({
-                id: t._id,
-                name: t.name,
-                subject: t.subject,
-                body_html: t.body_html,
-                is_default: t.is_default,
-                created_at: t.created_at
-            })).sort((a, b) => b.is_default - a.is_default); // Ensure default first
-        } else {
-            templates = templates.map(t => ({
-                id: t._id,
-                name: t.name,
-                subject: t.subject,
-                body_html: t.body_html,
-                is_default: t.is_default,
-                created_at: t.created_at
-            }));
-        }
-
-        res.json(templates);
+        res.json(formattedTemplates);
     } catch (err) {
         console.error('Get templates error:', err);
         res.status(500).json({ message: 'Failed to fetch templates' });
@@ -136,11 +100,17 @@ const deleteTemplate = async (req, res) => {
         const { id } = req.params;
         const userId = req.user.id;
 
-        const template = await EmailTemplate.findOneAndDelete({ _id: id, user: userId });
+        const template = await EmailTemplate.findOne({ _id: id, user: userId });
 
         if (!template) {
             return res.status(404).json({ message: 'Template not found' });
         }
+
+        if (template.is_system) {
+            return res.status(403).json({ message: 'System templates cannot be deleted' });
+        }
+
+        await EmailTemplate.findByIdAndDelete(id);
 
         res.json({ message: 'Template deleted successfully' });
     } catch (err) {

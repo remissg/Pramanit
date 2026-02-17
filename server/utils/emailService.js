@@ -80,4 +80,36 @@ const sendVerificationEmail = async (to, token) => {
     return sendEmail(to, 'Verify your CertiFlow Account', html);
 };
 
-module.exports = { sendEmail, sendVerificationEmail };
+const sendPasswordResetEmail = async (to, token) => {
+    const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
+    const html = `
+        <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Certi<span style="color: #7c3aed;">Flow</span></h1>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">Reset Your Password</h2>
+                <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
+                    We received a request to reset your password. Click the button below to choose a new one.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 32px;">
+                <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(to right, #7c3aed, #4f46e5); color: #ffffff; padding: 16px 40px; border-radius: 16px; font-weight: 800; text-decoration: none; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.2);">
+                    Reset Password
+                </a>
+            </div>
+
+            <div style="text-align: center; padding-top: 32px; border-top: 1px solid #f1f5f9;">
+                <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin: 0;">
+                    If you didn't request a password reset, you can safely ignore this email. This link will expire in 1 hour.
+                </p>
+            </div>
+        </div>
+    `;
+
+    return sendEmail(to, 'Password Reset Request - CertiFlow', html);
+};
+
+module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail };

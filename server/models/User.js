@@ -15,6 +15,10 @@ const UserSchema = new mongoose.Schema({
     smtp_port: { type: Number },
     smtp_user: { type: String },
     smtp_pass: { type: String },
+    reset_password_token: { type: String },
+    reset_password_expires: { type: Date },
+    api_key: { type: String, unique: true, sparse: true },
+    webhook_url: { type: String, default: '' },
     created_at: { type: Date, default: Date.now }
 });
 

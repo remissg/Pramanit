@@ -14,6 +14,11 @@ const VerificationSchema = new mongoose.Schema({
     issuer_designation: { type: String },
     org_logo_url: { type: String },
     issuer_email: { type: String },
+    recipient_token: { type: String, unique: true }, // Magic Link token
+    correction_requested: { type: Boolean, default: false },
+    requested_name: { type: String },
+    correction_status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+    certificate_title: { type: String }, // For LinkedIn/Social metadata
     created_at: { type: Date, default: Date.now }
 });
 

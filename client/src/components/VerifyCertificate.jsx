@@ -55,6 +55,89 @@ const VerifyCertificate = ({ theme, setTheme }) => {
         }
     }, [id]);
 
+    // Handle SEO and Social Metadata
+    useEffect(() => {
+        if (certificate) {
+            const baseUrl = window.location.origin;
+            const certUrl = window.location.href;
+            const certTitle = `Verified: ${certificate.recipientName}'s Credential`;
+            const certDesc = `Authentic achievement issued by ${certificate.orgName}. Verified via CertiFlow Trust Standard.`;
+            const certImage = certificate.orgLogoUrl || `${baseUrl}/logo.png`;
+
+            // 1. JSON-LD for Open Badges 3.0 / Verifiable Credentials
+            const jsonLd = {
+                "@context": [
+                    "https://www.w3.org/ns/credentials/v2",
+                    "https://purl.imsglobal.org/spec/ob/v3p0/context.json"
+                ],
+                "type": ["VerifiableCredential", "OpenBadgeCredential"],
+                "issuer": {
+                    "type": "Profile",
+                    "id": certificate.issuerEmail || baseUrl,
+                    "name": certificate.orgName,
+                    "url": baseUrl,
+                    "image": certificate.orgLogoUrl
+                },
+                "issuanceDate": certificate.issueDate,
+                "credentialSubject": {
+                    "type": "AchievementSubject",
+                    "id": certificate.recipientEmail || certUrl,
+                    "name": certificate.recipientName,
+                    "achievement": {
+                        "type": "Achievement",
+                        "id": certUrl,
+                        "name": "Professional Certificate",
+                        "description": certDesc,
+                        "criteria": {
+                            "type": "Criteria",
+                            "narrative": "Successful completion of all requirements as verified by the issuing authority."
+                        },
+                        "image": {
+                            "type": "Image",
+                            "id": certImage
+                        }
+                    }
+                },
+                "id": certificate.certId
+            };
+
+            const script = document.createElement('script');
+            script.type = 'application/ld+json';
+            script.id = 'ld-json-cert';
+            script.text = JSON.stringify(jsonLd);
+            document.head.appendChild(script);
+
+            // 2. Open Graph & Twitter Cards
+            const metaTags = [
+                { property: 'og:title', content: certTitle },
+                { property: 'og:description', content: certDesc },
+                { property: 'og:image', content: certImage },
+                { property: 'og:url', content: certUrl },
+                { name: 'twitter:card', content: 'summary_large_image' },
+                { name: 'twitter:title', content: certTitle },
+                { name: 'twitter:description', content: certDesc },
+                { name: 'twitter:image', content: certImage }
+            ];
+
+            const createdTags = [];
+            metaTags.forEach(tag => {
+                const meta = document.createElement('meta');
+                if (tag.property) meta.setAttribute('property', tag.property);
+                if (tag.name) meta.setAttribute('name', tag.name);
+                meta.content = tag.content;
+                document.head.appendChild(meta);
+                createdTags.push(meta);
+            });
+
+            // Cleanup
+            return () => {
+                const existingScript = document.getElementById('ld-json-cert');
+                if (existingScript) existingScript.remove();
+                createdTags.forEach(tag => tag.remove());
+            };
+        }
+    }, [certificate]);
+
     const handleManualSearch = (e) => {
         e.preventDefault();
         if (manualId.trim()) {
@@ -226,6 +309,16 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         <p className="text-xs font-mono text-[var(--text-main)] break-all opacity-70">{certificate.certId}</p>
                     </div>
 
+                    <div className="mt-8 p-6 bg-violet-500/5 border border-violet-500/10 rounded-3xl flex items-center gap-4">
+                        <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-600/20">
+                            <Sparkles size={24} className="text-white" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-1">Verifiable Achievement</p>
+                            <p className="text-xs font-bold text-[var(--text-main)] opacity-70 leading-tight">This credential carries Open Badges 3.0 metadata for global interoperability.</p>
+                        </div>
+                    </div>
+
                     <div className="mt-12 flex flex-col sm:flex-row gap-4">
                         <button
                             onClick={() => {
@@ -245,18 +338,19 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                     alert('Issuer contact email not available.');
                                 }
                             }}
-                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-600/20 transition-all active:scale-95 group"
+                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[var(--glass)] hover:bg-white/5 text-[var(--text-main)] border border-[var(--glass-border)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 group"
                         >
-                            <Mail size={18} className="group-hover:scale-110 transition-transform" />
-                            Contact Organizer
+                            <Mail size={18} className="text-violet-500 group-hover:scale-110 transition-transform" />
+                            Contact
                         </button>
                         <button
                             onClick={() => {
                                 const issueDate = new Date(certificate.issueDate);
+                                const certName = certificate.certificateTitle || 'Verified Professional Credential';
                                 const params = new URLSearchParams({
                                     startTask: 'CERTIFICATION_NAME',
-                                    name: 'Verified Professional Credential',
-                                    organizationName: certificate.orgName || certificate.issuerName || 'CertiFlow',
+                                    name: certName,
+                                    organizationName: certificate.orgName || 'CertiFlow Trusted Issuer',
                                     issueYear: issueDate.getFullYear(),
                                     issueMonth: issueDate.getMonth() + 1,
                                     certId: certificate.certId,
@@ -267,7 +361,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                             className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[#0077b5] hover:bg-[#005c8d] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#0077b5]/20 transition-all active:scale-95 group"
                         >
                             <Linkedin size={18} className="group-hover:scale-110 transition-transform" />
-                            Add to LinkedIn
+                            Add to Profile
                         </button>
                     </div>
                 </div>

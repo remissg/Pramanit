@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Sun, Moon, Monitor, LogOut, User, LayoutDashboard } from 'lucide-react';
+import { ArrowRight, Sun, Moon, Monitor, LogOut, User, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/CertiFlow logo (1).png';
@@ -41,6 +41,12 @@ const Header = ({ onGetStarted, theme, setTheme }) => {
                         <>
                             <button onClick={() => navigate('/dashboard')} className="hover:text-[var(--text-main)] transition-colors">Dashboard</button>
                             <button onClick={() => navigate('/generate')} className="hover:text-[var(--text-main)] transition-colors">Certificate Generator</button>
+                            {user?.role === 'admin' && (
+                                <button onClick={() => navigate('/admin')} className="text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1.5">
+                                    <ShieldCheck size={16} />
+                                    Admin Panel
+                                </button>
+                            )}
                         </>
                     )}
                 </nav>

@@ -7,10 +7,13 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { PDFDocument } = require('pdf-lib');
 const { sendEmail } = require('../utils/emailService');
+const { Worker } = require('worker_threads');
+
 const User = require('../models/User');
 const Design = require('../models/Design');
 const IssuanceHistory = require('../models/IssuanceHistory');
 const Verification = require('../models/Verification');
+const webhookService = require('../utils/webhookService');
 
 const logIssuance = async (userId, designId, totalSent, recipientListRef) => {
     try {
@@ -57,11 +60,21 @@ const saveVerification = async (record) => {
             org_name: record.orgName,
             issuer_designation: record.issuerDesignation,
             org_logo_url: record.orgLogoUrl,
-            issuer_email: record.issuerEmail
+            issuer_email: record.issuerEmail,
+            recipient_token: record.recipientToken
         });
     } catch (e) {
         console.error('Failed to save verification:', e);
     }
+};
+
+const drawWatermark = (ctx, canvasWidth, canvasHeight) => {
+    const fontSize = Math.max(12, canvasWidth * 0.015);
+    ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)'; // Slate-500 with opacity
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Verified by CertiFlow', canvasWidth / 2, canvasHeight - (canvasHeight * 0.03));
 };
 
 const generateHash = (data) => {
@@ -159,7 +172,9 @@ const processSingle = async (req, res) => {
         ctx.drawImage(image, 0, 0, image.width, image.height);
 
         const certId = crypto.randomUUID();
+        const recipientToken = crypto.randomBytes(32).toString('hex');
         const verifyUrl = `http://localhost:5173/verify/${certId}`;
+        const portalUrl = `http://localhost:5173/portal?token=${recipientToken}`;
         const dataHash = generateHash({
             name: recipient.name || recipient.email,
             email: recipient.email || '',
@@ -260,7 +275,7 @@ const processSingle = async (req, res) => {
                 ctx.textBaseline = 'top';
 
                 // Add a small background for legibility
-                const text = `ID: ${certId.substring(0, 18).toUpperCase()}...`;
+                const text = `ID: ${certId.toUpperCase()}`;
                 const metrics = ctx.measureText(text);
                 const padding = 4;
 
@@ -280,6 +295,11 @@ const processSingle = async (req, res) => {
         // Fetch user branding details for verification
         const branding = await User.findById(req.user.id);
 
+        // Render Watermark for Free Tier
+        if (branding?.plan_type === 'free') {
+            drawWatermark(ctx, canvas.width, canvas.height);
+        }
+
         // Save Verification Record
         await saveVerification({
             certId,
@@ -293,7 +313,8 @@ const processSingle = async (req, res) => {
             issuerEmail: branding?.email || '',
             issueDate: new Date().toISOString(),
             dataHash,
-            status: 'active'
+            status: 'active',
+            recipientToken
         });
 
         const imageBuffer = canvas.toBuffer('image/png');
@@ -315,6 +336,7 @@ const processSingle = async (req, res) => {
             cert_id: certId,
             verify_url: verifyUrl,
             certificate_link: verifyUrl,
+            portal_link: portalUrl,
             issuer_name: branding?.full_name || issuerName || 'CertiFlow User',
             event_name: recData.Course || recData.course || recData.Event || recData.event || '',
             name: recData.Name || recData.name || recipient.name || 'Recipient'
@@ -365,9 +387,8 @@ const processSingle = async (req, res) => {
 
 const processCertificates = async (req, res) => {
     try {
-        const { subject, body, nameX, nameY, fontSize, fontColor, fontFamily } = req.body;
+        const { subject, body, nameX, nameY, fontSize, fontColor, fontFamily, fields, qrConfig } = req.body;
 
-        // Check if files were uploaded
         if (!req.files || !req.files.template || !req.files.data) {
             return res.status(400).json({ message: 'Missing template or data file' });
         }
@@ -375,115 +396,68 @@ const processCertificates = async (req, res) => {
         const templatePath = req.files.template[0].path;
         const dataPath = req.files.data[0].path;
 
-        // Parse CSV or Excel
         let recipients = await parseRecipientsFile(dataPath);
+        const branding = await User.findById(req.user.id);
+        const smtpConfig = await getSmtpConfig(req.user.id);
 
-        console.log(`Parsed ${recipients.length} recipients.`);
-
-        // Process certificates
-        const processResults = {
-            success: [],
-            failed: [],
-        };
-
-        // Load the template image once
-        const image = await loadImage(templatePath);
-
-        for (const recipient of recipients) {
-            try {
-                const canvas = createCanvas(image.width, image.height);
-                const ctx = canvas.getContext('2d');
-
-                // Draw template
-                ctx.drawImage(image, 0, 0, image.width, image.height);
-
-                // Calculate scale factor relative to frontend designer (reference width = 800px)
-                const scaleFactor = image.width / 800;
-                const baseSize = parseFloat(fontSize) || 40;
-                const scaledFontSize = baseSize * scaleFactor;
-
-                // Better font handling for node-canvas
-                let family = fontFamily ? fontFamily.replace(/"/g, '') : 'Arial';
-
-                // Map common font selections to base families for reliable backend rendering
-                const fontMap = {
-                    'Inter': 'sans-serif',
-                    'serif': 'serif',
-                    'Times New Roman': 'serif',
-                    'Cursive': 'cursive',
-                    'Pacifico': 'cursive',
-                    'Monospace': 'monospace'
-                };
-
-                if (fontMap[family]) family = fontMap[family];
-
-                ctx.font = `${scaledFontSize}px "${family}"`;
-                ctx.fillStyle = fontColor || '#000000';
-                ctx.textAlign = 'center';
-
-                // Calculate real coordinates from percentages
-                // nameX is now treated as the center point
-                const x = parseFloat(nameX) * image.width;
-                const y = (parseFloat(nameY) * image.height) + (scaledFontSize * 0.8);
-
-                ctx.fillText(recipient.name, x, y);
-
-                // Create buffer
-                const buffer = canvas.toBuffer('image/png');
-
-                // Send email
-                let personalizedBody = body;
-                Object.keys(recipient).forEach(key => {
-                    const regex = new RegExp(`{{${key}}}`, 'gi');
-                    personalizedBody = personalizedBody.replace(regex, recipient[key]);
-                });
-                personalizedBody = personalizedBody.replace(/{name}/gi, recipient.name);
-
-                if (recipient.email) {
-                    const smtpConfig = await getSmtpConfig(req.user.id);
-                    await sendEmail(
-                        recipient.email,
-                        subject || 'Your Certificate',
-                        personalizedBody,
-                        [
-                            {
-                                filename: `certificate-${recipient.name.replace(/\s+/g, '_')}.png`,
-                                content: buffer,
-                            },
-                        ],
-                        smtpConfig
-                    );
-                    processResults.success.push(recipient.email);
-                }
-            } catch (err) {
-                console.error(`Failed for ${recipient.email}:`, err);
-                processResults.failed.push({ email: recipient.email, error: err.message });
+        // Spawn Worker Thread
+        const worker = new Worker(path.join(__dirname, '../workers/certificate.worker.js'), {
+            workerData: {
+                recipients,
+                designConfig: {
+                    templatePath,
+                    fields: fields ? JSON.parse(fields) : [],
+                    qrConfig: qrConfig ? JSON.parse(qrConfig) : null,
+                    subject,
+                    emailBody: body
+                },
+                branding: branding.toObject(),
+                smtpConfig,
+                mongoUri: process.env.MONGODB_URI
             }
-        }
+        });
 
-        // Cleanup uploaded files
-        try {
-            if (fs.existsSync(templatePath)) fs.unlinkSync(templatePath);
-            if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
-        } catch (e) {
-            console.error('Error cleaning up files:', e);
-        }
+        worker.on('message', (message) => {
+            if (message.type === 'progress') {
+                console.log(`Progress: ${message.current}/${message.total}`);
+                // In a real app, we'd emit this via Socket.io
+            } else if (message.type === 'done') {
+                console.log('Worker finished processing batch.');
 
-        res.json({ message: 'Batch processing executed', results: processResults });
+                // Cleanup files after worker is done
+                try {
+                    if (fs.existsSync(templatePath)) fs.unlinkSync(templatePath);
+                    if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
+                } catch (e) {
+                    console.error('Cleanup error:', e);
+                }
 
-        // Log issuance
-        if (processResults.success.length > 0) {
-            await logIssuance(
-                req.user.id,
-                req.body.designId,
-                processResults.success.length,
-                processResults.success
-            );
-        }
+                // Log issuance once
+                if (message.results.success.length > 0) {
+                    logIssuance(
+                        req.user.id,
+                        req.body.designId,
+                        message.results.success.length,
+                        message.results.success
+                    );
+                }
+            }
+        });
+
+        worker.on('error', (err) => {
+            console.error('Worker error:', err);
+        });
+
+        worker.on('exit', (code) => {
+            if (code !== 0) console.error(`Worker stopped with exit code ${code}`);
+        });
+
+        // Respond immediately - the worker handles the rest
+        res.json({ message: 'Issuance started in background. You will be notified shortly.' });
 
     } catch (error) {
-        console.error('Processing error:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        console.error('Controller error:', error);
+        res.status(500).json({ message: 'Failed to start issuance', error: error.message });
     }
 };
 
@@ -647,6 +621,56 @@ const previewBatch = async (req, res) => {
     }
 }
 
+const getRecipientPortal = async (req, res) => {
+    try {
+        const { token } = req.query;
+        if (!token) return res.status(400).json({ message: 'Missing access token.' });
+
+        const record = await Verification.findOne({ recipient_token: token });
+        if (!record) return res.status(404).json({ message: 'Invalid or expired access token.' });
+
+        res.json({
+            certId: record.cert_id,
+            recipientName: record.recipient_name,
+            recipientEmail: record.recipient_email,
+            issuerName: record.issuer_name,
+            orgName: record.org_name,
+            issuerDesignation: record.issuer_designation,
+            orgLogoUrl: record.org_logo_url,
+            issuerEmail: record.issuer_email,
+            issueDate: record.issue_date,
+            status: record.status,
+            correctionRequested: record.correction_requested,
+            correctionStatus: record.correction_status,
+            requestedName: record.requested_name,
+            certificateTitle: record.certificate_title || 'Professional Certificate'
+        });
+    } catch (e) {
+        console.error('Portal access error:', e);
+        res.status(500).json({ message: 'Failed to access recipient portal.' });
+    }
+};
+
+const requestCorrection = async (req, res) => {
+    try {
+        const { token, newName } = req.body;
+        if (!token || !newName) return res.status(400).json({ message: 'Missing token or new name.' });
+
+        const record = await Verification.findOne({ recipient_token: token });
+        if (!record) return res.status(404).json({ message: 'Access denied.' });
+
+        record.correction_requested = true;
+        record.requested_name = newName;
+        record.correction_status = 'pending';
+        await record.save();
+
+        res.json({ message: 'Correction request submitted successfully.' });
+    } catch (e) {
+        console.error('Correction request error:', e);
+        res.status(500).json({ message: 'Failed to submit correction request.' });
+    }
+};
+
 const verifyCertificate = async (req, res) => {
     try {
         const { id } = req.params;
@@ -677,12 +701,73 @@ const verifyCertificate = async (req, res) => {
             issuerEmail: updatedRecord.issuer_email,
             issueDate: updatedRecord.issue_date,
             scanCount: updatedRecord.scan_count,
-            status: updatedRecord.status
+            status: updatedRecord.status,
+            certificateTitle: updatedRecord.certificate_title || 'Professional Certificate'
         });
+
+        // Trigger Webhook if configured
+        const issuer = await User.findById(updatedRecord.issuer_id);
+        if (issuer && issuer.webhook_url) {
+            webhookService.sendWebhook(issuer.webhook_url, 'certificate.verified', {
+                cert_id: updatedRecord.cert_id,
+                recipient_name: updatedRecord.recipient_name,
+                scan_count: updatedRecord.scan_count,
+                verified_at: new Date().toISOString()
+            });
+        }
 
     } catch (e) {
         console.error('Verify error:', e);
         res.status(500).json({ message: 'Failed to verify certificate.' });
+    }
+};
+
+const getCorrectionRequests = async (req, res) => {
+    try {
+        const requests = await Verification.find({
+            issuer_id: req.user.id,
+            correction_requested: true,
+            correction_status: 'pending'
+        }).sort({ created_at: -1 });
+
+        res.json(requests.map(r => ({
+            id: r._id,
+            certId: r.cert_id,
+            recipientName: r.recipient_name,
+            requestedName: r.requested_name,
+            issueDate: r.issue_date,
+            status: r.correction_status
+        })));
+    } catch (e) {
+        console.error('Get correction requests error:', e);
+        res.status(500).json({ message: 'Failed to fetch correction requests.' });
+    }
+};
+
+const handleCorrectionAction = async (req, res) => {
+    try {
+        const { id, action } = req.body; // action: 'approve' | 'reject'
+        if (!id || !action) return res.status(400).json({ message: 'Missing ID or action.' });
+
+        const record = await Verification.findById(id);
+        if (!record || record.issuer_id.toString() !== req.user.id) {
+            return res.status(404).json({ message: 'Request not found.' });
+        }
+
+        if (action === 'approve') {
+            record.recipient_name = record.requested_name;
+            record.correction_status = 'approved';
+        } else {
+            record.correction_status = 'rejected';
+        }
+
+        record.correction_requested = false;
+        await record.save();
+
+        res.json({ message: `Correction ${action}d successfully.` });
+    } catch (e) {
+        console.error('Handle correction action error:', e);
+        res.status(500).json({ message: 'Failed to process correction action.' });
     }
 };
 
@@ -727,7 +812,8 @@ const sendTestEmail = async (req, res) => {
             issuer_name: issuerName || branding?.full_name || 'Your Name',
             cert_id: 'TEST-CERT-ID-12345',
             verify_url: 'https://example.com/verify/test',
-            certificate_link: 'https://example.com/verify/test'
+            certificate_link: 'https://example.com/verify/test',
+            portal_link: 'https://example.com/portal?token=test-token'
         };
 
         // Replace merge tags (case-insensitive)
@@ -764,5 +850,9 @@ module.exports = {
     prepareBatch,
     processSingle,
     verifyCertificate,
-    getIssuanceHistory
+    getIssuanceHistory,
+    getRecipientPortal,
+    requestCorrection,
+    getCorrectionRequests,
+    handleCorrectionAction
 };
