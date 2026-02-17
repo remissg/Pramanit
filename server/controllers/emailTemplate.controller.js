@@ -75,7 +75,10 @@ const getTemplateById = async (req, res) => {
         const { id } = req.params;
         const userId = req.user.id;
 
-        const template = await EmailTemplate.findOne({ _id: id, user: userId });
+        const template = await EmailTemplate.findOne({
+            _id: id,
+            $or: [{ user: userId }, { is_system: true }]
+        });
 
         if (!template) {
             return res.status(404).json({ message: 'Template not found' });

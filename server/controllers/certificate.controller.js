@@ -61,7 +61,8 @@ const saveVerification = async (record) => {
             issuer_designation: record.issuerDesignation,
             org_logo_url: record.orgLogoUrl,
             issuer_email: record.issuerEmail,
-            recipient_token: record.recipientToken
+            recipient_token: record.recipientToken,
+            design_id: record.designId // Store design reference
         });
     } catch (e) {
         console.error('Failed to save verification:', e);
@@ -689,6 +690,9 @@ const verifyCertificate = async (req, res) => {
             { new: true }
         );
 
+        // Fetch Issuer Settings
+        const issuer = await User.findById(updatedRecord.issuer_id).select('social_settings webhook_url');
+
         // Map Mongoose DB fields to camelCase for frontend
         res.json({
             certId: updatedRecord.cert_id,
@@ -702,11 +706,11 @@ const verifyCertificate = async (req, res) => {
             issueDate: updatedRecord.issue_date,
             scanCount: updatedRecord.scan_count,
             status: updatedRecord.status,
-            certificateTitle: updatedRecord.certificate_title || 'Professional Certificate'
+            certificateTitle: updatedRecord.certificate_title || 'Professional Certificate',
+            socialSettings: issuer?.social_settings || { allow_sharing: true, default_hashtags: '' }
         });
 
         // Trigger Webhook if configured
-        const issuer = await User.findById(updatedRecord.issuer_id);
         if (issuer && issuer.webhook_url) {
             webhookService.sendWebhook(issuer.webhook_url, 'certificate.verified', {
                 cert_id: updatedRecord.cert_id,
@@ -843,16 +847,217 @@ const sendTestEmail = async (req, res) => {
     }
 };
 
+const getCertificateOGImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const record = await Verification.findOne({ cert_id: id }).populate('design_id');
+
+        if (!record) {
+            return res.status(404).send('Certificate not found');
+        }
+
+        let image, canvas, ctx;
+        const fontMap = {
+            'Inter': 'sans-serif',
+            'Montserrat': 'sans-serif',
+            'Outfit': 'sans-serif',
+            'Playfair Display': 'serif',
+            'serif': 'serif',
+            'Times New Roman': 'serif',
+            'Cursive': 'cursive',
+            'Pacifico': 'cursive',
+            'UnifrakturMaguntia': 'serif',
+            'Monospace': 'monospace'
+        };
+
+        // Helper to render fields
+        const renderFields = async (ctx, fields, width, height, data) => {
+            const scaleFactor = width / 800;
+            fields.forEach(field => {
+                const baseSize = parseFloat(field.fontSize) || 40;
+                const scaledFontSize = baseSize * scaleFactor;
+
+                let family = field.fontFamily ? field.fontFamily.replace(/"/g, '') : 'Arial';
+                if (fontMap[family]) family = fontMap[family];
+
+                const style = (field.isBold ? 'bold ' : '') + (field.isItalic ? 'italic ' : '');
+                ctx.font = `${style}${scaledFontSize}px "${family}"`;
+                ctx.fillStyle = field.color || '#000000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const x = parseFloat(field.x) * width;
+                const y = parseFloat(field.y) * height;
+
+                // Simple Placeholders replacement
+                let text = field.text || field.label || '';
+                // Check if text contains merge tags
+                if (text.includes('{{') || text.includes('{')) {
+                    Object.keys(data).forEach(key => {
+                        const regex = new RegExp(`{{${key}}}|{${key}}`, 'gi');
+                        text = text.replace(regex, data[key] || '');
+                    });
+                    // Cleanup unused tags
+                    text = text.replace(/{{.*?}}|{.*?}/g, '');
+                } else if (field.id) {
+                    // Direct ID match fallback
+                    const key = field.id.trim().toLowerCase();
+                    const match = Object.keys(data).find(k => k.toLowerCase() === key);
+                    if (match) text = data[match];
+                }
+
+                if (field.textCase === 'uppercase') text = text.toUpperCase();
+                ctx.fillText(text, x, y);
+
+                if (field.isUnderline) {
+                    const metrics = ctx.measureText(text);
+                    const underlineY = y + (scaledFontSize / 2) * 0.8;
+                    const h = Math.max(1, scaledFontSize / 20);
+                    ctx.fillRect(x - metrics.width / 2, underlineY, metrics.width, h);
+                }
+            });
+        };
+
+        if (record.design_id && record.design_id.design_json) {
+            // Render from Design JSON
+            const design = record.design_id.design_json;
+            let bgUrl = '';
+
+            if (design.backgroundImage && design.backgroundImage.src) {
+                bgUrl = design.backgroundImage.src;
+            } else if (typeof design.backgroundImage === 'string') {
+                bgUrl = design.backgroundImage;
+            }
+
+            if (bgUrl && (bgUrl.startsWith('http') || bgUrl.startsWith('data:'))) {
+                image = await loadImage(bgUrl);
+            } else {
+                // Fallback blank canvas
+                canvas = createCanvas(800, 600);
+                ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 800, 600);
+            }
+
+            if (image) {
+                canvas = createCanvas(image.width, image.height);
+                ctx = canvas.getContext('2d');
+                ctx.drawImage(image, 0, 0);
+            }
+
+            // Convert Fabric Objects to Fields
+            const fields = [];
+            if (design.objects) {
+                design.objects.forEach(obj => {
+                    if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                        fields.push({
+                            id: obj.id || obj.text, // approximate ID
+                            text: obj.text,
+                            x: (obj.left + (obj.originX === 'center' ? 0 : obj.width / 2)) / canvas.width,
+                            y: (obj.top + (obj.originY === 'center' ? 0 : obj.height / 2)) / canvas.height,
+                            fontSize: obj.fontSize,
+                            fontFamily: obj.fontFamily,
+                            color: obj.fill,
+                            isBold: obj.fontWeight === 'bold',
+                            isItalic: obj.fontStyle === 'italic',
+                            isUnderline: obj.underline,
+                            textCase: 'normal'
+                        });
+                    }
+                });
+            }
+
+            // Prepare Data
+            const data = {
+                name: record.recipient_name,
+                email: record.getDecryptedEmail ? record.getDecryptedEmail() : record.recipient_email,
+                issuer: record.issuer_name,
+                date: record.issue_date.toISOString().split('T')[0],
+                cert_id: record.cert_id,
+            };
+            if (record.certificate_title) data.course = record.certificate_title;
+
+            await renderFields(ctx, fields, canvas.width, canvas.height, data);
+
+        } else {
+            // FALLBACK: User deleted design or legacy record.
+            // Render a generic clean certificate.
+            canvas = createCanvas(800, 600);
+            ctx = canvas.getContext('2d');
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+            gradient.addColorStop(0, '#f8fafc');
+            gradient.addColorStop(1, '#e2e8f0');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 800, 600);
+
+            // Border
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 20;
+            ctx.strokeRect(40, 40, 720, 520);
+
+            // Text
+            ctx.fillStyle = '#1e293b';
+            ctx.textAlign = 'center';
+
+            ctx.font = 'bold 40px "Inter", sans-serif';
+            ctx.fillText('CERTIFICATE OF COMPLETION', 400, 150);
+
+            ctx.font = '30px "Inter", sans-serif';
+            ctx.fillText('Presented to', 400, 240);
+
+            ctx.font = 'bold 50px "Inter", sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText(record.recipient_name, 400, 320);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = '20px "Inter", sans-serif';
+            ctx.fillText(`Issued by ${record.issuer_name}`, 400, 420);
+            ctx.fillText(`Date: ${record.issue_date.toISOString().split('T')[0]}`, 400, 450);
+        }
+
+        res.setHeader('Content-Type', 'image/png');
+        // Cache for 1 day
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        canvas.createPNGStream().pipe(res);
+
+    } catch (e) {
+        console.error('OG Image generation error:', e);
+        res.status(500).send('Failed to generate image');
+    }
+};
+
 module.exports = {
-    processCertificates,
-    sendEmail: sendTestEmail,
-    previewBatch,
     prepareBatch,
     processSingle,
-    verifyCertificate,
+    processCertificates,
+    sendEmail, // This is the simple alias now? No, sendEmail is imported from utils. 
+    // Wait, previous exports had 'sendEmail: sendTestEmail' alias but 'sendEmail' key? 
+    // Step 9988 showed: sendEmail, ... sendTestEmail ...
+    // Actually, line 999 shows `sendEmail,` (from import), and line 1007 `sendTestEmail`.
+    // And line 1058 `sendEmail: sendTestEmail`
+    // I will keep it consistent with what it SHOULD be.
+    // sendEmail (utility) shouldn't satisfy the route handler if it's the util.
+    // The route 'test-email' likely uses `sendTestEmail` controller.
+    // ROUTE: router.post('/test-email', ..., certificateController.sendEmail);
+    // So the EXPORT named 'sendEmail' MUST be the `sendTestEmail` function?
+    // Let's check imports. `const { sendEmail } = require('../utils/emailService');` at line 9.
+    // So I should export `sendTestEmail` AS `sendEmail` or rename route usage.
+    // Existing export was: `sendEmail: sendTestEmail`.
+
+    prepareBatch,
+    processSingle,
+    processCertificates,
+    previewBatch,
     getIssuanceHistory,
+    verifyCertificate,
     getRecipientPortal,
     requestCorrection,
     getCorrectionRequests,
-    handleCorrectionAction
+    handleCorrectionAction,
+    sendEmail: sendTestEmail, // Aliasing for route compatibility
+    getCertificateOGImage
 };
+
+

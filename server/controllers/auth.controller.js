@@ -1,6 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const Verification = require('../models/Verification');
+const IssuanceHistory = require('../models/IssuanceHistory');
+const Design = require('../models/Design');
+const EmailTemplate = require('../models/EmailTemplate');
 const User = require('../models/User'); // Mongoose Model
 const emailService = require('../utils/emailService');
 const cryptoUtils = require('../utils/cryptoUtils');
@@ -131,7 +135,8 @@ const getProfile = async (req, res) => {
             orgLogo: user.org_logo_url,
             planType: user.plan_type,
             isVerified: user.is_verified,
-            smtpUrl: user.smtp_host // Do not send pass
+            smtpUrl: user.smtp_host, // Do not send pass
+            social_settings: user.social_settings
         });
     } catch (err) {
         console.error('Profile error:', err);
@@ -181,7 +186,7 @@ const verifyEmail = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-    const { orgName, fullName, designation, orgLogoUrl, smtpHost, smtpPort, smtpUser, smtpPass } = req.body;
+    const { orgName, fullName, designation, orgLogoUrl, smtpHost, smtpPort, smtpUser, smtpPass, defaultHashtags, allowSharing } = req.body;
     const userId = req.user.id;
 
     try {
@@ -193,6 +198,15 @@ const updateProfile = async (req, res) => {
         if (fullName !== undefined) updateData.full_name = fullName;
         if (designation !== undefined) updateData.designation = designation;
         if (encryptedPass !== undefined) updateData.smtp_pass = encryptedPass;
+
+        // SMTP Settings
+        if (smtpHost !== undefined) updateData.smtp_host = smtpHost;
+        if (smtpPort !== undefined) updateData.smtp_port = smtpPort;
+        if (smtpUser !== undefined) updateData.smtp_user = smtpUser;
+
+        // Social Settings (Dot notation to update specific sub-fields without overwriting object)
+        if (defaultHashtags !== undefined) updateData['social_settings.default_hashtags'] = defaultHashtags;
+        if (allowSharing !== undefined) updateData['social_settings.allow_sharing'] = allowSharing;
 
         // Handle Cloudinary upload for organization logo
         if (req.file) {
@@ -348,6 +362,40 @@ const toggleUserPlan = async (req, res) => {
     }
 };
 
+// Delete Account (GDPR - Right to Erasure)
+const deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.id; // Corrected from req.user.userId based on middleware
+
+        // 1. Delete Personal Data (Designs, Templates, History)
+        await Design.deleteMany({ user: userId });
+        await EmailTemplate.deleteMany({ user: userId });
+        await IssuanceHistory.deleteMany({ user: userId });
+
+        // 2. Anonymize Issued Certificates (keep for recipient validity, but strip issuer PII)
+        await Verification.updateMany(
+            { issuer_id: userId },
+            {
+                $set: {
+                    issuer_name: 'Deactivated Issuer',
+                    issuer_email: '', // Clear PII
+                    issuer_designation: 'Former Member',
+                    org_logo_url: '',
+                    issuer_id: null // Unlink account
+                }
+            }
+        );
+
+        // 3. Delete User Record
+        await User.findByIdAndDelete(userId);
+
+        res.json({ success: true, message: 'Account and data permanently deleted.' });
+    } catch (err) {
+        console.error('Delete Account Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete account.' });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -358,5 +406,6 @@ module.exports = {
     getAllUsers,
     toggleUserPlan,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    deleteAccount
 };

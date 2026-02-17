@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight, Check, LayoutGrid, Square } from 'lucide-
 const BatchPreview = ({ previews, onClose, onConfirm, selectedIndices = [], onToggleSelection }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [viewMode, setViewMode] = useState('carousel'); // 'carousel' or 'grid'
+    const [consentGiven, setConsentGiven] = useState(false);
 
     const next = () => setCurrentIndex((prev) => (prev + 1) % previews.length);
     const prev = () => setCurrentIndex((prev) => (prev - 1 + previews.length) % previews.length);
@@ -146,21 +147,38 @@ const BatchPreview = ({ previews, onClose, onConfirm, selectedIndices = [], onTo
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-8 border-t border-slate-100 bg-white flex justify-end items-center gap-6">
-                    <p className="text-sm text-slate-500 mr-auto font-medium hidden sm:block">
-                        {isNoneSelected ? 'Please select at least one recipient' : `${selectedIndices.length} of ${previews.length} selected for generation`}
-                    </p>
-                    <button onClick={onClose} className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-2xl transition-all active:scale-95">
-                        Back to Edit
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        disabled={isNoneSelected}
-                        className={`flex items-center gap-2 px-10 py-3 font-bold rounded-2xl shadow-xl transition-all active:scale-95 ${isNoneSelected ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-violet-200 hover:-translate-y-0.5'}`}
-                    >
-                        <Check size={22} className="stroke-[3]" /> Launch Batch ({selectedIndices.length})
-                    </button>
+                {/* Footer with DPDPA Consent */}
+                <div className="p-8 border-t border-slate-100 bg-white flex flex-col gap-4">
+                    {/* Compliance Checkbox */}
+                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100 self-end">
+                        <input
+                            type="checkbox"
+                            className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            id="dpdpa-consent"
+                            checked={consentGiven}
+                            onChange={(e) => setConsentGiven(e.target.checked)}
+                        />
+                        <label htmlFor="dpdpa-consent" className="text-sm font-medium text-amber-800 cursor-pointer select-none">
+                            I confirm I have the legal consent of these recipients to process their data <span className="text-xs opacity-70">(DPDPA Compliance)</span>
+                        </label>
+                    </div>
+
+                    <div className="flex justify-end items-center gap-6 w-full">
+                        <p className="text-sm text-slate-500 mr-auto font-medium hidden sm:block">
+                            {isNoneSelected ? 'Please select at least one recipient' : `${selectedIndices.length} of ${previews.length} selected for generation`}
+                        </p>
+                        <button onClick={onClose} className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-2xl transition-all active:scale-95">
+                            Back to Edit
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            disabled={isNoneSelected || !consentGiven}
+                            className={`flex items-center gap-2 px-10 py-3 font-bold rounded-2xl shadow-xl transition-all active:scale-95 ${isNoneSelected || !consentGiven ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-violet-200 hover:-translate-y-0.5'}`}
+                        >
+                            <Check size={22} className={isNoneSelected || !consentGiven ? 'opacity-50' : 'stroke-[3]'} />
+                            Launch Batch ({selectedIndices.length})
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

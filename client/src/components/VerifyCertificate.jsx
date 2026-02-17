@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { CheckCircle, AlertCircle, Calendar, User, ShieldCheck, Mail, Hash, Sparkles, Linkedin, Eye, ArrowRight } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
+import { CheckCircle, AlertCircle, Calendar, User, ShieldCheck, Mail, Hash, Sparkles, Linkedin, Eye, ArrowRight, Copy, Twitter, Instagram, MessageCircle, Download } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
 import logo from '../assets/CertiFlow logo (1).png';
@@ -55,88 +56,13 @@ const VerifyCertificate = ({ theme, setTheme }) => {
         }
     }, [id]);
 
-    // Handle SEO and Social Metadata
-    useEffect(() => {
-        if (certificate) {
-            const baseUrl = window.location.origin;
-            const certUrl = window.location.href;
-            const certTitle = `Verified: ${certificate.recipientName}'s Credential`;
-            const certDesc = `Authentic achievement issued by ${certificate.orgName}. Verified via CertiFlow Trust Standard.`;
-            const certImage = certificate.orgLogoUrl || `${baseUrl}/logo.png`;
+    // SEO and Social Metadata managed via Helmet in render
+    const baseUrl = window.location.origin;
+    const certUrl = window.location.href;
+    const certImage = certificate ? `http://localhost:5000/api/certificates/og-image/${certificate.certId}` : `${baseUrl}/logo.png`;
+    const certTitle = certificate ? `Verified: ${certificate.recipientName}'s Credential` : 'Verify Credential | CertiFlow';
+    const certDesc = certificate ? `Authentic achievement issued by ${certificate.orgName}. Verified via CertiFlow Trust Standard.` : 'Verify the authenticity of CertiFlow credentials.';
 
-            // 1. JSON-LD for Open Badges 3.0 / Verifiable Credentials
-            const jsonLd = {
-                "@context": [
-                    "https://www.w3.org/ns/credentials/v2",
-                    "https://purl.imsglobal.org/spec/ob/v3p0/context.json"
-                ],
-                "type": ["VerifiableCredential", "OpenBadgeCredential"],
-                "issuer": {
-                    "type": "Profile",
-                    "id": certificate.issuerEmail || baseUrl,
-                    "name": certificate.orgName,
-                    "url": baseUrl,
-                    "image": certificate.orgLogoUrl
-                },
-                "issuanceDate": certificate.issueDate,
-                "credentialSubject": {
-                    "type": "AchievementSubject",
-                    "id": certificate.recipientEmail || certUrl,
-                    "name": certificate.recipientName,
-                    "achievement": {
-                        "type": "Achievement",
-                        "id": certUrl,
-                        "name": "Professional Certificate",
-                        "description": certDesc,
-                        "criteria": {
-                            "type": "Criteria",
-                            "narrative": "Successful completion of all requirements as verified by the issuing authority."
-                        },
-                        "image": {
-                            "type": "Image",
-                            "id": certImage
-                        }
-                    }
-                },
-                "id": certificate.certId
-            };
-
-            const script = document.createElement('script');
-            script.type = 'application/ld+json';
-            script.id = 'ld-json-cert';
-            script.text = JSON.stringify(jsonLd);
-            document.head.appendChild(script);
-
-            // 2. Open Graph & Twitter Cards
-            const metaTags = [
-                { property: 'og:title', content: certTitle },
-                { property: 'og:description', content: certDesc },
-                { property: 'og:image', content: certImage },
-                { property: 'og:url', content: certUrl },
-                { name: 'twitter:card', content: 'summary_large_image' },
-                { name: 'twitter:title', content: certTitle },
-                { name: 'twitter:description', content: certDesc },
-                { name: 'twitter:image', content: certImage }
-            ];
-
-            const createdTags = [];
-            metaTags.forEach(tag => {
-                const meta = document.createElement('meta');
-                if (tag.property) meta.setAttribute('property', tag.property);
-                if (tag.name) meta.setAttribute('name', tag.name);
-                meta.content = tag.content;
-                document.head.appendChild(meta);
-                createdTags.push(meta);
-            });
-
-            // Cleanup
-            return () => {
-                const existingScript = document.getElementById('ld-json-cert');
-                if (existingScript) existingScript.remove();
-                createdTags.forEach(tag => tag.remove());
-            };
-        }
-    }, [certificate]);
 
     const handleManualSearch = (e) => {
         e.preventDefault();
@@ -216,12 +142,53 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                     </div>
                 </div>
                 <Footer />
-            </div>
+            </div >
         );
     }
 
     return (
         <div className="min-h-screen bg-[var(--bg-main)] selection:bg-violet-500/30 transition-colors duration-500">
+            <Helmet>
+                <title>{certTitle}</title>
+                <meta name="description" content={certDesc} />
+
+                {/* Open Graph */}
+                <meta property="og:title" content={certTitle} />
+                <meta property="og:description" content={certDesc} />
+                <meta property="og:image" content={certImage} />
+                <meta property="og:url" content={certUrl} />
+                <meta property="og:type" content="website" />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={certTitle} />
+                <meta name="twitter:description" content={certDesc} />
+                <meta name="twitter:image" content={certImage} />
+
+                {/* JSON-LD Structured Data */}
+                {certificate && (
+                    <script type="application/ld+json">
+                        {JSON.stringify({
+                            "@context": ["https://www.w3.org/ns/credentials/v2"],
+                            "type": ["VerifiableCredential"],
+                            "issuer": {
+                                "type": "Profile",
+                                "name": certificate.orgName,
+                                "url": baseUrl
+                            },
+                            "credentialSubject": {
+                                "id": certificate.recipientEmail || certUrl,
+                                "name": certificate.recipientName,
+                                "achievement": {
+                                    "name": certificate.certificateTitle || "Professional Certificate",
+                                    "description": certDesc,
+                                    "image": certImage
+                                }
+                            }
+                        })}
+                    </script>
+                )}
+            </Helmet>
             <Header onGetStarted={() => window.location.href = '/'} theme={theme} setTheme={setTheme} />
 
             {/* Ambient Background Glows */}
@@ -319,74 +286,133 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         </div>
                     </div>
 
-                    <div className="mt-12 flex flex-col sm:flex-row gap-4">
-                        <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(window.location.href);
-                                alert('Verification URL copied to clipboard!');
-                            }}
-                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[var(--glass)] hover:bg-white/5 text-[var(--text-main)] border border-[var(--glass-border)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 group"
-                        >
-                            <Hash size={18} className="text-violet-500 group-hover:scale-110 transition-transform" />
-                            Copy Link
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (certificate.issuerEmail) {
-                                    window.location.href = `mailto:${certificate.issuerEmail}?subject=Verification%20Inquiry:%20${certificate.certId}`;
-                                } else {
-                                    alert('Issuer contact email not available.');
-                                }
-                            }}
-                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[var(--glass)] hover:bg-white/5 text-[var(--text-main)] border border-[var(--glass-border)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 group"
-                        >
-                            <Mail size={18} className="text-violet-500 group-hover:scale-110 transition-transform" />
-                            Contact
-                        </button>
-                        <button
-                            onClick={() => {
-                                const issueDate = new Date(certificate.issueDate);
-                                const certName = certificate.certificateTitle || 'Verified Professional Credential';
-                                const params = new URLSearchParams({
-                                    startTask: 'CERTIFICATION_NAME',
-                                    name: certName,
-                                    organizationName: certificate.orgName || 'CertiFlow Trusted Issuer',
-                                    issueYear: issueDate.getFullYear(),
-                                    issueMonth: issueDate.getMonth() + 1,
-                                    certId: certificate.certId,
-                                    certUrl: window.location.href
-                                });
-                                window.open(`https://www.linkedin.com/profile/add?${params.toString()}`, '_blank');
-                            }}
-                            className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[#0077b5] hover:bg-[#005c8d] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#0077b5]/20 transition-all active:scale-95 group"
-                        >
-                            <Linkedin size={18} className="group-hover:scale-110 transition-transform" />
-                            Add to Profile
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mt-12 text-center space-y-6">
-                    <div className="flex justify-center flex-col items-center gap-4">
-                        <p className="text-[var(--text-muted)] text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Powered by</p>
-                        <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-crosshair opacity-60 hover:opacity-100">
-                            <div className="w-5 h-5 bg-violet-600 rounded flex items-center justify-center p-1">
-                                <ShieldCheck className="text-white" size={12} />
+                    {/* Conditional Social Sharing */}
+                    {certificate.socialSettings?.allow_sharing !== false && (
+                        <>
+                            <div className="mt-12 flex flex-col sm:flex-row gap-4">
+                                <button
+                                    onClick={() => {
+                                        const issueDate = new Date(certificate.issueDate);
+                                        const certName = certificate.certificateTitle || 'Verified Professional Credential';
+                                        const params = new URLSearchParams({
+                                            startTask: 'CERTIFICATION_NAME',
+                                            name: certName,
+                                            organizationName: certificate.orgName || 'CertiFlow Trusted Issuer',
+                                            issueYear: issueDate.getFullYear(),
+                                            issueMonth: issueDate.getMonth() + 1,
+                                            certId: certificate.certId,
+                                            certUrl: window.location.href
+                                        });
+                                        window.open(`https://www.linkedin.com/profile/add?${params.toString()}`, '_blank');
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-[#0077b5] hover:bg-[#005c8d] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#0077b5]/20 transition-all active:scale-95 group"
+                                >
+                                    <Linkedin size={18} className="group-hover:scale-110 transition-transform" />
+                                    Add to Profile
+                                </button>
                             </div>
-                            <span className="text-sm font-black text-[var(--text-heading)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></span>
+
+                            {/* Social Share & Caption Section */}
+                            <div className="mt-8 pt-8 border-t border-[var(--glass-border)] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                                <h3 className="text-[var(--text-heading)] font-black text-lg mb-4">Share Your Achievement</h3>
+                                {/* Caption Copy (Full Width) */}
+                                <div className="mb-8 relative group/caption">
+                                    <div className="absolute inset-0 bg-violet-500/5 rounded-3xl blur-xl opacity-0 group-hover/caption:opacity-100 transition-opacity" />
+                                    <div className="relative p-6 bg-[var(--bg-input)] border border-[var(--border-muted)] rounded-3xl flex flex-col gap-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Suggested Post Caption</span>
+                                            <button
+                                                onClick={() => {
+                                                    const hashtags = certificate.socialSettings?.default_hashtags || '#Learning #ProfessionalDevelopment #CertiFlow';
+                                                    const caption = `I'm excited to announce that I've just completed the ${certificate.certificateTitle || 'certification'}! 🎓\n\nThanks to ${certificate.orgName} for the great experience.\n\nVerify my credential here: ${window.location.href}\n\n${hashtags}`;
+                                                    navigator.clipboard.writeText(caption);
+                                                    alert('Caption copied to clipboard!');
+                                                }}
+                                                className="text-violet-500 hover:text-violet-400 text-xs font-bold flex items-center gap-1 transition-colors"
+                                            >
+                                                <Copy size={12} />
+                                                Copy Text
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-[var(--text-muted)] italic leading-relaxed line-clamp-3">
+                                            "I'm excited to announce that I've just completed the {certificate.certificateTitle || 'certification'}! 🎓 Thanks to {certificate.orgName}..."
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Social Buttons Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {/* LinkedIn */}
+                                    <button
+                                        onClick={() => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`, '_blank', 'width=600,height=600')}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-[#0077b5]/10 border border-[#0077b5]/20 hover:bg-[#0077b5]/20 rounded-2xl group transition-all"
+                                    >
+                                        <Linkedin size={20} className="text-[#0077b5]" />
+                                        <span className="text-[10px] font-black text-[#0077b5] uppercase tracking-widest">LinkedIn</span>
+                                    </button>
+
+                                    {/* X (Twitter) */}
+                                    <button
+                                        onClick={() => {
+                                            const text = `I just earned a verified ${certificate.certificateTitle || 'certificate'} from ${certificate.orgName}! 🎓`;
+                                            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank', 'width=600,height=400');
+                                        }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-black/5 border border-black/10 hover:bg-black/10 dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10 rounded-2xl group transition-all"
+                                    >
+                                        <Twitter size={20} className="text-black dark:text-white" />
+                                        <span className="text-[10px] font-black text-black dark:text-white uppercase tracking-widest">X / Tweet</span>
+                                    </button>
+
+                                    {/* WhatsApp */}
+                                    <button
+                                        onClick={() => {
+                                            const text = `Check out my verified certificate: ${window.location.href}`;
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                        }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/20 rounded-2xl group transition-all"
+                                    >
+                                        <MessageCircle size={20} className="text-[#25D366]" />
+                                        <span className="text-[10px] font-black text-[#25D366] uppercase tracking-widest">WhatsApp</span>
+                                    </button>
+
+                                    {/* Instagram (Download) */}
+                                    <a
+                                        href={certImage}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-pink-500/10 border border-pink-500/20 hover:bg-pink-500/20 rounded-2xl group transition-all cursor-pointer"
+                                        title="Download image to share on Instagram Story"
+                                    >
+                                        <Instagram size={20} className="text-pink-500" />
+                                        <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Story (DL)</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="mt-12 text-center space-y-6">
+                        <div className="flex justify-center flex-col items-center gap-4">
+                            <p className="text-[var(--text-muted)] text-[9px] font-black uppercase tracking-[0.3em] opacity-40">Powered by</p>
+                            <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-crosshair opacity-60 hover:opacity-100">
+                                <div className="w-5 h-5 bg-violet-600 rounded flex items-center justify-center p-1">
+                                    <ShieldCheck className="text-white" size={12} />
+                                </div>
+                                <span className="text-sm font-black text-[var(--text-heading)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></span>
+                            </div>
                         </div>
+                        <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-lg mx-auto transition-colors">
+                            This credential was generated using CertiFlow secure issuance engine.<br />
+                            Tampering with this document will render the digital fingerprint invalid.
+                        </p>
+                        <a href="/" className="inline-flex items-center gap-2 text-violet-400 font-bold hover:text-violet-300 transition-colors uppercase tracking-[0.2em] text-[10px]">
+                            <ArrowRight size={14} className="rotate-180" />
+                            Explore CertiFlow
+                        </a>
                     </div>
-                    <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-lg mx-auto transition-colors">
-                        This credential was generated using CertiFlow secure issuance engine.<br />
-                        Tampering with this document will render the digital fingerprint invalid.
-                    </p>
-                    <a href="/" className="inline-flex items-center gap-2 text-violet-400 font-bold hover:text-violet-300 transition-colors uppercase tracking-[0.2em] text-[10px]">
-                        <ArrowRight size={14} className="rotate-180" />
-                        Explore CertiFlow
-                    </a>
                 </div>
+                <Footer />
             </div>
-            <Footer />
         </div>
     );
 };

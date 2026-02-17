@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, Wand2, Sparkles, Book, FileJson } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -28,7 +28,9 @@ const Dashboard = ({ theme, setTheme }) => {
         smtpHost: '',
         smtpPort: 587,
         smtpUser: '',
-        smtpPass: ''
+        smtpPass: '',
+        defaultHashtags: '#CertiFlow #Certified #Professional',
+        allowSharing: true
     });
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -101,6 +103,8 @@ const Dashboard = ({ theme, setTheme }) => {
                 smtpPort: data.smtp_port || 587,
                 smtpUser: data.smtp_user || '',
                 // smtpPass is kept as is (empty or what user types)
+                defaultHashtags: data.social_settings?.default_hashtags || '#CertiFlow #Certified #Professional',
+                allowSharing: data.social_settings?.allow_sharing ?? true
             }));
         } catch (err) {
             console.error('Failed to fetch profile', err);

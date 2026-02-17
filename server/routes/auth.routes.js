@@ -43,6 +43,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.get('/admin/users', authenticateToken, authController.getAllUsers);
 router.post('/admin/toggle-plan', authenticateToken, authController.toggleUserPlan);
+router.delete('/delete-account', authenticateToken, authController.deleteAccount);
 
 module.exports = {
     router,
