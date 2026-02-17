@@ -13,8 +13,8 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
     const SAMPLE_DATA = {
         '{{name}}': 'Joydip Maiti',
         '{{event_name}}': 'Web Development Workshop 2026',
-        '{{certificate_link}}': 'https://certiflow.io/verify/SAMPLE-UUID-1234',
-        '{{issuer_name}}': config.issuerName || 'CertiFlow Academy',
+        '{{certificate_link}}': 'https://pramanit.io/verify/SAMPLE-UUID-1234',
+        '{{issuer_name}}': config.issuerName || 'Pramanit Academy',
         '{{cert_id}}': 'D7F336B9-DF5E-4C04-8E1A-C90B60829871'
     };
 
@@ -200,7 +200,7 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                         name="issuerName"
                         value={config.issuerName || ''}
                         onChange={handleChange}
-                        placeholder="e.g. CertiFlow Academy"
+                        placeholder="e.g. Pramanit Academy"
                         className="block w-full pl-12 pr-4 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-[var(--text-main)] font-bold focus:ring-2 focus:ring-violet-500/50 outline-none transition-all placeholder-[var(--text-muted)] opacity-80 focus:opacity-100"
                     />
                 </div>

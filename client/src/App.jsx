@@ -174,6 +174,8 @@ const PublicRoute = ({ children }) => {
 };
 
 
+import Watermark from './components/Watermark';
+
 function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('certiflow-theme') || 'system';
@@ -206,6 +208,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <Watermark />
         <Routes>
           <Route
             path="/login"
