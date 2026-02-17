@@ -547,6 +547,59 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
             });
     };
 
+    const analyzeDesign = () => {
+        if (!fabricCanvas) return;
+        setIsAnalyzing(true);
+
+        // Simulate AI Analysis Delay
+        setTimeout(() => {
+            const objects = fabricCanvas.getObjects();
+            const suggestions = [];
+            let score = 90; // Start high
+
+            // 1. Check for Content
+            if (objects.length < 3) {
+                suggestions.push("Design looks too empty. Try adding more elements or decorations.");
+                score -= 20;
+            }
+
+            // 2. Check for Name Variable
+            const hasNameVar = objects.some(o => o.type === 'i-text' && o.text.includes('{{'));
+            if (!hasNameVar) {
+                suggestions.push("Missing dynamic variable! Add '{{Name Here}}' to make it personal.");
+                score -= 30; // Critical
+            }
+
+            // 3. Check for Contrast (Naive check)
+            // If background is white and any text is light color
+            if (bgColor === '#ffffff' || bgColor === '#f8fafc') {
+                const lowContrastText = objects.some(o => o.type === 'i-text' && (o.fill === '#ffffff' || o.fill === '#f1f5f9'));
+                if (lowContrastText) {
+                    suggestions.push("Some text has low contrast against the background. Make it darker.");
+                    score -= 15;
+                }
+            }
+
+            // 4. Check for Visual Balance (Center of Mass)
+            // Simple heuristic: if everything is on the left side
+            const allLeft = objects.every(o => o.left < 300);
+            if (objects.length > 0 && allLeft) {
+                suggestions.push("Design feels unbalanced. Try centering your text or adding elements to the right.");
+                score -= 10;
+            }
+
+            // 5. Positive Reinforcement
+            if (suggestions.length === 0) {
+                suggestions.push("Great use of negative space!");
+                suggestions.push("Font choices look professional.");
+                score = 100;
+            }
+
+            setAnalysisResult({ score: Math.max(0, score), suggestions });
+            setIsAnalyzing(false);
+        }, 1500); // 1.5s delay for "AI" effect
+    };
+
     return (
         <div className="flex flex-col h-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-xl">
             {/* Top Toolbar - Properties */}
@@ -788,6 +841,24 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
                     <Undo size={18} /> Reset
                 </button>
                 <div className="flex gap-3">
+                    <button
+                        onClick={analyzeDesign}
+                        disabled={isAnalyzing}
+                        className={`flex items-center gap-2 px-5 py-2.5 font-bold rounded-lg border transition-all ${isAnalyzing ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white border-transparent hover:shadow-lg hover:shadow-purple-200'}`}
+                    >
+                        {isAnalyzing ? (
+                            <>
+                                <RefreshCw size={18} className="animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={18} />
+                                AI Analyze <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Beta</span>
+                            </>
+                        )}
+                    </button>
+                    <div className="w-px h-10 bg-slate-200 mx-2"></div>
                     <button onClick={onCancel} className="px-6 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors">
                         Cancel
                     </button>
@@ -796,6 +867,65 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
                     </button>
                 </div>
             </div>
+
+            {/* AI Analysis Result Modal */}
+            {analysisResult && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+                        <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-6 text-white">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-white/20 rounded-xl">
+                                    <Sparkles size={24} className="text-white" />
+                                </div>
+                                <h3 className="text-xl font-bold">AI Design Critique</h3>
+                            </div>
+                            <p className="text-white/80 text-sm">Powered by CertiFlow Intelligence</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="space-y-4">
+                                {analysisResult.score >= 80 ? (
+                                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex gap-3 text-emerald-800">
+                                        <Check size={20} className="shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-bold">Excellent Design! ({analysisResult.score}/100)</p>
+                                            <p className="text-sm opacity-80 mt-1">Ready for production. Good balance and contrast.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3 text-amber-800">
+                                        <Triangle size={20} className="shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-bold">Good start, but needs polish ({analysisResult.score}/100)</p>
+                                            <p className="text-sm opacity-80 mt-1">Review the suggestions below to improve impact.</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Suggestions</h4>
+                                    {analysisResult.suggestions.map((s, i) => (
+                                        <div key={i} className="flex gap-2 text-sm text-slate-600 items-start">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+                                            {s}
+                                        </div>
+                                    ))}
+                                    {analysisResult.suggestions.length === 0 && (
+                                        <p className="text-sm text-slate-500 italic">No critical issues found.</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-8">
+                                <button
+                                    onClick={() => setAnalysisResult(null)}
+                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                                >
+                                    Close & Continue Editing
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
