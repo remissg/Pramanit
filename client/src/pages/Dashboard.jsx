@@ -91,7 +91,7 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const fetchProfile = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/auth/profile');
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/profile`);
             const data = res.data;
             setSettings(prev => ({
                 ...prev,
@@ -115,16 +115,16 @@ const Dashboard = ({ theme, setTheme }) => {
         setLoading(true);
         try {
             if (activeTab === 'designs') {
-                const res = await axios.get('http://localhost:5000/api/designs');
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/designs`);
                 setDesigns(res.data);
             } else if (activeTab === 'email-templates') {
-                const res = await axios.get('http://localhost:5000/api/email-templates');
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email-templates`);
                 setEmailTemplates(res.data);
             } else if (activeTab === 'history') {
-                const res = await axios.get('http://localhost:5000/api/certificates/history');
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/history`);
                 setHistory(res.data);
             } else if (activeTab === 'corrections') {
-                const res = await axios.get('http://localhost:5000/api/certificates/corrections');
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/corrections`);
                 setCorrections(res.data);
             } else if (activeTab === 'developer') {
                 await fetchDeveloperSettings();
@@ -138,7 +138,7 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const handleSaveSettings = async () => {
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/update-profile', settings);
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/update-profile`, settings);
             alert('Settings updated successfully!');
         } catch (err) {
             console.error('Failed to update settings', err);
@@ -148,7 +148,7 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const handleClone = async (id) => {
         try {
-            const res = await axios.post(`http://localhost:5000/api/designs/${id}/clone`);
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/designs/${id}/clone`);
             setDesigns([res.data, ...designs]);
             alert('Design cloned successfully!');
         } catch (err) {
@@ -160,7 +160,7 @@ const Dashboard = ({ theme, setTheme }) => {
     const handleDelete = async (id, type) => {
         if (!window.confirm(`Are you sure you want to delete this ${type === 'designs' ? 'design' : 'template'}?`)) return;
         try {
-            await axios.delete(`http://localhost:5000/api/${type}/${id}`);
+            await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/${type}/${id}`);
             if (type === 'designs') {
                 setDesigns(designs.filter(d => d.id !== id));
             } else {
@@ -189,7 +189,7 @@ const Dashboard = ({ theme, setTheme }) => {
                 return;
             }
 
-            const res = await axios.post('http://localhost:5000/api/email-templates', templateForm);
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/email-templates`, templateForm);
             setEmailTemplates([res.data, ...emailTemplates]);
             setShowTemplateModal(false);
             setTemplateForm({ name: '', subject: '', bodyHtml: '', isDefault: false });
@@ -203,7 +203,7 @@ const Dashboard = ({ theme, setTheme }) => {
         if (!aiPrompt) return alert('Please describe your event first.');
         setAiGenerating(true);
         try {
-            const res = await axios.post('http://localhost:5000/api/ai/generate-content', {
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/ai/generate-content`, {
                 eventDescription: aiPrompt
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -228,7 +228,7 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const fetchDeveloperSettings = async () => {
         try {
-            const apiRes = await axios.get('http://localhost:5000/api/external/keys', {
+            const apiRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/external/keys`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setApiKey(apiRes.data.apiKey);
@@ -242,7 +242,7 @@ const Dashboard = ({ theme, setTheme }) => {
         if (!confirm('Are you sure? Your existing API key will stop working immediately.')) return;
         setRotatingKey(true);
         try {
-            const res = await axios.post('http://localhost:5000/api/external/keys/rotate', {}, {
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/external/keys/rotate`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setApiKey(res.data.apiKey);
@@ -257,7 +257,7 @@ const Dashboard = ({ theme, setTheme }) => {
     const handleUpdateWebhook = async () => {
         setUpdatingWebhook(true);
         try {
-            await axios.post('http://localhost:5000/api/external/webhook/url', { url: webhookUrl }, {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/external/webhook/url`, { url: webhookUrl }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Webhook URL Updated! 📡');
@@ -270,7 +270,7 @@ const Dashboard = ({ theme, setTheme }) => {
 
     const handleCorrectionAction = async (id, action) => {
         try {
-            await axios.post('http://localhost:5000/api/certificates/corrections/action', { id, action });
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/corrections/action`, { id, action });
             setCorrections(corrections.filter(c => c.id !== id));
             alert(`Correction ${action}d successfully!`);
         } catch (err) {
@@ -284,7 +284,7 @@ const Dashboard = ({ theme, setTheme }) => {
             // Fetch full details if needed, but for list we might not have body
             // Actually getTemplates returns id, name, subject, is_default
             // We need to fetch body content
-            axios.get(`http://localhost:5000/api/email-templates/${template.id}`).then(res => {
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email-templates/${template.id}`).then(res => {
                 setEditingTemplate(res.data);
                 setTemplateForm({
                     name: res.data.name,
@@ -657,7 +657,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                         <span className="text-emerald-500">Authorization: X-API-KEY</span>
                                     </div>
                                     <pre className="text-violet-400">
-                                        {`curl -X POST http://localhost:5000/api/external/issue \\
+                                        {`curl -X POST ${import.meta.env.VITE_API_BASE_URL}/api/external/issue \\
 -H "X-API-KEY: YOUR_KEY" \\
 -H "Content-Type: application/json" \\
 -d '{

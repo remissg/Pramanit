@@ -308,7 +308,7 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                                 btn.innerText = 'Sending...';
                                 btn.disabled = true;
 
-                                await axios.post('http://localhost:5000/api/certificates/test-email', {
+                                await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/test-email`, {
                                     email,
                                     issuerName: config.issuerName,
                                     subject: config.subject,

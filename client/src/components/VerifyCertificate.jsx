@@ -37,7 +37,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
     const fetchCertificate = async (searchId) => {
         setLoading(true);
         try {
-            const response = await axios.get(`http://localhost:5000/api/certificates/verify/${searchId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/verify/${searchId}`);
             setCertificate(response.data);
             setError(null);
         } catch (err) {
@@ -59,7 +59,7 @@ const VerifyCertificate = ({ theme, setTheme }) => {
     // SEO and Social Metadata managed via Helmet in render
     const baseUrl = window.location.origin;
     const certUrl = window.location.href;
-    const certImage = certificate ? `http://localhost:5000/api/certificates/og-image/${certificate.certId}` : `${baseUrl}/logo.png`;
+    const certImage = certificate ? `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}` : `${baseUrl}/logo.png`;
     const certTitle = certificate ? `Verified: ${certificate.recipientName}'s Credential` : 'Verify Credential | Pramanit';
     const certDesc = certificate ? `Authentic achievement issued by ${certificate.orgName}. Verified via Pramanit Trust Standard.` : 'Verify the authenticity of Pramanit credentials.';
 

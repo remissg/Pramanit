@@ -46,7 +46,7 @@ const AdminPanel = ({ theme, setTheme }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/auth/admin/users', {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(res.data);
@@ -70,8 +70,7 @@ const AdminPanel = ({ theme, setTheme }) => {
     const handleTogglePlan = async (userId, currentPlan) => {
         const newPlan = currentPlan === 'free' ? 'pro' : 'free';
         try {
-            await axios.post('http://localhost:5000/api/auth/admin/toggle-plan', {
-                userId,
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/users/${userId}/toggle-plan`, {
                 planType: newPlan
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -179,8 +178,8 @@ const AdminPanel = ({ theme, setTheme }) => {
                                         </td>
                                         <td className="px-8 py-6">
                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${u.planType === 'pro'
-                                                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border border-white/5'
+                                                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-muted)] border border-white/5'
                                                 }`}>
                                                 {u.planType === 'pro' ? <Zap size={10} /> : <div className="w-2 h-2 rounded-full bg-slate-500" />}
                                                 {u.planType} Plan
@@ -205,8 +204,8 @@ const AdminPanel = ({ theme, setTheme }) => {
                                             <button
                                                 onClick={() => handleTogglePlan(u.id, u.planType)}
                                                 className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 ${u.planType === 'free'
-                                                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-lg shadow-amber-500/20'
-                                                        : 'bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20'
+                                                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-lg shadow-amber-500/20'
+                                                    : 'bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20'
                                                     }`}
                                             >
                                                 {u.planType === 'free' ? 'Upgrade to PRO' : 'Downgrade Account'}

@@ -47,7 +47,7 @@ const VerificationNotice = () => {
   const handleResend = async () => {
     try {
       setResending(true);
-      await axios.post('http://localhost:5000/api/auth/resend-verification');
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/resend-verification`);
       setResent(true);
       setTimeout(() => setResent(false), 5000);
     } catch (err) {
@@ -327,7 +327,7 @@ function MainApp({ theme, setTheme }) {
 
   useEffect(() => {
     if (user) {
-      axios.get('http://localhost:5000/api/email-templates')
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/email-templates`)
         .then(res => setEmailTemplates(res.data))
         .catch(err => console.error(err));
     }
@@ -354,7 +354,7 @@ function MainApp({ theme, setTheme }) {
         loadDesignData(design.design_json);
       } else if (design.id || design._id) {
         // Fetch full details if missing from list view
-        axios.get(`http://localhost:5000/api/designs/${design.id || design._id}`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/designs/${design.id || design._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
           .then(res => {
@@ -500,7 +500,7 @@ function MainApp({ theme, setTheme }) {
     formData.append('qrConfig', JSON.stringify(qrConfig));
 
     try {
-      const response = await axios.post('http://localhost:5000/api/certificates/preview-batch', formData, {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/preview-batch`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setPreviews(response.data.previews);
@@ -522,7 +522,7 @@ function MainApp({ theme, setTheme }) {
       abortBatchRef.current = false; // Reset abort signal
       const prepData = new FormData();
       prepData.append('template', files.template);
-      const prepRes = await axios.post('http://localhost:5000/api/certificates/prepare-batch', prepData);
+      const prepRes = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/prepare-batch`, prepData);
       const { templatePath } = prepRes.data;
 
       const results = { success: [], failed: [] };
@@ -539,7 +539,7 @@ function MainApp({ theme, setTheme }) {
         const recipient = selectedRecipients[i];
 
         try {
-          await axios.post('http://localhost:5000/api/certificates/process-single', {
+          await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
             templatePath,
             recipient,
             fields: fields.filter(f => f.isVisible),
@@ -596,7 +596,7 @@ function MainApp({ theme, setTheme }) {
           previewUrl: base64data // Store base64 for preview (MVP)
         };
 
-        await axios.post('http://localhost:5000/api/designs', designData);
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/designs`, designData);
         alert('Design saved successfully!');
       };
     } catch (error) {

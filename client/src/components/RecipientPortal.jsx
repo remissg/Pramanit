@@ -39,7 +39,7 @@ export default function RecipientPortal({ theme, setTheme }) {
 
         const fetchCertificate = async () => {
             try {
-                const response = await axios.get(`http://localhost:5000/api/certificates/portal?token=${token}`);
+                const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/portal?token=${token}`);
                 setCertificate(response.data);
                 setNewName(response.data.recipientName);
             } catch (err) {
@@ -58,7 +58,7 @@ export default function RecipientPortal({ theme, setTheme }) {
 
         setSubmittingCorrection(true);
         try {
-            await axios.post('http://localhost:5000/api/certificates/request-correction', {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/request-correction`, {
                 token,
                 newName
             });
@@ -83,7 +83,7 @@ export default function RecipientPortal({ theme, setTheme }) {
             organizationName: certificate.orgName || "Pramanit",
             issueYear: new Date(certificate.issueDate).getFullYear(),
             issueMonth: new Date(certificate.issueDate).getMonth() + 1,
-            certUrl: `http://localhost:5173/verify/${certificate.certId}`,
+            certUrl: `${window.location.origin}/verify/${certificate.certId}`,
             certId: certificate.certId
         });
 
@@ -185,7 +185,7 @@ export default function RecipientPortal({ theme, setTheme }) {
 
                                     <div className="pt-6 border-t border-[var(--glass-border)] flex flex-wrap gap-4">
                                         <a
-                                            href={`http://localhost:5173/verify/${certificate.certId}`}
+                                            href={`${window.location.origin}/verify/${certificate.certId}`}
                                             target="_blank"
                                             className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-input)] hover:bg-[var(--glass)] text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-violet-500 rounded-xl border border-[var(--glass-border)] transition-all"
                                         >

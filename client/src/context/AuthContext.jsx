@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/auth/profile');
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/profile`);
             setUser(res.data);
         } catch (err) {
             console.error('Failed to fetch profile', err);
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
-        const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, { email, password });
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
         setUser(res.data.user);
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const signup = async (email, password, orgName, fullName, designation) => {
-        const res = await axios.post('http://localhost:5000/api/auth/signup', { email, password, orgName, fullName, designation });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password, orgName, fullName, designation });
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
         setUser(res.data.user);
