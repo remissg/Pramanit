@@ -770,7 +770,12 @@ function MainApp({ theme, setTheme }) {
           {step === 2 && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl md:text-3xl font-black text-[var(--text-heading)] tracking-tight transition-colors">Customize Layout</h2>
+                <div>
+                  <h2 className="text-xl md:text-3xl font-black text-[var(--text-heading)] tracking-tight transition-colors">Customize Layout</h2>
+                  <p className="text-[var(--text-muted)] text-xs font-bold mt-1 max-w-xl">
+                    Using a saved design? To use new data, click <span className="text-violet-500">Back</span> and upload a new CSV/Excel file. Your layout will be preserved.
+                  </p>
+                </div>
                 <div></div>
               </div>
               <CertificatePreview
