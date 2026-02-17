@@ -60,8 +60,8 @@ const VerifyCertificate = ({ theme, setTheme }) => {
     const baseUrl = window.location.origin;
     const certUrl = window.location.href;
     const certImage = certificate ? `http://localhost:5000/api/certificates/og-image/${certificate.certId}` : `${baseUrl}/logo.png`;
-    const certTitle = certificate ? `Verified: ${certificate.recipientName}'s Credential` : 'Verify Credential | CertiFlow';
-    const certDesc = certificate ? `Authentic achievement issued by ${certificate.orgName}. Verified via CertiFlow Trust Standard.` : 'Verify the authenticity of CertiFlow credentials.';
+    const certTitle = certificate ? `Verified: ${certificate.recipientName}'s Credential` : 'Verify Credential | Pramanit';
+    const certDesc = certificate ? `Authentic achievement issued by ${certificate.orgName}. Verified via Pramanit Trust Standard.` : 'Verify the authenticity of Pramanit credentials.';
 
 
     const handleManualSearch = (e) => {
@@ -96,9 +96,9 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         <div className="flex justify-center mb-8">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 shadow-xl shadow-violet-500/10 transform -rotate-6">
-                                    <img src={logo} alt="CertiFlow Logo" className="w-full h-full object-contain" />
+                                    <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                                 </div>
-                                <span className="text-3xl font-black text-[var(--text-heading)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></span>
+                                <span className="text-3xl font-black text-[var(--text-heading)] tracking-tighter">Pramanit</span>
                             </div>
                         </div>
                         <div className="glass rounded-[3rem] p-12 border-[var(--glass-border)] shadow-2xl animate-in zoom-in-95 duration-500">
@@ -398,16 +398,16 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                 <div className="w-5 h-5 bg-violet-600 rounded flex items-center justify-center p-1">
                                     <ShieldCheck className="text-white" size={12} />
                                 </div>
-                                <span className="text-sm font-black text-[var(--text-heading)] tracking-tighter">Certi<span className="text-violet-500">Flow</span></span>
+                                <span className="text-sm font-black bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent tracking-tighter">Pramanit</span>
                             </div>
                         </div>
                         <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-lg mx-auto transition-colors">
-                            This credential was generated using CertiFlow secure issuance engine.<br />
+                            This credential was generated using Pramanit secure issuance engine.<br />
                             Tampering with this document will render the digital fingerprint invalid.
                         </p>
                         <a href="/" className="inline-flex items-center gap-2 text-violet-400 font-bold hover:text-violet-300 transition-colors uppercase tracking-[0.2em] text-[10px]">
                             <ArrowRight size={14} className="rotate-180" />
-                            Explore CertiFlow
+                            Explore Pramanit
                         </a>
                     </div>
                 </div>

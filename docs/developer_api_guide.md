@@ -1,10 +1,10 @@
 # Developer API & Custom Certificates Guide
 
-This guide explains how external systems (like an LMS, website, or script) can automatically issue certificates using CertiFlow's API, and how custom templates work in this process.
+This guide explains how external systems (like an LMS, website, or script) can automatically issue certificates using Pramanit's API, and how custom templates work in this process.
 
 ## 1. How Custom Templates Work via API
 
-The core concept is **"Static Design + Dynamic Data"**. 
+The core concept is **"Static Design + Dynamic Data"**.
 
 *   **Presaved (Static):** The layout, background image, fonts, colors, and fixed text (e.g., "Certificate of Completion"). You save this **once** in the Designer.
 *   **API Sent (Dynamic):** The specific details for each student (e.g., Name, Date, Course Title). You send this **every time** you trigger the API.
@@ -14,7 +14,7 @@ You don't send the design layout in the API request; you send the `design_id` of
 ### The Full Workflow:
 
 #### Step 1: Create & Save Design (GUI)
-1.  Go to the **Certificate Generator** in the CertiFlow app.
+1.  Go to the **Certificate Generator** in the Pramanit app.
 2.  Upload your base certificate image.
 3.  Drag and drop fields (Name, Date, Course, etc.) to position them.
     *   *Tip:* Use generic text like `{{name}}` or just "Name" as placeholders.
@@ -28,7 +28,7 @@ You don't send the design layout in the API request; you send the `design_id` of
 3.  The ID is usually visible or can be retrieved via the API endpoint below.
 
 #### Step 3: Trigger API (The "Magic" Part)
-This is where you tell CertiFlow *who* the certificate is for. You match your **Design Placeholders** to the **API JSON**.
+This is where you tell Pramanit *who* the certificate is for. You match your **Design Placeholders** to the **API JSON**.
 
 **Example:**
 If your design has:
@@ -39,7 +39,7 @@ If your design has:
 Your API Request **body** must look like this:
 ```json
 {
-  "design_id": "65d8f9...", 
+  "design_id": "65d8f9...",
   "recipient": {
     "name": "Jane Doe",            // Maps to {{name}}
     "email": "jane@example.com",   // Required for sending email
@@ -52,7 +52,7 @@ Your API Request **body** must look like this:
 **Key Rule:** The keys in the `recipient` JSON must exactly match the text inside your handlebars `{{...}}` in the design (minus the brackets).
 
 #### Step 4: Generation
-CertiFlow's server takes the design, finds `{{course_name}}`, and replaces it with `"React Pro"` from your request. It does this for all fields, generates the PDF, and emails it to `jane@example.com`.
+Pramanit's server takes the design, finds `{{course_name}}`, and replaces it with `"React Pro"` from your request. It does this for all fields, generates the PDF, and emails it to `jane@example.com`.
 
 ---
 
@@ -121,7 +121,7 @@ All requests must be authenticated using your **API Key**.
 
 ## 4. Webhooks (Real-time Notifications)
 
-You can configure a Webhook URL in the **Developer Tab**. CertiFlow will send a POST request to this URL whenever a certificate is issued.
+You can configure a Webhook URL in the **Developer Tab**. Pramanit will send a POST request to this URL whenever a certificate is issued.
 
 **Payload Sent to Your Webhook:**
 ```json
@@ -140,8 +140,8 @@ You can configure a Webhook URL in the **Developer Tab**. CertiFlow will send a 
 
 ## 5. Typical Use Case: Institute Automation
 
-1.  **Design Phase:** The Institute Admin logs into CertiFlow and designs the "Annual Award" certificate. They added a text box for `{{student_name}}` and `{{award_title}}`. They save this design.
+1.  **Design Phase:** The Institute Admin logs into Pramanit and designs the "Annual Award" certificate. They added a text box for `{{student_name}}` and `{{award_title}}`. They save this design.
 2.  **Integration:** The Institute's IT team copies the `API Key` and the `design_id`.
 3.  **Automation:** The Institute has a student portal. When a student completes a course, the portal automatically triggers the `process_certificate` script.
-4.  **Issuance:** The script calls CertiFlow's API with the student's details.
+4.  **Issuance:** The script calls Pramanit's API with the student's details.
 5.  **Delivery:** The student receives an email with their personalized "Annual Award" certificate instantly.

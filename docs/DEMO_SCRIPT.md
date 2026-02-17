@@ -1,4 +1,4 @@
-# 🎤 CertiFlow Demo Day Script
+# 🎤 Pramanit Demo Day Script
 
 **Time Limit**: 3 Minutes
 **Goal**: Show complete flow from "Design" to "Verification".
@@ -6,7 +6,7 @@
 ---
 
 ## 0. The Hook (0:00 - 0:30)
-*   **Speaker**: "Sending 1,000 certificates usually takes a week of manual work. Verification? Impossible. Today, we fix that with CertiFlow."
+*   **Speaker**: "Sending 1,000 certificates usually takes a week of manual work. Verification? Impossible. Today, we fix that with Pramanit."
 *   **Screen**: Show the **Landing Page**. Scroll down to show the 3-step feature grid.
 *   **Action**: Click **"Get Started"** and login (or use a pre-logged session).
 
@@ -16,7 +16,7 @@
 *   **Action**:
     1.  Drag a **Text** element. Change font to "Cinzel".
     2.  Upload a **Logo**. Resize it.
-    3.  **Key Moment**: Click the **"AI Analyze"** button (Coming up!). Show the popup: *"Design looks balanced, but logo contrast could be higher."*
+    3.  **Key Moment**: Click the **"Pramanit Intelligence"** button (formerly AI Analyze). Show the popup: *"Design looks balanced, but logo contrast could be higher. Powered by Pramanit AI."*
     4.  Click **"Save Template"**.
 
 ## 2. The Power: One-Click Batching (1:15 - 2:00)
@@ -39,7 +39,7 @@
     4.  "They can flex their achievement instantly."
 
 ## 4. Closing (2:45 - 3:00)
-*   **Speaker**: "CertiFlow is secure, scalable, and built for the future. Thank you."
+*   **Speaker**: "Pramanit is secure, scalable, and built for the future. Thank you."
 *   **Screen**: Return to Landing Page or a "Thank You" slide.
 
 ---

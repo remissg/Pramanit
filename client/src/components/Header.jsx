@@ -25,9 +25,9 @@ const Header = ({ onGetStarted, theme, setTheme }) => {
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 <div className="flex items-center gap-3 group cursor-pointer shrink-0" onClick={() => navigate(user ? '/dashboard' : '/')}>
                     <div className="w-10 h-10 bg-white shadow-lg rounded-xl flex items-center justify-center p-1.5 group-hover:scale-110 transition-transform duration-300">
-                        <img src={logo} alt="CertiFlow Logo" className="w-full h-full object-contain" />
+                        <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                     </div>
-                    <span className="text-xl font-black tracking-tighter text-[var(--text-main)] transition-colors whitespace-nowrap">Certi<span className="text-violet-500">Flow</span></span>
+                    <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent transition-all whitespace-nowrap filter drop-shadow-sm">Pramanit</span>
                 </div>
 
                 <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-[var(--text-muted)]">

@@ -879,7 +879,7 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
                                 </div>
                                 <h3 className="text-xl font-bold">AI Design Critique</h3>
                             </div>
-                            <p className="text-white/80 text-sm">Powered by CertiFlow Intelligence</p>
+                            <p className="text-white/80 text-sm">Powered by Pramanit Intelligence</p>
                         </div>
                         <div className="p-6">
                             <div className="space-y-4">

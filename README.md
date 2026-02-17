@@ -1,7 +1,7 @@
-# CertiFlow 🚀
+# Pramanit 🇮🇳🚀
 > The World's Most Advanced AI-Native Certification Platform.
 
-CertiFlow is a production-ready SaaS platform that allows organizations to design, generate, and verify tamper-proof digital credentials at scale. Built for the AI era, it combines cryptographic security with a beautiful, user-centric design.
+Pramanit is a production-ready SaaS platform that allows organizations to design, generate, and verify tamper-proof digital credentials at scale. Built for the AI era, it combines cryptographic security with a beautiful, user-centric design.
 
 ## 🌟 Key Features
 

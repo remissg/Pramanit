@@ -1,8 +1,8 @@
-# 🔮 CertiFlow Vision 2026: The AI-Native Roadmap
+# 🔮 Pramanit Vision 2026: The AI-Native Roadmap
 
-> "Transforming CertiFlow from a tool into a market-leading AI-Native SaaS."
+> "Transforming Pramanit from a tool into a market-leading AI-Native SaaS."
 
-This document outlines the strategic functional updates required to align CertiFlow with modern SaaS trends, focusing on hyper-automation, enhanced trust, and user self-service.
+This document outlines the strategic functional updates required to align Pramanit with modern SaaS trends, focusing on hyper-automation, enhanced trust, and user self-service.
 
 ## 1. 🧠 AI-Driven Smart Content & Formatting
 By 2026, users expect AI to do the "heavy lifting."
@@ -12,7 +12,7 @@ By 2026, users expect AI to do the "heavy lifting."
 -   **Visual Layout Critic**: An AI assistant that alerts the user if their logo is blurry or if the text color has poor contrast against the background.
 
 ## 2. 👥 Live Collaboration & Roles
-Transform CertiFlow from a single-user tool into a team workspace.
+Transform Pramanit from a single-user tool into a team workspace.
 
 -   **Collaborative Design**: Allow multiple team members to edit a certificate template simultaneously (similar to Google Docs or Figma).
 -   **Approval Workflows**: A "Draft" mode where a junior staff member designs the certificate, but an "Admin" must hit the "Approve" button before the batch is sent to 1,000 people.

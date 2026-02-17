@@ -13,9 +13,9 @@ const Footer = () => {
                     <div className="col-span-1 md:col-span-2">
                         <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => navigate(user ? '/dashboard' : '/')}>
                             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg">
-                                <img src={logo} alt="CertiFlow Logo" className="w-full h-full object-contain" />
+                                <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                             </div>
-                            <span className="text-2xl font-black tracking-tighter text-[var(--text-main)] transition-colors">Certi<span className="text-violet-500">Flow</span></span>
+                            <span className="text-3xl font-black tracking-tighter bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent filter drop-shadow-sm">Pramanit</span>
                         </div>
                         <p className="text-[var(--text-muted)] text-sm max-w-sm mb-6 leading-relaxed transition-colors">
                             Empowering organizations to generate and distribute professional certificates at scale. Reliable, beautiful, and lightning fast.

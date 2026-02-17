@@ -1,4 +1,4 @@
-# CertiFlow API Documentation
+# Pramanit API Documentation
 
 ## Endpoints
 

@@ -1,4 +1,4 @@
-# CertiFlow Setup Guide
+# Pramanit Setup Guide
 
 ## Prerequisites
 - Node.js

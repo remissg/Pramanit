@@ -31,7 +31,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
         const transporter = nodemailer.createTransport(transporterConfig);
 
         const mailOptions = {
-            from: customSmtp?.user ? customSmtp.user : `"CertiFlow" <${process.env.EMAIL_USER}>`,
+            from: customSmtp?.user ? customSmtp.user : `"Pramanit" <${process.env.EMAIL_USER}>`,
             to,
             subject,
             html,
@@ -53,13 +53,13 @@ const sendVerificationEmail = async (to, token) => {
     const html = `
         <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
             <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Certi<span style="color: #7c3aed;">Flow</span></h1>
+                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Pramanit</h1>
             </div>
             
             <div style="text-align: center; margin-bottom: 32px;">
                 <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px; tracking-tight: -0.01em;">Verify Your Account</h2>
                 <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
-                    Welcome to CertiFlow! Click the button below to verify your email and unlock full access to your workspace.
+                    Welcome to Pramanit! Click the button below to verify your email and unlock full access to your workspace.
                 </p>
             </div>
 
@@ -71,13 +71,13 @@ const sendVerificationEmail = async (to, token) => {
 
             <div style="text-align: center; padding-top: 32px; border-top: 1px solid #f1f5f9;">
                 <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin: 0;">
-                    This link will expire in 24 hours. If you didn't sign up for CertiFlow, you can safely ignore this email.
+                    This link will expire in 24 hours. If you didn't sign up for Pramanit, you can safely ignore this email.
                 </p>
             </div>
         </div>
     `;
 
-    return sendEmail(to, 'Verify your CertiFlow Account', html);
+    return sendEmail(to, 'Verify your Pramanit Account', html);
 };
 
 const sendPasswordResetEmail = async (to, token) => {
@@ -85,7 +85,7 @@ const sendPasswordResetEmail = async (to, token) => {
     const html = `
         <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
             <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Certi<span style="color: #7c3aed;">Flow</span></h1>
+                <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Pramanit</h1>
             </div>
             
             <div style="text-align: center; margin-bottom: 32px;">
@@ -109,7 +109,7 @@ const sendPasswordResetEmail = async (to, token) => {
         </div>
     `;
 
-    return sendEmail(to, 'Password Reset Request - CertiFlow', html);
+    return sendEmail(to, 'Password Reset Request - Pramanit', html);
 };
 
 module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail };

@@ -64,7 +64,7 @@ app.use('/api/external', externalRoutes);
 
 
 app.get('/', (req, res) => {
-  res.send('CertiFlow Server is running');
+  res.send('Pramanit Server is running');
 });
 
 app.listen(port, () => {
