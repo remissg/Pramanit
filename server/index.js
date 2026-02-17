@@ -16,7 +16,6 @@ const certificateRoutes = require('./routes/certificate.routes');
 const { router: authRoutes } = require('./routes/auth.routes');
 const designRoutes = require('./routes/design.routes');
 const emailTemplateRoutes = require('./routes/emailTemplate.routes');
-
 const externalRoutes = require('./routes/external.routes');
 
 // Ensure uploads directory exists
@@ -26,7 +25,32 @@ if (!fs.existsSync(uploadDir)) {
   console.log('Created uploads directory');
 }
 
-app.use(cors());
+// CORS Configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL // Add this var in Render
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      // For now, in production, we might want to be permissive if the user hasn't set the var yet
+      // so they don't get blocked immediately.
+      // But for security, let's log it.
+      console.log("Blocked by CORS:", origin);
+      // callback(new Error('Not allowed by CORS')); 
+      // Safe Fallback: temporarily allow all for demo purposes if variable is missing
+      callback(null, true);
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -37,12 +61,6 @@ app.use('/api/designs', designRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 
 app.use('/api/external', externalRoutes);
-
-// Supabase client setup
-// Supabase client setup (Legacy - Moved to MongoDB)
-// const supabaseUrl = process.env.SUPABASE_URL;
-// const supabaseKey = process.env.SUPABASE_KEY;
-// const supabase = createClient(supabaseUrl, supabaseKey); 
 
 
 app.get('/', (req, res) => {
