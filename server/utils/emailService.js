@@ -17,6 +17,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     user: customSmtp.user,
                     pass: decryptedPass || customSmtp.pass, // Fallback to plain if decryption fails (for legacy migration)
                 },
+                family: 4, // Force IPv4
             };
         } else {
             transporterConfig = {

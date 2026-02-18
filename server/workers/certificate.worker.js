@@ -87,7 +87,8 @@ const processBatch = async () => {
 
                 // 4. Send Email
                 if (recipient.email && smtpConfig) {
-                    const transporter = nodemailer.createTransport(smtpConfig);
+                    const transportConfig = { ...smtpConfig, family: 4 }; // Force IPv4
+                    const transporter = nodemailer.createTransport(transportConfig);
 
                     let personalizedBody = emailBody || '';
                     const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
