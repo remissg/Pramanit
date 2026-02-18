@@ -35,14 +35,17 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     socketTimeout: 30000,
                 };
             } else {
+                // For Gmail default, use explicit host/port to force IPv4
                 transporterConfig = {
-                    service: 'gmail',
+                    host: 'smtp.gmail.com',
+                    port: 465,
+                    secure: true,
                     auth: {
                         user: process.env.EMAIL_USER,
                         pass: process.env.EMAIL_PASS,
                     },
-                    family: 4, // Force IPv4
-                    pool: true, // Enable pooling
+                    family: 4, // Force IPv4 - strictly respected when not using 'service'
+                    pool: true,
                     maxConnections: 5,
                     maxMessages: 100,
                     connectionTimeout: 30000,
@@ -50,7 +53,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     socketTimeout: 30000,
                 };
             }
-            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'Gmail default'} on port ${customSmtp ? (Number(customSmtp.port) || 587) : 'default'}`);
+            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'smtp.gmail.com'} on port ${customSmtp ? (Number(customSmtp.port) || 587) : 465}`);
             transporter = nodemailer.createTransport(transporterConfig);
 
             // Verify connection configuration
