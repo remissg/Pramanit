@@ -29,6 +29,8 @@ if (!fs.existsSync(uploadDir)) {
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://pramanit-six.vercel.app",
+  "https://pramanit.vercel.app",
   process.env.FRONTEND_URL // Add this var in Render
 ];
 
