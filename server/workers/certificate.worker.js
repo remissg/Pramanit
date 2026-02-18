@@ -87,7 +87,17 @@ const processBatch = async () => {
 
                 // 4. Send Email
                 if (recipient.email && smtpConfig) {
-                    const transportConfig = { ...smtpConfig, family: 4 }; // Force IPv4
+                    const port = Number(smtpConfig.port) || 587;
+                    const transportConfig = {
+                        ...smtpConfig,
+                        port,
+                        secure: port === 465,
+                        family: 4,
+                        connectionTimeout: 10000,
+                        greetingTimeout: 5000,
+                        socketTimeout: 10000,
+                    }; // Force IPv4 & Logic
+
                     const transporter = nodemailer.createTransport(transportConfig);
 
                     let personalizedBody = emailBody || '';

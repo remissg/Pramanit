@@ -8,16 +8,20 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
         if (customSmtp && customSmtp.host && customSmtp.user && customSmtp.pass) {
             // Decrypt the custom SMTP password
             const decryptedPass = cryptoUtils.decrypt(customSmtp.pass);
+            const port = Number(customSmtp.port) || 587;
 
             transporterConfig = {
                 host: customSmtp.host,
-                port: customSmtp.port || 587,
-                secure: customSmtp.port === 465,
+                port: port,
+                secure: port === 465,
                 auth: {
                     user: customSmtp.user,
                     pass: decryptedPass || customSmtp.pass, // Fallback to plain if decryption fails (for legacy migration)
                 },
                 family: 4, // Force IPv4
+                connectionTimeout: 10000,
+                greetingTimeout: 5000,
+                socketTimeout: 10000,
             };
         } else {
             transporterConfig = {
@@ -27,6 +31,9 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     pass: process.env.EMAIL_PASS,
                 },
                 family: 4, // Force IPv4
+                connectionTimeout: 10000,
+                greetingTimeout: 5000,
+                socketTimeout: 10000,
             };
         }
 
