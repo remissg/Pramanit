@@ -1,43 +1,59 @@
 const nodemailer = require('nodemailer');
 const cryptoUtils = require('./cryptoUtils');
 
+const transporterCache = new Map();
+
 const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
     try {
-        let transporterConfig;
+        let transporter;
+        const cacheKey = customSmtp ? JSON.stringify(customSmtp) : 'default';
 
-        if (customSmtp && customSmtp.host && customSmtp.user && customSmtp.pass) {
-            // Decrypt the custom SMTP password
-            const decryptedPass = cryptoUtils.decrypt(customSmtp.pass);
-            const port = Number(customSmtp.port) || 587;
-
-            transporterConfig = {
-                host: customSmtp.host,
-                port: port,
-                secure: port === 465,
-                auth: {
-                    user: customSmtp.user,
-                    pass: decryptedPass || customSmtp.pass, // Fallback to plain if decryption fails (for legacy migration)
-                },
-                family: 4, // Force IPv4
-                connectionTimeout: 10000,
-                greetingTimeout: 5000,
-                socketTimeout: 10000,
-            };
+        if (transporterCache.has(cacheKey)) {
+            transporter = transporterCache.get(cacheKey);
         } else {
-            transporterConfig = {
-                service: 'gmail',
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                },
-                family: 4, // Force IPv4
-                connectionTimeout: 10000,
-                greetingTimeout: 5000,
-                socketTimeout: 10000,
-            };
-        }
+            let transporterConfig;
 
-        const transporter = nodemailer.createTransport(transporterConfig);
+            if (customSmtp && customSmtp.host && customSmtp.user && customSmtp.pass) {
+                // Decrypt the custom SMTP password
+                const decryptedPass = cryptoUtils.decrypt(customSmtp.pass);
+                const port = Number(customSmtp.port) || 587;
+
+                transporterConfig = {
+                    host: customSmtp.host,
+                    port: port,
+                    secure: port === 465,
+                    auth: {
+                        user: customSmtp.user,
+                        pass: decryptedPass || customSmtp.pass,
+                    },
+                    family: 4, // Force IPv4
+                    pool: true, // Enable pooling
+                    maxConnections: 5,
+                    maxMessages: 100,
+                    connectionTimeout: 10000,
+                    greetingTimeout: 5000,
+                    socketTimeout: 10000,
+                };
+            } else {
+                transporterConfig = {
+                    service: 'gmail',
+                    auth: {
+                        user: process.env.EMAIL_USER,
+                        pass: process.env.EMAIL_PASS,
+                    },
+                    family: 4, // Force IPv4
+                    pool: true, // Enable pooling
+                    maxConnections: 5,
+                    maxMessages: 100,
+                    connectionTimeout: 10000,
+                    greetingTimeout: 5000,
+                    socketTimeout: 10000,
+                };
+            }
+
+            transporter = nodemailer.createTransport(transporterConfig);
+            transporterCache.set(cacheKey, transporter);
+        }
 
         const mailOptions = {
             from: customSmtp?.user ? customSmtp.user : `"Pramanit" <${process.env.EMAIL_USER}>`,

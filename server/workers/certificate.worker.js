@@ -24,9 +24,29 @@ const processBatch = async () => {
         const templateImage = await loadImage(templatePath);
         const scaleFactor = templateImage.width / 800;
 
+        // 4. Prepare Email Transport (Outside Loop)
+        let transporter;
+        if (smtpConfig) {
+            const port = Number(smtpConfig.port) || 587;
+            const transportConfig = {
+                ...smtpConfig,
+                port,
+                secure: port === 465,
+                family: 4,
+                pool: true,
+                maxConnections: 5,
+                maxMessages: 100,
+                connectionTimeout: 10000,
+                greetingTimeout: 5000,
+                socketTimeout: 10000,
+            };
+            transporter = nodemailer.createTransport(transportConfig);
+        }
+
         for (let i = 0; i < recipients.length; i++) {
             const recipient = recipients[i];
             try {
+                // ... (canvas logic remains somewhat separate per recipient for rendering)
                 const canvas = createCanvas(templateImage.width, templateImage.height);
                 const ctx = canvas.getContext('2d');
 
@@ -85,21 +105,8 @@ const processBatch = async () => {
 
                 await newVerification.save();
 
-                // 4. Send Email
-                if (recipient.email && smtpConfig) {
-                    const port = Number(smtpConfig.port) || 587;
-                    const transportConfig = {
-                        ...smtpConfig,
-                        port,
-                        secure: port === 465,
-                        family: 4,
-                        connectionTimeout: 10000,
-                        greetingTimeout: 5000,
-                        socketTimeout: 10000,
-                    }; // Force IPv4 & Logic
-
-                    const transporter = nodemailer.createTransport(transportConfig);
-
+                // 4. Send Email (using pooled transporter)
+                if (recipient.email && transporter) {
                     let personalizedBody = emailBody || '';
                     const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
                     const mergeData = {
