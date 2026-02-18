@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 const cryptoUtils = require('./cryptoUtils');
 
 const transporterCache = new Map();
@@ -13,49 +14,70 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
         } else {
             let transporterConfig;
 
+            // Manually resolve hostname to IPv4 to prevent IPv6 connection attempts (ENETUNREACH)
+            // and avoid binding issues (EINVAL) with localAddress in container environments.
+            const targetHost = customSmtp ? customSmtp.host : 'smtp.gmail.com';
+            let resolvedIp = targetHost;
+            try {
+                // dns.promises.resolve4 returns an array of IPv4 addresses
+                const addresses = await dns.promises.resolve4(targetHost);
+                if (addresses && addresses.length > 0) {
+                    resolvedIp = addresses[0];
+                    console.log(`[EmailService] Resolved ${targetHost} to IPv4: ${resolvedIp}`);
+                }
+            } catch (e) {
+                console.warn(`[EmailService] DNS resolution failed for ${targetHost}, using hostname directly. Error: ${e.message}`);
+            }
+
             if (customSmtp && customSmtp.host && customSmtp.user && customSmtp.pass) {
                 // Decrypt the custom SMTP password
                 const decryptedPass = cryptoUtils.decrypt(customSmtp.pass);
                 const port = Number(customSmtp.port) || 587;
 
                 transporterConfig = {
-                    host: customSmtp.host,
+                    host: resolvedIp,
                     port: port,
                     secure: port === 465, // True for 465, false for other ports
                     auth: {
                         user: customSmtp.user,
                         pass: decryptedPass || customSmtp.pass,
                     },
+                    tls: {
+                        servername: targetHost // Necessary for TLS verification when host is an IP
+                    },
                     family: 4, // Force IPv4
-                    localAddress: '0.0.0.0', // Force binding to IPv4 interface
+                    // localAddress removed to avoid EINVAL
                     pool: true, // Enable pooling
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 60000, // Increased timeout 
+                    connectionTimeout: 60000,
                     greetingTimeout: 30000,
-                    socketTimeout: 60000, // Increased timeout
+                    socketTimeout: 60000,
                 };
             } else {
-                // For Gmail default, use port 587 (STARTTLS) which is often more reliable than 465 on Render/IPv6
+                // For Gmail default, use port 587 (STARTTLS)
                 transporterConfig = {
-                    host: 'smtp.gmail.com',
+                    host: resolvedIp,
                     port: 587,
                     secure: false, // Use STARTTLS
                     auth: {
                         user: process.env.EMAIL_USER,
                         pass: process.env.EMAIL_PASS,
                     },
+                    tls: {
+                        servername: 'smtp.gmail.com' // Necessary for TLS verification
+                    },
                     family: 4, // Force IPv4 - strictly respected when not using 'service'
-                    localAddress: '0.0.0.0', // Force binding to IPv4 interface
+                    // localAddress removed to avoid EINVAL
                     pool: true,
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 60000, // Increased timeout
+                    connectionTimeout: 60000,
                     greetingTimeout: 30000,
-                    socketTimeout: 60000, // Increased timeout
+                    socketTimeout: 60000,
                 };
             }
-            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'smtp.gmail.com'} on port ${transporterConfig.port}`);
+            console.log(`[EmailService] Creating transporter for ${targetHost} (${resolvedIp}) on port ${transporterConfig.port}`);
             transporter = nodemailer.createTransport(transporterConfig);
 
             // Verify connection configuration
