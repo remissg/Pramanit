@@ -36,11 +36,19 @@ const processBatch = async () => {
                 pool: true,
                 maxConnections: 5,
                 maxMessages: 100,
-                connectionTimeout: 10000,
-                greetingTimeout: 5000,
-                socketTimeout: 10000,
+                connectionTimeout: 30000,
+                greetingTimeout: 30000,
+                socketTimeout: 30000,
             };
+            console.log(`[Worker] Creating transporter for ${smtpConfig.host} on port ${port}`);
             transporter = nodemailer.createTransport(transportConfig);
+            // Verify transport in worker too
+            try {
+                await transporter.verify();
+                console.log('[Worker] Transporter verified');
+            } catch (e) {
+                console.error('[Worker] Transporter verify failed:', e);
+            }
         }
 
         for (let i = 0; i < recipients.length; i++) {

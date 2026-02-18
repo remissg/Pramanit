@@ -30,9 +30,9 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     pool: true, // Enable pooling
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 10000,
-                    greetingTimeout: 5000,
-                    socketTimeout: 10000,
+                    connectionTimeout: 30000,
+                    greetingTimeout: 30000,
+                    socketTimeout: 30000,
                 };
             } else {
                 transporterConfig = {
@@ -45,13 +45,24 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     pool: true, // Enable pooling
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 10000,
-                    greetingTimeout: 5000,
-                    socketTimeout: 10000,
+                    connectionTimeout: 30000,
+                    greetingTimeout: 30000,
+                    socketTimeout: 30000,
                 };
             }
-
+            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'Gmail default'} on port ${customSmtp ? (Number(customSmtp.port) || 587) : 'default'}`);
             transporter = nodemailer.createTransport(transporterConfig);
+
+            // Verify connection configuration
+            try {
+                await transporter.verify();
+                console.log('[EmailService] Transporter verification successful');
+            } catch (verifyError) {
+                console.error('[EmailService] Transporter verification failed:', verifyError);
+                // Don't throw here, let sendMail try and fail with specific error if needed, or maybe better to fail early?
+                // Actually, if verify fails, sendMail will definitely fail. Let's log it clearly.
+            }
+
             transporterCache.set(cacheKey, transporter);
         }
 
