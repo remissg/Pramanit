@@ -23,7 +23,7 @@ const Header = ({ onGetStarted, theme, setTheme }) => {
     return (
         <header className="fixed top-0 left-0 right-0 z-[100] glass px-6 py-4 transition-all duration-500">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div className="flex items-center gap-3 group cursor-pointer shrink-0" onClick={() => navigate(user ? '/dashboard' : '/')}>
+                <div className="flex items-center gap-3 group cursor-pointer shrink-0" onClick={() => navigate('/')}>
                     <div className="w-10 h-10 bg-white shadow-lg rounded-xl flex items-center justify-center p-1.5 group-hover:scale-110 transition-transform duration-300">
                         <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                     </div>
