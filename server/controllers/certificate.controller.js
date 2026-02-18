@@ -173,6 +173,14 @@ const processSingle = async (req, res) => {
             return res.status(400).json({ message: 'Missing required data' });
         }
 
+        // Check if template exists (Render ephemeral filesystem wipes uploads on restart/deploy)
+        if (!fs.existsSync(templatePath)) {
+            return res.status(400).json({
+                message: 'Template file not found. The server likely restarted. Please upload the template again.',
+                code: 'FILE_LOST'
+            });
+        }
+
         const image = await loadImage(templatePath);
         const canvas = createCanvas(image.width, image.height);
         const ctx = canvas.getContext('2d');
@@ -368,22 +376,34 @@ const processSingle = async (req, res) => {
 
 
         if (recData.email || recData.Email) {
-            const smtpConfig = await getSmtpConfig(req.user.id);
-            await sendEmail(
-                recData.email || recData.Email,
-                personalizedSubject || 'Your Certificate',
-                personalizedBody,
-                [
-                    {
-                        filename: `certificate-${(mergedData.name || 'document').replace(/\\s+/g, '_')}.pdf`,
-                        content: Buffer.from(pdfContent),
-                    },
-                ],
-                smtpConfig
-            );
+            try {
+                const smtpConfig = await getSmtpConfig(req.user.id);
+                await sendEmail(
+                    recData.email || recData.Email,
+                    personalizedSubject || 'Your Certificate',
+                    personalizedBody,
+                    [
+                        {
+                            filename: `certificate-${(mergedData.name || 'document').replace(/\\s+/g, '_')}.pdf`,
+                            content: Buffer.from(pdfContent),
+                        },
+                    ],
+                    smtpConfig
+                );
+            } catch (emailError) {
+                console.error('Email sending failed (Non-blocking):', emailError);
+                // We proceed without throwing, enabling the certificate to be returned
+                // potentially adding a flag to the response
+                return res.json({
+                    success: true,
+                    email: recData.email,
+                    emailSent: false,
+                    message: 'Certificate generated but email failed to send.'
+                });
+            }
         }
 
-        res.json({ success: true, email: recData.email });
+        res.json({ success: true, email: recData.email, emailSent: true });
 
         // Log issuance
         await logIssuance(req.user.id, designId, 1, [recData.email]);
