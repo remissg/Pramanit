@@ -26,14 +26,14 @@ const VerificationSchema = new mongoose.Schema({
 });
 
 // Encryption Hook
-VerificationSchema.pre('save', function (next) {
+// Encryption Hook
+VerificationSchema.pre('save', async function () {
     if (this.isModified('recipient_email') && this.recipient_email) {
         // Generate blind index before encryption
         this.recipient_email_hash = hash(this.recipient_email);
         // Encrypt the email
         this.recipient_email = encrypt(this.recipient_email);
     }
-    next();
 });
 
 // Decryption Method
