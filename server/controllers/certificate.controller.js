@@ -398,12 +398,12 @@ const processSingle = async (req, res) => {
                     success: true,
                     email: recData.email,
                     emailSent: false,
-                    message: 'Certificate generated but email failed to send.'
+                    message: 'Certificate generated successfully. WARNING: Email sending failed (Server Timeout). Please download the certificate manually.'
                 });
             }
         }
 
-        res.json({ success: true, email: recData.email, emailSent: true });
+        res.json({ success: true, email: recData.email, emailSent: true, message: 'Certificate generated and email sent successfully.' });
 
         // Log issuance
         await logIssuance(req.user.id, designId, 1, [recData.email]);
