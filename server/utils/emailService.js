@@ -27,6 +27,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                         pass: decryptedPass || customSmtp.pass,
                     },
                     family: 4, // Force IPv4
+                    localAddress: '0.0.0.0', // Force binding to IPv4 interface
                     pool: true, // Enable pooling
                     maxConnections: 5,
                     maxMessages: 100,
@@ -45,6 +46,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                         pass: process.env.EMAIL_PASS,
                     },
                     family: 4, // Force IPv4 - strictly respected when not using 'service'
+                    localAddress: '0.0.0.0', // Force binding to IPv4 interface
                     pool: true,
                     maxConnections: 5,
                     maxMessages: 100,
