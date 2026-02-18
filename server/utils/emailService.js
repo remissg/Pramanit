@@ -48,8 +48,15 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
     }
 };
 
+const getClientUrl = () => {
+    return process.env.FRONTEND_URL
+        ? `https://${process.env.FRONTEND_URL}`
+        : 'http://localhost:5173';
+};
+
 const sendVerificationEmail = async (to, token) => {
-    const verificationUrl = `http://localhost:5173/verify-email?token=${token}`;
+    const clientUrl = getClientUrl();
+    const verificationUrl = `${clientUrl}/verify-email?token=${token}`;
     const html = `
         <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
             <div style="text-align: center; margin-bottom: 32px;">
@@ -81,7 +88,8 @@ const sendVerificationEmail = async (to, token) => {
 };
 
 const sendPasswordResetEmail = async (to, token) => {
-    const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
+    const clientUrl = getClientUrl();
+    const resetUrl = `${clientUrl}/reset-password?token=${token}`;
     const html = `
         <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
             <div style="text-align: center; margin-bottom: 32px;">

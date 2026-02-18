@@ -158,6 +158,13 @@ const prepareBatch = async (req, res) => {
     }
 };
 
+// Helper to determine the client URL
+const getClientUrl = () => {
+    return process.env.FRONTEND_URL
+        ? `https://${process.env.FRONTEND_URL}`
+        : 'http://localhost:5173';
+};
+
 const processSingle = async (req, res) => {
     try {
         const { templatePath, recipient, fields, subject, body, issuerName, qrConfig, designId } = req.body;
@@ -174,8 +181,9 @@ const processSingle = async (req, res) => {
 
         const certId = crypto.randomUUID();
         const recipientToken = crypto.randomBytes(32).toString('hex');
-        const verifyUrl = `http://localhost:5173/verify/${certId}`;
-        const portalUrl = `http://localhost:5173/portal?token=${recipientToken}`;
+        const clientUrl = getClientUrl();
+        const verifyUrl = `${clientUrl}/verify/${certId}`;
+        const portalUrl = `${clientUrl}/portal?token=${recipientToken}`;
         const dataHash = generateHash({
             name: recipient.name || recipient.email,
             email: recipient.email || '',
@@ -589,7 +597,8 @@ const previewBatch = async (req, res) => {
                 const qrX = parseFloat(qrConfig.x) * image.width;
                 const qrY = parseFloat(qrConfig.y) * image.height;
 
-                const qrDataUrl = await QRCode.toDataURL('http://localhost:5173/verify/sample-uuid', {
+                const clientUrl = getClientUrl();
+                const qrDataUrl = await QRCode.toDataURL(`${clientUrl}/verify/sample-uuid`, {
                     margin: 1,
                     color: {
                         dark: '#000000',

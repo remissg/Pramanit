@@ -82,10 +82,11 @@ const issueCertificate = async (req, res) => {
             });
         }
 
+        const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
         res.status(201).json({
             message: "Certificate issued successfully",
             cert_id: certId,
-            verification_url: `http://localhost:5173/verify/${certId}`
+            verification_url: `${clientUrl}/verify/${certId}`
         });
 
     } catch (error) {

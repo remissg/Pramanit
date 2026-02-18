@@ -90,10 +90,11 @@ const processBatch = async () => {
                     const transporter = nodemailer.createTransport(smtpConfig);
 
                     let personalizedBody = emailBody || '';
+                    const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
                     const mergeData = {
                         ...recipient,
                         cert_id: certId,
-                        certificate_link: `http://localhost:5173/verify/${certId}`
+                        certificate_link: `${clientUrl}/verify/${certId}`
                     };
 
                     Object.keys(mergeData).forEach(key => {
