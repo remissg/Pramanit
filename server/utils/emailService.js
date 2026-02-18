@@ -55,11 +55,12 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     socketTimeout: 60000,
                 };
             } else {
-                // For Gmail default, use port 587 (STARTTLS)
+                // For Gmail default, use port 465 (SSL/TLS) with explicit IPv4
+                // Original error was IPv6 on 465; now we force IPv4 so 465 should work and might be less restricted than 587.
                 transporterConfig = {
                     host: resolvedIp,
-                    port: 587,
-                    secure: false, // Use STARTTLS
+                    port: 465,
+                    secure: true, // Use SSL/TLS
                     auth: {
                         user: process.env.EMAIL_USER,
                         pass: process.env.EMAIL_PASS,
