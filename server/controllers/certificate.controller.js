@@ -526,19 +526,21 @@ const previewBatch = async (req, res) => {
             'Monospace': 'monospace'
         };
 
+        const MAX_WIDTH = 800;
+        const resizeScale = Math.min(1, MAX_WIDTH / image.width);
+        const canvasWidth = image.width * resizeScale;
+        const canvasHeight = image.height * resizeScale;
+
         for (const recipient of previewRecipients) {
-            const canvas = createCanvas(image.width, image.height);
+            const canvas = createCanvas(canvasWidth, canvasHeight);
             const ctx = canvas.getContext('2d');
 
-            ctx.drawImage(image, 0, 0, image.width, image.height);
+            ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvasWidth, canvasHeight);
 
-            const scaleFactor = image.width / 800;
+            const scaleFactor = canvasWidth / 800;
 
             if (fields && Array.isArray(fields)) {
                 fields.forEach(field => {
-                    // Try getting data from normalized keys or original row
-                    const content = recipient[field.id] || recipient.name || 'N/A';
-
                     const baseSize = parseFloat(field.fontSize) || 40;
                     const scaledFontSize = baseSize * scaleFactor;
 
@@ -551,10 +553,9 @@ const previewBatch = async (req, res) => {
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
 
-                    const x = parseFloat(field.x) * image.width;
-                    const y = parseFloat(field.y) * image.height;
+                    const x = parseFloat(field.x) * canvasWidth;
+                    const y = parseFloat(field.y) * canvasHeight;
 
-                    // Robust Data Lookup (Trimmed & Case-Insensitive)
                     const recData = recipient.data || recipient;
                     const fieldId = (field.id || '').trim().toLowerCase();
 
@@ -564,7 +565,6 @@ const previewBatch = async (req, res) => {
                     if (exactMatch !== undefined) {
                         text = exactMatch;
                     } else {
-                        // Fallback to case-insensitive search
                         const matchingKey = Object.keys(recData).find(k => k.trim().toLowerCase() === fieldId);
                         text = matchingKey ? recData[matchingKey] : (field.label || '');
                     }
@@ -574,7 +574,6 @@ const previewBatch = async (req, res) => {
 
                     ctx.fillText(text, x, y);
 
-                    // Handle Underline (Manual Drawing)
                     if (field.isUnderline) {
                         const metrics = ctx.measureText(text);
                         const underlineY = y + (scaledFontSize / 2) * 0.8;
@@ -590,12 +589,11 @@ const previewBatch = async (req, res) => {
                 });
             }
 
-            // Render QR Code Preview if enabled
             const qrConfig = req.body.qrConfig ? JSON.parse(req.body.qrConfig) : null;
             if (qrConfig && qrConfig.isVisible) {
                 const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
-                const qrX = parseFloat(qrConfig.x) * image.width;
-                const qrY = parseFloat(qrConfig.y) * image.height;
+                const qrX = parseFloat(qrConfig.x) * canvasWidth;
+                const qrY = parseFloat(qrConfig.y) * canvasHeight;
 
                 const clientUrl = getClientUrl();
                 const qrDataUrl = await QRCode.toDataURL(`${clientUrl}/verify/sample-uuid`, {
