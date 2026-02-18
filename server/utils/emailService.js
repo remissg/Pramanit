@@ -21,7 +21,7 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                 transporterConfig = {
                     host: customSmtp.host,
                     port: port,
-                    secure: port === 465,
+                    secure: port === 465, // True for 465, false for other ports
                     auth: {
                         user: customSmtp.user,
                         pass: decryptedPass || customSmtp.pass,
@@ -30,16 +30,16 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     pool: true, // Enable pooling
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 30000,
+                    connectionTimeout: 60000, // Increased timeout 
                     greetingTimeout: 30000,
-                    socketTimeout: 30000,
+                    socketTimeout: 60000, // Increased timeout
                 };
             } else {
-                // For Gmail default, use explicit host/port to force IPv4
+                // For Gmail default, use port 587 (STARTTLS) which is often more reliable than 465 on Render/IPv6
                 transporterConfig = {
                     host: 'smtp.gmail.com',
-                    port: 465,
-                    secure: true,
+                    port: 587,
+                    secure: false, // Use STARTTLS
                     auth: {
                         user: process.env.EMAIL_USER,
                         pass: process.env.EMAIL_PASS,
@@ -48,12 +48,12 @@ const sendEmail = async (to, subject, html, attachments, customSmtp = null) => {
                     pool: true,
                     maxConnections: 5,
                     maxMessages: 100,
-                    connectionTimeout: 30000,
+                    connectionTimeout: 60000, // Increased timeout
                     greetingTimeout: 30000,
-                    socketTimeout: 30000,
+                    socketTimeout: 60000, // Increased timeout
                 };
             }
-            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'smtp.gmail.com'} on port ${customSmtp ? (Number(customSmtp.port) || 587) : 465}`);
+            console.log(`[EmailService] Creating transporter for ${customSmtp ? customSmtp.host : 'smtp.gmail.com'} on port ${transporterConfig.port}`);
             transporter = nodemailer.createTransport(transporterConfig);
 
             // Verify connection configuration
