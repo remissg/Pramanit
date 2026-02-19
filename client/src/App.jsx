@@ -537,12 +537,11 @@ function MainApp({ theme, setTheme }) {
           alert(`Batch stopped. Sent ${results.success.length} certificates.`);
           break;
         }
-
         const batch = selectedRecipients.slice(i, i + BATCH_SIZE);
 
         await Promise.all(batch.map(async (recipient) => {
           try {
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
               templatePath,
               recipient,
               fields: fields.filter(f => f.isVisible),
@@ -551,7 +550,20 @@ function MainApp({ theme, setTheme }) {
               issuerName: emailConfig.issuerName,
               qrConfig
             });
-            results.success.push(recipient.email || recipient.name);
+
+            // Check for HTML response (Vercel Index Fallback)
+            if (typeof res.data === 'string' && res.data.trim().startsWith('<!doctype html>')) {
+              throw new Error("Misconfigured API URL: Frontend is hitting itself. Add VITE_API_BASE_URL to Vercel.");
+            }
+
+            if (res.data.emailSent === false) {
+              results.failed.push({
+                email: recipient.email || recipient.name,
+                error: "Certificate OK, but Email FAILED (Check Server Logs)."
+              });
+            } else {
+              results.success.push(recipient.email || recipient.name);
+            }
           } catch (err) {
             results.failed.push({
               email: recipient.email || recipient.name,
