@@ -660,7 +660,8 @@ const processCertificates = async (req, res) => {
                     fields: fields ? JSON.parse(fields) : [],
                     qrConfig: qrConfig ? JSON.parse(qrConfig) : null,
                     subject,
-                    emailBody: body
+                    emailBody: body,
+                    designId: req.body.designId // Pass designId to worker
                 },
                 branding: branding.toObject(),
                 smtpConfig,

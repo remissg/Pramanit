@@ -115,7 +115,9 @@ try {
                         issue_date: new Date(),
                         data_hash: crypto.createHash('sha256').update(`${certId}-${recipient.name}`).digest('hex'),
                         recipient_token: recipientToken,
-                        certificate_title: designConfig.title || 'Professional Certificate'
+                        recipient_token: recipientToken,
+                        certificate_title: designConfig.title || 'Professional Certificate',
+                        design_id: designConfig.designId // Link to Design model
                     });
 
                     await newVerification.save();

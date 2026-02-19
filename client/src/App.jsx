@@ -341,9 +341,12 @@ function MainApp({ theme, setTheme }) {
     }
   }, [user]);
 
+  const [currentDesignId, setCurrentDesignId] = useState(null);
+
   useEffect(() => {
     if (location.state && location.state.loadDesign) {
       const design = location.state.loadDesign;
+      setCurrentDesignId(design.id || design._id);
 
       const loadDesignData = (data) => {
         let designData = data;
@@ -556,7 +559,8 @@ function MainApp({ theme, setTheme }) {
               subject: emailConfig.subject,
               body: emailConfig.body,
               issuerName: emailConfig.issuerName,
-              qrConfig
+              qrConfig,
+              designId: currentDesignId // Pass designId to associate with verification record
             });
 
             // Check for HTML response (Vercel Index Fallback)
@@ -631,9 +635,6 @@ function MainApp({ theme, setTheme }) {
       setSaving(false);
     }
   };
-
-  // Cleanup: Remove the nested LandingPage return since it now has its own route
-  // if (!showApp) { ... }
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] font-sans text-[var(--text-main)] selection:bg-violet-500/30 transition-colors duration-500">
