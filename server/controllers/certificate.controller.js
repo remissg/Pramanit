@@ -599,11 +599,19 @@ const processSingle = async (req, res) => {
                 console.error('Email sending failed (Non-blocking):', emailError);
                 // We proceed without throwing, enabling the certificate to be returned
                 // potentially adding a flag to the response
+                let errorMsg = 'Email sending failed. Please download manually.';
+
+                if (emailError.code === 403 || emailError.message.includes('scope') || emailError.message.includes('permission')) {
+                    errorMsg = 'Email failed: Insufficient Gmail permissions. Please reconnect your Gmail account in Settings.';
+                } else if (emailError.code === 'ETIMEDOUT' || emailError.message.includes('formatted')) {
+                    errorMsg = 'Email failed: Connection timeout. Please check your network or try again.';
+                }
+
                 return res.json({
                     success: true,
                     email: recData.email,
                     emailSent: false,
-                    message: 'Certificate generated successfully. WARNING: Email sending failed (Server Timeout). Please download the certificate manually.'
+                    message: `Certificate generated. WARNING: ${errorMsg}`
                 });
             }
         }

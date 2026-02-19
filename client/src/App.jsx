@@ -24,6 +24,10 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmailPage from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import RecipientPortal from './components/RecipientPortal';
 import AdminPanel from './components/AdminPanel';
 
@@ -245,6 +249,10 @@ function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route
             path="/"
             element={<LandingPageWrapper theme={theme} setTheme={setTheme} />}

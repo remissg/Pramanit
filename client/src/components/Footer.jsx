@@ -51,16 +51,17 @@ const Footer = () => {
                                 <ShieldCheck size={14} />
                                 Verify Certificate
                             </button></li>
+                            <li><button onClick={() => navigate('/portal')} className="hover:text-violet-400 transition-colors">Recipient Portal</button></li>
                         </ul>
                     </div>
 
                     <div>
                         <h4 className="text-[var(--text-main)] font-black uppercase text-xs tracking-widest mb-6 transition-colors">Company</h4>
                         <ul className="space-y-4 text-sm font-bold text-[var(--text-muted)]">
-                            <li><a href="#" className="hover:text-violet-400 transition-colors">About</a></li>
-                            <li><a href="#" className="hover:text-violet-400 transition-colors">Contact</a></li>
-                            <li><a href="#" className="hover:text-violet-400 transition-colors">Privacy</a></li>
-                            <li><a href="#" className="hover:text-violet-400 transition-colors">Terms</a></li>
+                            <li><button onClick={() => navigate('/about')} className="hover:text-violet-400 transition-colors text-left">About</button></li>
+                            <li><button onClick={() => navigate('/contact')} className="hover:text-violet-400 transition-colors text-left">Contact</button></li>
+                            <li><button onClick={() => navigate('/privacy')} className="hover:text-violet-400 transition-colors text-left">Privacy</button></li>
+                            <li><button onClick={() => navigate('/terms')} className="hover:text-violet-400 transition-colors text-left">Terms</button></li>
                         </ul>
                     </div>
                 </div>

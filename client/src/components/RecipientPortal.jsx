@@ -79,7 +79,7 @@ export default function RecipientPortal({ theme, setTheme }) {
 
     const handleLinkedInShare = () => {
         const certUrl = `${window.location.origin}/verify/${certificate.certId}`;
-        const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(certificate.certificate_title || 'Certificate')}&organizationName=${encodeURIComponent(certificate.orgName || certificate.issuerName)}&issueYear=${new Date(certificate.issueDate).getFullYear()}&issueMonth=${new Date(certificate.issueDate).getMonth() + 1}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certificate.certId)}`;
+        const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(certificate.certificateTitle || 'Certificate')}&organizationName=${encodeURIComponent(certificate.orgName || certificate.issuerName)}&issueYear=${new Date(certificate.issueDate).getFullYear()}&issueMonth=${new Date(certificate.issueDate).getMonth() + 1}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certificate.certId)}`;
         window.open(linkedInUrl, '_blank');
     };
 
