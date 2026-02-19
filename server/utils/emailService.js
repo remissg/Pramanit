@@ -1,91 +1,64 @@
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
-const dns = require('dns');
 require('dotenv').config();
-
-// Force IPv4 to prevent Gmail SMTP hangs
-try {
-    dns.setDefaultResultOrder('ipv4first');
-} catch (e) {
-    console.warn('Could not set default result order for DNS:', e.message);
-}
 
 const OAuth2 = google.auth.OAuth2;
 
-// Initialize OAuth2 Client (Singleton)
-let transporter = null;
+const createOAuthClient = () => {
+    const oauth2Client = new OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        "https://developers.google.com/oauthplayground"
+    );
+    oauth2Client.setCredentials({
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+    });
+    return oauth2Client;
+};
 
-const createTransporter = async () => {
-    if (transporter) return transporter;
+// Helper to construct raw email message
+const makeBody = async (to, from, subject, message, attachments) => {
+    // initialize Nodemailer just to build the MIME message
+    const mailComposer = nodemailer.createTransport({
+        streamTransport: true,
+        newline: 'windows'
+    });
 
-    try {
-        const oauth2Client = new OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            "https://developers.google.com/oauthplayground" // Redirect URL
-        );
+    const mailOptions = {
+        to,
+        from,
+        subject,
+        html: message,
+        attachments
+    };
 
-        oauth2Client.setCredentials({
-            refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-        });
+    return new Promise((resolve, reject) => {
+        mailComposer.sendMail(mailOptions, (err, info) => {
+            if (err) return reject(err);
 
-        // Get Access Token
-        const accessToken = await new Promise((resolve, reject) => {
-            oauth2Client.getAccessToken((err, token) => {
-                if (err) {
-                    console.error('[EmailService] Failed to create access token:', err);
-                    // Rejecting here might stop the whole flow, maybe try without token?
-                    // Actually, Gmail OAuth needs it.
-                    reject(err);
-                }
-                resolve(token);
+            // info.message is a stream in streamTransport mode, but nodemailer often returns buffer or stream
+            // Actually, let's use the buffer functionality if possible.
+            // Wait, sendMail with streamTransport returns info.message as a stream.
+            // We need to consume it.
+
+            // Easier approach: Use MailComposer directly if possible, but let's stick to transporter as it handles attachments well.
+            // Nodemailer stream transport provides a stream.
+
+            const stream = info.message.createReadStream();
+            let buf = Buffer.alloc(0);
+            stream.on('data', (chunk) => {
+                buf = Buffer.concat([buf, chunk]);
             });
-        });
-
-        // Create standard transporter with forced IPv4 socket
-        transporter = nodemailer.createTransport({
-            service: 'gmail', // This sets host: smtp.gmail.com, port: 465, secure: true by default
-            host: 'smtp.gmail.com',
-            port: 587, // Explicitly use 587 (STARTTLS)
-            secure: false, // Must be false for 587
-            requireTLS: true,
-            auth: {
-                type: 'OAuth2',
-                user: process.env.EMAIL_USER,
-                clientId: process.env.GOOGLE_CLIENT_ID,
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-                accessToken: accessToken
-            },
-            tls: {
-                rejectUnauthorized: false
-            },
-            // Force IPv4 at the socket level - simpler and more robust than manual DNS
-            socketTimeout: 30000,
-            greetingTimeout: 10000, // Slightly longer greeting timeout
-            connectionTimeout: 10000,
-            family: 4 // Use IPv4 only
-        });
-
-        // Verify connection configuration
-        await new Promise((resolve, reject) => {
-            transporter.verify(function (error, success) {
-                if (error) {
-                    console.error('[EmailService] Transporter verification failed:', error);
-                    transporter = null; // Reset if failed
-                    reject(error);
-                } else {
-                    console.log("[EmailService] Server is ready to take our messages");
-                    resolve(success);
-                }
+            stream.on('end', () => {
+                const encoded = buf.toString('base64')
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+                resolve(encoded);
             });
+            stream.on('error', reject);
         });
-
-        return transporter;
-    } catch (error) {
-        console.error('[EmailService] Error creating transporter:', error);
-        throw error;
-    }
+    });
 };
 
 // Helper to determine the client URL
@@ -96,28 +69,34 @@ const getClientUrl = () => {
 };
 
 /**
- * Send an email using Gmail OAuth2
+ * Send an email using Gmail API (HTTPS) - Bypasses SMTP Port Blocks
  */
-const sendEmail = async (to, subject, html, attachments, customSmtp) => {
+const sendEmail = async (to, subject, html, attachments = []) => {
     try {
-        console.log(`[EmailService] Sending email to ${to} via Gmail OAuth2...`);
+        console.log(`[EmailService] Sending email to ${to} via Gmail API (HTTPS)...`);
 
-        const transporter = await createTransporter();
+        const auth = createOAuthClient();
+        const gmail = google.gmail({ version: 'v1', auth });
 
-        const mailOptions = {
-            from: `Pramanit <${process.env.EMAIL_USER}>`,
-            to: to,
-            subject: subject,
-            html: html,
-            attachments: attachments
-        };
+        // Build the raw email string
+        const rawMessage = await makeBody(to, `Pramanit <${process.env.EMAIL_USER}>`, subject, html, attachments);
 
-        const result = await transporter.sendMail(mailOptions);
-        console.log('[EmailService] Email sent successfully:', result.response);
-        return result;
+        const res = await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: {
+                raw: rawMessage
+            }
+        });
+
+        console.log('[EmailService] Email sent via API:', res.data.id);
+        return res.data;
 
     } catch (error) {
         console.error('[EmailService] Fatal Error sending email:', error.message);
+        // Log more details if available
+        if (error.response) {
+            console.error('API Error Details:', JSON.stringify(error.response.data));
+        }
         throw error;
     }
 };
