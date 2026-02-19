@@ -138,6 +138,17 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                     <p className="text-xs font-bold text-[var(--text-muted)] opacity-80 leading-relaxed transition-colors">Input the unique 36-character Serial ID found on the certificate.</p>
                                 </div>
                             </div>
+
+                            <div className="mt-12 pt-8 border-t border-[var(--glass-border)] flex flex-col items-center gap-4">
+                                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-60">Recipient Actions</p>
+                                <a
+                                    href="/portal"
+                                    className="flex items-center gap-2 text-xs font-black text-violet-500 hover:text-violet-400 transition-colors group"
+                                >
+                                    Lost your certificate? Access Recovery Portal
+                                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,7 @@ const Design = require('../models/Design');
 const IssuanceHistory = require('../models/IssuanceHistory');
 const Verification = require('../models/Verification');
 const webhookService = require('../utils/webhookService');
+const { hash } = require('../utils/encryption');
 
 const logIssuance = async (userId, designId, totalSent, recipientListRef) => {
     try {
@@ -109,6 +110,159 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     pdfDoc.setCreator('Pramanit Engine');
 
     return await pdfDoc.save();
+};
+
+const renderCertificateToBuffer = async (record) => {
+    let image, canvas, ctx;
+    const fontMap = {
+        'Inter': 'sans-serif',
+        'Montserrat': 'sans-serif',
+        'Outfit': 'sans-serif',
+        'Playfair Display': 'serif',
+        'serif': 'serif',
+        'Times New Roman': 'serif',
+        'Cursive': 'cursive',
+        'Pacifico': 'cursive',
+        'UnifrakturMaguntia': 'serif',
+        'Monospace': 'monospace'
+    };
+
+    // Helper to render fields
+    const renderFields = async (ctx, fields, width, height, data) => {
+        const scaleFactor = width / 800;
+        fields.forEach(field => {
+            const baseSize = parseFloat(field.fontSize) || 40;
+            const scaledFontSize = baseSize * scaleFactor;
+
+            let family = field.fontFamily ? field.fontFamily.replace(/"/g, '') : 'Arial';
+            if (fontMap[family]) family = fontMap[family];
+
+            const style = (field.isBold ? 'bold ' : '') + (field.isItalic ? 'italic ' : '');
+            ctx.font = `${style}${scaledFontSize}px "${family}"`;
+            ctx.fillStyle = field.color || '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const x = parseFloat(field.x) * width;
+            const y = parseFloat(field.y) * height;
+
+            // Simple Placeholders replacement
+            let text = field.text || field.label || '';
+            // Check if text contains merge tags
+            if (text.includes('{{') || text.includes('{')) {
+                Object.keys(data).forEach(key => {
+                    const regex = new RegExp(`{{${key}}}|{${key}}`, 'gi');
+                    text = text.replace(regex, data[key] || '');
+                });
+                // Cleanup unused tags
+                text = text.replace(/{{.*?}}|{.*?}/g, '');
+            } else if (field.id) {
+                // Direct ID match fallback
+                const key = field.id.trim().toLowerCase();
+                const match = Object.keys(data).find(k => k.toLowerCase() === key);
+                if (match) text = data[match];
+            }
+
+            if (field.textCase === 'uppercase') text = text.toUpperCase();
+            ctx.fillText(text, x, y);
+
+            if (field.isUnderline) {
+                const metrics = ctx.measureText(text);
+                const underlineY = y + (scaledFontSize / 2) * 0.8;
+                const h = Math.max(1, scaledFontSize / 20);
+                ctx.fillRect(x - metrics.width / 2, underlineY, metrics.width, h);
+            }
+        });
+    };
+
+    if (record.design_id && record.design_id.design_json) {
+        // Render from Design JSON
+        const design = record.design_id.design_json;
+        let bgUrl = '';
+
+        if (design.backgroundImage && design.backgroundImage.src) {
+            bgUrl = design.backgroundImage.src;
+        } else if (typeof design.backgroundImage === 'string') {
+            bgUrl = design.backgroundImage;
+        }
+
+        if (bgUrl && (bgUrl.startsWith('http') || bgUrl.startsWith('data:'))) {
+            image = await loadImage(bgUrl);
+        } else {
+            // Fallback blank canvas
+            canvas = createCanvas(800, 600);
+            ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 800, 600);
+        }
+
+        if (image) {
+            canvas = createCanvas(image.width, image.height);
+            ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0);
+        }
+
+        // Convert Fabric Objects to Fields
+        const fields = [];
+        if (design.objects) {
+            design.objects.forEach(obj => {
+                if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                    fields.push({
+                        id: obj.id || obj.text, // approximate ID
+                        text: obj.text,
+                        x: (obj.left + (obj.originX === 'center' ? 0 : obj.width / 2)) / canvas.width,
+                        y: (obj.top + (obj.originY === 'center' ? 0 : obj.height / 2)) / canvas.height,
+                        fontSize: obj.fontSize,
+                        fontFamily: obj.fontFamily,
+                        color: obj.fill,
+                        isBold: obj.fontWeight === 'bold',
+                        isItalic: obj.fontStyle === 'italic',
+                        isUnderline: obj.underline,
+                        textCase: 'normal'
+                    });
+                }
+            });
+        }
+
+        // Prepare Data
+        const data = {
+            name: record.recipient_name,
+            email: record.getDecryptedEmail ? record.getDecryptedEmail() : record.recipient_email,
+            issuer: record.issuer_name,
+            date: record.issue_date.toISOString().split('T')[0],
+            cert_id: record.cert_id,
+        };
+        if (record.certificate_title) data.course = record.certificate_title;
+
+        await renderFields(ctx, fields, canvas.width, canvas.height, data);
+
+    } else {
+        // FALLBACK: User deleted design or legacy record.
+        canvas = createCanvas(800, 600);
+        ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+        gradient.addColorStop(0, '#f8fafc');
+        gradient.addColorStop(1, '#e2e8f0');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 800, 600);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 20;
+        ctx.strokeRect(40, 40, 720, 520);
+        ctx.fillStyle = '#1e293b';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 40px "Inter", sans-serif';
+        ctx.fillText('CERTIFICATE OF COMPLETION', 400, 150);
+        ctx.font = '30px "Inter", sans-serif';
+        ctx.fillText('Presented to', 400, 240);
+        ctx.font = 'bold 50px "Inter", sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(record.recipient_name, 400, 320);
+        ctx.fillStyle = '#475569';
+        ctx.font = '20px "Inter", sans-serif';
+        ctx.fillText(`Issued by ${record.issuer_name}`, 400, 420);
+        ctx.fillText(`Date: ${record.issue_date.toISOString().split('T')[0]}`, 400, 450);
+    }
+    return canvas.toBuffer('image/png');
 };
 
 // Helper to parsing CSV or Excel
@@ -741,6 +895,71 @@ const getRecipientPortal = async (req, res) => {
     }
 };
 
+const findCertificatesByEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required.' });
+
+        // Generate blind index
+        const emailHash = hash(email.toLowerCase().trim());
+
+        // Find all active certificates for this email
+        const records = await Verification.find({
+            recipient_email_hash: emailHash,
+            status: 'active'
+        }).sort({ issue_date: -1 });
+
+        if (records.length === 0) {
+            // return 200 to avoid email harvesting, but informative for real usage
+            return res.json({ message: 'If certificates are found for this email, a recovery link has been sent.' });
+        }
+
+        // Prepare recovery email content
+        const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
+
+        // Group by Issuer/Org if found
+        let linksList = records.map(r => {
+            const portalLink = `${clientUrl}/portal?token=${r.recipient_token}`;
+            return `<li><strong>${r.certificate_title || 'Certificate'}</strong> issued by ${r.org_name || r.issuer_name}<br/><a href="${portalLink}">${portalLink}</a></li>`;
+        }).join('');
+
+        const html = `
+<div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+    <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Pramanit</h1>
+    </div>
+    
+    <div style="text-align: center; margin-bottom: 32px;">
+        <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">Certificate Recovery</h2>
+        <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
+            We found ${records.length} certificate(s) associated with this email address. Click the links below to access your digital certificates.
+        </p>
+    </div>
+
+    <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 32px;">
+        <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.8;">
+            ${linksList}
+        </ul>
+    </div>
+
+    <div style="text-align: center; padding-top: 32px; border-top: 1px solid #f1f5f9;">
+        <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin: 0;">
+            If you didn't request this email, you can safely ignore it.
+        </p>
+    </div>
+</div>
+`;
+
+        // Send via System Email (Priority for recovery)
+        await sendEmail(email, 'Your Certificate Recovery Links - Pramanit', html);
+
+        res.json({ message: 'If certificates are found for this email, a recovery link has been sent.' });
+    } catch (e) {
+        console.error('Certificate recovery error:', e);
+        res.status(500).json({ message: 'Failed to process recovery request.' });
+    }
+};
+
 const requestCorrection = async (req, res) => {
     try {
         const { token, newName } = req.body;
@@ -945,175 +1164,42 @@ const getCertificateOGImage = async (req, res) => {
             return res.status(404).send('Certificate not found');
         }
 
-        let image, canvas, ctx;
-        const fontMap = {
-            'Inter': 'sans-serif',
-            'Montserrat': 'sans-serif',
-            'Outfit': 'sans-serif',
-            'Playfair Display': 'serif',
-            'serif': 'serif',
-            'Times New Roman': 'serif',
-            'Cursive': 'cursive',
-            'Pacifico': 'cursive',
-            'UnifrakturMaguntia': 'serif',
-            'Monospace': 'monospace'
-        };
-
-        // Helper to render fields
-        const renderFields = async (ctx, fields, width, height, data) => {
-            const scaleFactor = width / 800;
-            fields.forEach(field => {
-                const baseSize = parseFloat(field.fontSize) || 40;
-                const scaledFontSize = baseSize * scaleFactor;
-
-                let family = field.fontFamily ? field.fontFamily.replace(/"/g, '') : 'Arial';
-                if (fontMap[family]) family = fontMap[family];
-
-                const style = (field.isBold ? 'bold ' : '') + (field.isItalic ? 'italic ' : '');
-                ctx.font = `${style}${scaledFontSize}px "${family}"`;
-                ctx.fillStyle = field.color || '#000000';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                const x = parseFloat(field.x) * width;
-                const y = parseFloat(field.y) * height;
-
-                // Simple Placeholders replacement
-                let text = field.text || field.label || '';
-                // Check if text contains merge tags
-                if (text.includes('{{') || text.includes('{')) {
-                    Object.keys(data).forEach(key => {
-                        const regex = new RegExp(`{{${key}}}|{${key}}`, 'gi');
-                        text = text.replace(regex, data[key] || '');
-                    });
-                    // Cleanup unused tags
-                    text = text.replace(/{{.*?}}|{.*?}/g, '');
-                } else if (field.id) {
-                    // Direct ID match fallback
-                    const key = field.id.trim().toLowerCase();
-                    const match = Object.keys(data).find(k => k.toLowerCase() === key);
-                    if (match) text = data[match];
-                }
-
-                if (field.textCase === 'uppercase') text = text.toUpperCase();
-                ctx.fillText(text, x, y);
-
-                if (field.isUnderline) {
-                    const metrics = ctx.measureText(text);
-                    const underlineY = y + (scaledFontSize / 2) * 0.8;
-                    const h = Math.max(1, scaledFontSize / 20);
-                    ctx.fillRect(x - metrics.width / 2, underlineY, metrics.width, h);
-                }
-            });
-        };
-
-        if (record.design_id && record.design_id.design_json) {
-            // Render from Design JSON
-            const design = record.design_id.design_json;
-            let bgUrl = '';
-
-            if (design.backgroundImage && design.backgroundImage.src) {
-                bgUrl = design.backgroundImage.src;
-            } else if (typeof design.backgroundImage === 'string') {
-                bgUrl = design.backgroundImage;
-            }
-
-            if (bgUrl && (bgUrl.startsWith('http') || bgUrl.startsWith('data:'))) {
-                image = await loadImage(bgUrl);
-            } else {
-                // Fallback blank canvas
-                canvas = createCanvas(800, 600);
-                ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, 800, 600);
-            }
-
-            if (image) {
-                canvas = createCanvas(image.width, image.height);
-                ctx = canvas.getContext('2d');
-                ctx.drawImage(image, 0, 0);
-            }
-
-            // Convert Fabric Objects to Fields
-            const fields = [];
-            if (design.objects) {
-                design.objects.forEach(obj => {
-                    if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
-                        fields.push({
-                            id: obj.id || obj.text, // approximate ID
-                            text: obj.text,
-                            x: (obj.left + (obj.originX === 'center' ? 0 : obj.width / 2)) / canvas.width,
-                            y: (obj.top + (obj.originY === 'center' ? 0 : obj.height / 2)) / canvas.height,
-                            fontSize: obj.fontSize,
-                            fontFamily: obj.fontFamily,
-                            color: obj.fill,
-                            isBold: obj.fontWeight === 'bold',
-                            isItalic: obj.fontStyle === 'italic',
-                            isUnderline: obj.underline,
-                            textCase: 'normal'
-                        });
-                    }
-                });
-            }
-
-            // Prepare Data
-            const data = {
-                name: record.recipient_name,
-                email: record.getDecryptedEmail ? record.getDecryptedEmail() : record.recipient_email,
-                issuer: record.issuer_name,
-                date: record.issue_date.toISOString().split('T')[0],
-                cert_id: record.cert_id,
-            };
-            if (record.certificate_title) data.course = record.certificate_title;
-
-            await renderFields(ctx, fields, canvas.width, canvas.height, data);
-
-        } else {
-            // FALLBACK: User deleted design or legacy record.
-            // Render a generic clean certificate.
-            canvas = createCanvas(800, 600);
-            ctx = canvas.getContext('2d');
-
-            // Background
-            const gradient = ctx.createLinearGradient(0, 0, 800, 600);
-            gradient.addColorStop(0, '#f8fafc');
-            gradient.addColorStop(1, '#e2e8f0');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 800, 600);
-
-            // Border
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 20;
-            ctx.strokeRect(40, 40, 720, 520);
-
-            // Text
-            ctx.fillStyle = '#1e293b';
-            ctx.textAlign = 'center';
-
-            ctx.font = 'bold 40px "Inter", sans-serif';
-            ctx.fillText('CERTIFICATE OF COMPLETION', 400, 150);
-
-            ctx.font = '30px "Inter", sans-serif';
-            ctx.fillText('Presented to', 400, 240);
-
-            ctx.font = 'bold 50px "Inter", sans-serif';
-            ctx.fillStyle = '#0f172a';
-            ctx.fillText(record.recipient_name, 400, 320);
-
-            ctx.fillStyle = '#475569';
-            ctx.font = '20px "Inter", sans-serif';
-            ctx.fillText(`Issued by ${record.issuer_name}`, 400, 420);
-            ctx.fillText(`Date: ${record.issue_date.toISOString().split('T')[0]}`, 400, 450);
-        }
-
+        const imageBuffer = await renderCertificateToBuffer(record);
         res.setHeader('Content-Type', 'image/png');
         // Cache for 1 day
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        canvas.createPNGStream().pipe(res);
+        res.send(imageBuffer);
 
     } catch (e) {
         console.error('OG Image generation error:', e);
         res.status(500).send('Failed to generate image');
+    }
+};
+
+const downloadCertificate = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const record = await Verification.findOne({ cert_id: id }).populate('design_id');
+
+        if (!record) {
+            return res.status(404).json({ message: 'Certificate not found' });
+        }
+
+        const imageBuffer = await renderCertificateToBuffer(record);
+        const pdfBuffer = await createPdfWithMetadata(imageBuffer, {
+            certId: record.cert_id,
+            recipientName: record.recipient_name,
+            issuerName: record.issuer_name,
+            verifyUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${record.cert_id}`
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="certificate-${record.recipient_name.replace(/\s+/g, '_')}.pdf"`);
+        res.send(Buffer.from(pdfBuffer));
+
+    } catch (e) {
+        console.error('PDF Download error:', e);
+        res.status(500).json({ message: 'Failed to generate PDF' });
     }
 };
 
@@ -1146,7 +1232,9 @@ module.exports = {
     getCorrectionRequests,
     handleCorrectionAction,
     sendEmail: sendTestEmail, // Aliasing for route compatibility
-    getCertificateOGImage
+    getCertificateOGImage,
+    findCertificatesByEmail,
+    downloadCertificate
 };
 
 

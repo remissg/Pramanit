@@ -12,7 +12,9 @@ import {
     ShieldCheck,
     ExternalLink,
     ChevronRight,
-    Award
+    Award,
+    Mail,
+    Sparkles
 } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
@@ -29,10 +31,12 @@ export default function RecipientPortal({ theme, setTheme }) {
     const [newName, setNewName] = useState('');
     const [submittingCorrection, setSubmittingCorrection] = useState(false);
     const [correctionMessage, setCorrectionMessage] = useState(null);
+    const [searchEmail, setSearchEmail] = useState('');
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchStatus, setSearchStatus] = useState(null); // { type: 'success' | 'error', text: string }
 
     useEffect(() => {
         if (!token) {
-            setError('Access token is missing. Please use the link provided in your email.');
             setLoading(false);
             return;
         }
@@ -74,20 +78,47 @@ export default function RecipientPortal({ theme, setTheme }) {
     };
 
     const handleLinkedInShare = () => {
-        if (!certificate) return;
+        const certUrl = `${window.location.origin}/verify/${certificate.certId}`;
+        const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(certificate.certificate_title || 'Certificate')}&organizationName=${encodeURIComponent(certificate.orgName || certificate.issuerName)}&issueYear=${new Date(certificate.issueDate).getFullYear()}&issueMonth=${new Date(certificate.issueDate).getMonth() + 1}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(certificate.certId)}`;
+        window.open(linkedInUrl, '_blank');
+    };
 
-        const baseUrl = "https://www.linkedin.com/profile/add";
-        const params = new URLSearchParams({
-            startTask: "CERTIFICATION_NAME",
-            name: certificate.issuerName + " Certification",
-            organizationName: certificate.orgName || "Pramanit",
-            issueYear: new Date(certificate.issueDate).getFullYear(),
-            issueMonth: new Date(certificate.issueDate).getMonth() + 1,
-            certUrl: `${window.location.origin}/verify/${certificate.certId}`,
-            certId: certificate.certId
-        });
+    const handleDownload = async () => {
+        try {
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${certificate.certId}`,
+                { responseType: 'blob' }
+            );
 
-        window.open(`${baseUrl}?${params.toString()}`, '_blank');
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `certificate-${certificate.recipientName.replace(/\s+/g, '_')}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Download failed:', err);
+        }
+    };
+
+    const handleSearchSubmit = async (e) => {
+        e.preventDefault();
+        if (!searchEmail.trim()) return;
+
+        setSearchLoading(true);
+        setSearchStatus(null);
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/find-certificates`, {
+                email: searchEmail
+            });
+            setSearchStatus({ type: 'success', text: response.data.message });
+            setSearchEmail('');
+        } catch (err) {
+            setSearchStatus({ type: 'error', text: err.response?.data?.message || 'Failed to process request.' });
+        } finally {
+            setSearchLoading(false);
+        }
     };
 
     if (loading) {
@@ -113,13 +144,97 @@ export default function RecipientPortal({ theme, setTheme }) {
                         <h2 className="text-2xl font-black text-[var(--text-heading)] mb-4 leading-tight">Access Denied</h2>
                         <p className="text-[var(--text-muted)] font-bold mb-8">{error}</p>
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={() => {
+                                setError(null);
+                                navigate('/portal');
+                            }}
                             className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-2xl shadow-lg shadow-violet-500/20 transition-all active:scale-95"
                         >
-                            Return to Home
+                            Try Recovery Mode
                         </button>
                     </div>
                 </div>
+                <Footer />
+            </div>
+        );
+    }
+
+    if (!token && !certificate) {
+        return (
+            <div className="min-h-screen bg-[var(--bg-main)] selection:bg-violet-500/30">
+                <Header theme={theme} setTheme={setTheme} />
+                <main className="pt-40 pb-20 max-w-7xl mx-auto px-6">
+                    <div className="max-w-xl mx-auto text-center space-y-12">
+                        <div className="space-y-4">
+                            <div className="w-20 h-20 bg-violet-600/10 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-inner border border-violet-500/10">
+                                <Award className="text-violet-500" size={40} />
+                            </div>
+                            <h1 className="text-4xl md:text-5xl font-black text-[var(--text-heading)] tracking-tight">Find My Certificates</h1>
+                            <p className="text-[var(--text-muted)] font-medium leading-relaxed max-w-md mx-auto">
+                                Lost your original link? No problem. Enter your email address below and we'll send you all your verified credentials.
+                            </p>
+                        </div>
+
+                        <div className="glass-card rounded-[32px] p-8 md:p-10 border border-[var(--glass-border)] shadow-2xl relative overflow-hidden group">
+                            {/* Background decoration */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/5 blur-3xl -z-10 transition-all group-hover:bg-violet-600/10"></div>
+
+                            <form onSubmit={handleSearchSubmit} className="space-y-6 relative">
+                                <div className="space-y-3 text-left">
+                                    <label className="text-[10px] font-black text-violet-500 uppercase tracking-[0.2em] ml-2">Registered Email</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
+                                        <input
+                                            type="email"
+                                            required
+                                            value={searchEmail}
+                                            onChange={(e) => setSearchEmail(e.target.value)}
+                                            placeholder="you@example.com"
+                                            className="w-full bg-[var(--bg-input)] border border-[var(--glass-border)] rounded-2xl py-5 pl-16 pr-6 text-[var(--text-main)] font-black outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all text-lg"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={searchLoading}
+                                    className="w-full py-5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black rounded-2xl shadow-xl shadow-violet-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 text-lg group"
+                                >
+                                    {searchLoading ? <Loader className="animate-spin" size={20} /> : (
+                                        <>
+                                            Search Credentials
+                                            <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+
+                            {searchStatus && (
+                                <div className={`mt-8 p-6 rounded-2xl border flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 ${searchStatus.type === 'success'
+                                    ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500'
+                                    : 'bg-rose-500/5 border-rose-500/20 text-rose-500'
+                                    }`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${searchStatus.type === 'success' ? 'bg-emerald-500/10' : 'bg-rose-500/10'
+                                        }`}>
+                                        {searchStatus.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                                    </div>
+                                    <p className="text-sm font-black tracking-tight leading-snug">
+                                        {searchStatus.text}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="pt-8 flex flex-col items-center gap-6">
+                            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em]">Secure Verification by Pramanit</p>
+                            <div className="flex gap-4">
+                                <div className="p-3 bg-[var(--bg-input)] rounded-xl border border-[var(--glass-border)] opacity-40 grayscale group-hover:grayscale-0 transition-all">
+                                    <ShieldCheck size={20} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
                 <Footer />
             </div>
         );
@@ -193,7 +308,10 @@ export default function RecipientPortal({ theme, setTheme }) {
                                             Public Verification
                                             <ExternalLink size={12} />
                                         </a>
-                                        <button className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-input)] hover:bg-[var(--glass)] text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-violet-500 rounded-xl border border-[var(--glass-border)] transition-all">
+                                        <button
+                                            onClick={handleDownload}
+                                            className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-input)] hover:bg-[var(--glass)] text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-violet-500 rounded-xl border border-[var(--glass-border)] transition-all"
+                                        >
                                             <Download size={14} />
                                             Certificate PDF
                                         </button>

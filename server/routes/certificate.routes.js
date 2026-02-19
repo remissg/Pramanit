@@ -27,7 +27,9 @@ router.post('/preview-batch', authenticateToken, upload.fields([{ name: 'templat
 router.get('/history', authenticateToken, certificateController.getIssuanceHistory);
 router.get('/verify/:id', certificateController.verifyCertificate);
 router.get('/og-image/:id', certificateController.getCertificateOGImage);
+router.get('/download/:id', certificateController.downloadCertificate);
 router.get('/portal', certificateController.getRecipientPortal);
+router.post('/find-certificates', certificateController.findCertificatesByEmail);
 router.post('/request-correction', certificateController.requestCorrection);
 router.get('/corrections', authenticateToken, certificateController.getCorrectionRequests);
 router.post('/corrections/action', authenticateToken, certificateController.handleCorrectionAction);
