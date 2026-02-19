@@ -42,23 +42,13 @@ const createTransporter = async () => {
             });
         });
 
-        // Resolve IPv4 address for smtp.gmail.com manually to bypass IPv6 issues on Render
-        let smtpHost = 'smtp.gmail.com';
-        try {
-            const addresses = await dns.promises.resolve4('smtp.gmail.com');
-            if (addresses && addresses.length > 0) {
-                smtpHost = addresses[0];
-                console.log(`[EmailService] Resolved smtp.gmail.com to IPv4: ${smtpHost}`);
-            }
-        } catch (dnsErr) {
-            console.warn('[EmailService] Failed to resolve IPv4 for smtp.gmail.com, falling back to hostname:', dnsErr.message);
-        }
-
+        // Create standard transporter with forced IPv4 socket
         transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: 587, // Changed to 587 (STARTTLS) to bypass potential port 465 blocks
-            secure: false, // Must be false for port 587
-            requireTLS: true, // Force TLS upgrade
+            service: 'gmail', // This sets host: smtp.gmail.com, port: 465, secure: true by default
+            host: 'smtp.gmail.com',
+            port: 587, // Explicitly use 587 (STARTTLS)
+            secure: false, // Must be false for 587
+            requireTLS: true,
             auth: {
                 type: 'OAuth2',
                 user: process.env.EMAIL_USER,
@@ -68,14 +58,13 @@ const createTransporter = async () => {
                 accessToken: accessToken
             },
             tls: {
-                servername: 'smtp.gmail.com', // Crucial: Verify certificate against real hostname, not IP
                 rejectUnauthorized: false
             },
-            logger: false,
-            debug: false,
-            connectionTimeout: 10000, // 10 seconds
-            socketTimeout: 30000,     // 30 seconds
-            greetingTimeout: 5000     // 5 seconds
+            // Force IPv4 at the socket level - simpler and more robust than manual DNS
+            socketTimeout: 30000,
+            greetingTimeout: 10000, // Slightly longer greeting timeout
+            connectionTimeout: 10000,
+            family: 4 // Use IPv4 only
         });
 
         // Verify connection configuration
