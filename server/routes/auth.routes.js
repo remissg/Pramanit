@@ -45,6 +45,7 @@ router.get('/admin/users', authenticateToken, authController.getAllUsers);
 router.post('/admin/toggle-plan', authenticateToken, authController.toggleUserPlan);
 router.delete('/delete-account', authenticateToken, authController.deleteAccount);
 router.get('/google/connect', authenticateToken, authController.connectGmail);
+router.post('/google/disconnect', authenticateToken, authController.googleDisconnect);
 router.get('/google/callback', authController.googleCallback);
 
 module.exports = {

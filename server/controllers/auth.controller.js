@@ -467,14 +467,31 @@ const googleCallback = async (req, res) => {
             ? `https://${process.env.FRONTEND_URL}`
             : 'http://localhost:5173';
 
-        res.redirect(`${frontendUrl}/settings?gmail_connected=success&email=${data.email}`);
+        res.redirect(`${frontendUrl}/dashboard?gmail_connected=success&email=${data.email}`);
 
     } catch (error) {
         console.error('Google Callback Error:', error);
         const frontendUrl = process.env.FRONTEND_URL
             ? `https://${process.env.FRONTEND_URL}`
             : 'http://localhost:5173';
-        res.redirect(`${frontendUrl}/settings?gmail_connected=failed&error=${error.message}`);
+        res.redirect(`${frontendUrl}/dashboard?gmail_connected=failed&error=${error.message}`);
+    }
+};
+
+const googleDisconnect = async (req, res) => {
+    try {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(req.user.id, {
+            $unset: {
+                gmail_refresh_token: 1,
+                gmail_access_token: 1,
+                gmail_email: 1
+            }
+        });
+        res.json({ message: 'Gmail disconnected successfully' });
+    } catch (error) {
+        console.error('Logout Gmail Error:', error);
+        res.status(500).json({ message: 'Failed to disconnect Gmail' });
     }
 };
 
@@ -491,5 +508,6 @@ module.exports = {
     resetPassword,
     deleteAccount,
     connectGmail,
-    googleCallback
+    googleCallback,
+    googleDisconnect
 };

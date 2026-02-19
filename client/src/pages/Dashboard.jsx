@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -52,6 +52,23 @@ const Dashboard = ({ theme, setTheme }) => {
     const [updatingWebhook, setUpdatingWebhook] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
 
+    // Custom Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        type: 'info' // 'info' | 'confirm' | 'success' | 'error'
+    });
+
+    const showModal = (title, message, type = 'info', onConfirm = null) => {
+        setConfirmModal({ isOpen: true, title, message, type, onConfirm });
+    };
+
+    const closeModal = () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    };
+
     // Register custom Blot for variable highlighting
     useEffect(() => {
         const Quill = ReactQuill.Quill;
@@ -85,14 +102,37 @@ const Dashboard = ({ theme, setTheme }) => {
         if (status === 'success') {
             setGmailConnected(true);
             setGmailEmail(connectedEmail);
-            alert(`Successfully connected Gmail account: ${connectedEmail}`);
+            setActiveTab('settings'); // Switch to settings tab to show status
+            showModal('Gmail Connected', `Successfully connected Gmail account: ${connectedEmail}`, 'success');
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (status === 'failed') {
-            alert(`Failed to connect Gmail: ${error}`);
+            setActiveTab('settings');
+            showModal('Connection Failed', `Failed to connect Gmail: ${error}`, 'error');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-    }, []);
+    }, [navigate]);
+
+    const handleDisconnectGmail = async () => {
+        showModal(
+            'Disconnect Gmail',
+            'Are you sure you want to disconnect your Gmail account? This will revert to system default/SMTP for sending.',
+            'confirm',
+            async () => {
+                try {
+                    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/google/disconnect`, {}, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setGmailConnected(false);
+                    setGmailEmail('');
+                    showModal('Disconnected', 'Gmail disconnected successfully', 'success');
+                } catch (err) {
+                    console.error('Failed to disconnect Gmail', err);
+                    showModal('Error', 'Failed to disconnect Gmail', 'error');
+                }
+            }
+        );
+    };
 
     useEffect(() => {
         if (user) {
@@ -146,7 +186,7 @@ const Dashboard = ({ theme, setTheme }) => {
             window.location.href = res.data.url;
         } catch (err) {
             console.error('Failed to initiate Gmail connect', err);
-            alert('Failed to connect Gmail');
+            showModal('Error', 'Failed to connect Gmail', 'error');
         }
     };
 
@@ -178,10 +218,10 @@ const Dashboard = ({ theme, setTheme }) => {
     const handleSaveSettings = async () => {
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/update-profile`, settings);
-            alert('Settings updated successfully!');
+            showModal('Success', 'Settings updated successfully!', 'success');
         } catch (err) {
             console.error('Failed to update settings', err);
-            alert('Failed to update settings');
+            showModal('Error', 'Failed to update settings', 'error');
         }
     };
 
@@ -189,30 +229,38 @@ const Dashboard = ({ theme, setTheme }) => {
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/designs/${id}/clone`);
             setDesigns([res.data, ...designs]);
-            alert('Design cloned successfully!');
+            showModal('Success', 'Design cloned successfully!', 'success');
         } catch (err) {
             console.error('Failed to clone design', err);
-            alert('Failed to clone design');
+            showModal('Error', 'Failed to clone design', 'error');
         }
     };
 
     const handleDelete = async (id, type) => {
-        if (!window.confirm(`Are you sure you want to delete this ${type === 'designs' ? 'design' : 'template'}?`)) return;
-        try {
-            await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/${type}/${id}`);
-            if (type === 'designs') {
-                setDesigns(designs.filter(d => d.id !== id));
-            } else {
-                setEmailTemplates(emailTemplates.filter(t => t.id !== id));
+        showModal(
+            'Delete Item',
+            `Are you sure you want to delete this ${type === 'designs' ? 'design' : 'template'}?`,
+            'confirm',
+            async () => {
+                try {
+                    await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/${type}/${id}`);
+                    if (type === 'designs') {
+                        setDesigns(designs.filter(d => d.id !== id));
+                    } else {
+                        setEmailTemplates(emailTemplates.filter(t => t.id !== id));
+                    }
+                    showModal('Deleted', 'Item removed successfully', 'success');
+                } catch (err) {
+                    console.error('Failed to delete item', err);
+                    showModal('Error', 'Failed to delete item', 'error');
+                }
             }
-        } catch (err) {
-            console.error('Failed to delete item', err);
-        }
+        );
     };
 
     const handleSaveTemplate = async () => {
         if (!templateForm.name || !templateForm.subject || !templateForm.bodyHtml) {
-            alert('Please fill in all required fields.');
+            showModal('Information Missing', 'Please fill in all required fields.', 'info');
             return;
         }
 
@@ -224,7 +272,7 @@ const Dashboard = ({ theme, setTheme }) => {
             // Wait, "Allow senders to save their own Custom Templates... B. The Template Editor"
 
             if (editingTemplate) {
-                alert('Update functionality coming soon. For now please create a new template.');
+                showModal('Update Coming Soon', 'Update functionality is coming soon. For now please create a new template.', 'info');
                 return;
             }
 
@@ -234,12 +282,12 @@ const Dashboard = ({ theme, setTheme }) => {
             setTemplateForm({ name: '', subject: '', bodyHtml: '', isDefault: false });
         } catch (err) {
             console.error('Failed to save template', err);
-            alert('Failed to save template');
+            showModal('Error', 'Failed to save template', 'error');
         }
     };
 
     const handleAiSuggest = async () => {
-        if (!aiPrompt) return alert('Please describe your event first.');
+        if (!aiPrompt) return showModal('Input Required', 'Please describe your event first.', 'info');
         setAiGenerating(true);
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/ai/generate-content`, {
@@ -257,9 +305,10 @@ const Dashboard = ({ theme, setTheme }) => {
             });
             setShowAiModal(false);
             setAiPrompt('');
+            showModal('AI Draft Ready!', 'Great news! Your template has been drafted by AI. You can now tweak it before saving.', 'success');
         } catch (err) {
             console.error('AI Suggestion failed', err);
-            alert('AI failed to generate content. Please ensure your GEMINI_API_KEY is configured.');
+            showModal('AI Error', 'AI failed to generate content. Please ensure your GEMINI_API_KEY is configured.', 'error');
         } finally {
             setAiGenerating(false);
         }
@@ -278,19 +327,26 @@ const Dashboard = ({ theme, setTheme }) => {
     };
 
     const handleRotateKey = async () => {
-        if (!confirm('Are you sure? Your existing API key will stop working immediately.')) return;
-        setRotatingKey(true);
-        try {
-            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/external/keys/rotate`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setApiKey(res.data.apiKey);
-            alert('API Key Rotated Successfully! ✨');
-        } catch (err) {
-            console.error('Rotation failed', err);
-        } finally {
-            setRotatingKey(false);
-        }
+        showModal(
+            'Rotate API Key',
+            'Are you sure? Your existing API key will stop working immediately. This cannot be undone.',
+            'confirm',
+            async () => {
+                setRotatingKey(true);
+                try {
+                    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/external/keys/rotate`, {}, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setApiKey(res.data.apiKey);
+                    showModal('Success', 'API Key Rotated Successfully! ✨', 'success');
+                } catch (err) {
+                    console.error('Rotation failed', err);
+                    showModal('Error', 'Failed to rotate API key', 'error');
+                } finally {
+                    setRotatingKey(false);
+                }
+            }
+        );
     };
 
     const handleUpdateWebhook = async () => {
@@ -299,9 +355,10 @@ const Dashboard = ({ theme, setTheme }) => {
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/external/webhook/url`, { url: webhookUrl }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Webhook URL Updated! 📡');
+            showModal('Success', 'Webhook URL Updated! 📡', 'success');
         } catch (err) {
             console.error('Webhook update failed', err);
+            showModal('Error', 'Failed to update webhook URL', 'error');
         } finally {
             setUpdatingWebhook(false);
         }
@@ -311,10 +368,10 @@ const Dashboard = ({ theme, setTheme }) => {
         try {
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/corrections/action`, { id, action });
             setCorrections(corrections.filter(c => c.id !== id));
-            alert(`Correction ${action}d successfully!`);
+            showModal('Action Success', `Correction ${action}d successfully!`, 'success');
         } catch (err) {
             console.error('Failed to process correction action', err);
-            alert('Failed to process correction action');
+            showModal('Error', 'Failed to process correction action', 'error');
         }
     };
 
@@ -553,7 +610,13 @@ const Dashboard = ({ theme, setTheme }) => {
                                                     {gmailEmail}
                                                 </p>
                                             </div>
-                                            {/* Disconnect logic to be added later if needed */}
+                                            <button
+                                                onClick={handleDisconnectGmail}
+                                                className="p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all group/disconnect border border-transparent hover:border-rose-500/20"
+                                                title="Disconnect Gmail"
+                                            >
+                                                <X size={20} className="group-hover/disconnect:rotate-90 transition-transform" />
+                                            </button>
                                         </div>
                                     ) : (
                                         <button
@@ -624,13 +687,30 @@ const Dashboard = ({ theme, setTheme }) => {
                                     </div>
                                 </div>
 
-                                <div className="mt-12 flex justify-end">
+                                <div className="flex justify-end gap-4 mt-12">
+                                    {(settings.smtpHost || settings.smtpUser) && (
+                                        <button
+                                            onClick={() => {
+                                                showModal(
+                                                    'Clear SMTP',
+                                                    'Are you sure you want to clear all SMTP settings?',
+                                                    'confirm',
+                                                    () => {
+                                                        setSettings({ ...settings, smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '' });
+                                                        showModal('Cleared', 'SMTP settings wiped from form. Click Save All Settings to apply.', 'success');
+                                                    }
+                                                );
+                                            }}
+                                            className="px-6 py-4 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                        >
+                                            Clear SMTP
+                                        </button>
+                                    )}
                                     <button
                                         onClick={handleSaveSettings}
-                                        className="px-12 py-5 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-3xl shadow-xl shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-3"
+                                        className="px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-violet-600/20 transition-all active:scale-95"
                                     >
-                                        <Save size={20} />
-                                        Save All Changes
+                                        Save All Settings
                                     </button>
                                 </div>
                             </div>
@@ -1112,7 +1192,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                     <p className="text-[var(--text-muted)] font-medium">
                                         Use this for Outlook, Zoho, or non-Gmail providers. You will need your SMTP credentials.
                                     </p>
-                                    
+
                                     <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)] space-y-4">
                                         <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
                                             <p className="text-xs font-black text-blue-500 mb-2 uppercase tracking-[0.1em]">Outlook / Microsoft</p>
@@ -1201,6 +1281,61 @@ const Dashboard = ({ theme, setTheme }) => {
 
             {/* Developer Guide Modal */}
             <DeveloperGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
+
+            {/* Custom Confirmation/Alert Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] w-full max-w-md rounded-[2.5rem] shadow-2xl border border-[var(--border-muted)] overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className={`p-8 border-b border-white/5 ${confirmModal.type === 'error' ? 'bg-rose-500/5' : confirmModal.type === 'success' ? 'bg-emerald-500/5' : 'bg-violet-500/5'}`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${confirmModal.type === 'error' ? 'bg-rose-500 text-white shadow-rose-500/20' :
+                                    confirmModal.type === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/20' :
+                                        'bg-violet-600 text-white shadow-violet-500/20'
+                                    }`}>
+                                    {confirmModal.type === 'error' ? <AlertCircle size={24} /> :
+                                        confirmModal.type === 'success' ? <CheckCircle size={24} /> :
+                                            confirmModal.type === 'confirm' ? <Settings size={24} /> :
+                                                <Info size={24} />}
+                                </div>
+                                <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight">{confirmModal.title}</h2>
+                            </div>
+                        </div>
+                        <div className="p-8">
+                            <p className="text-[var(--text-muted)] font-bold leading-relaxed mb-8">
+                                {confirmModal.message}
+                            </p>
+                            <div className="flex gap-4">
+                                {confirmModal.type === 'confirm' ? (
+                                    <>
+                                        <button
+                                            onClick={closeModal}
+                                            className="flex-1 px-6 py-4 rounded-xl font-bold text-[var(--text-muted)] hover:bg-[var(--bg-input)] transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirmModal.onConfirm) confirmModal.onConfirm();
+                                                closeModal();
+                                            }}
+                                            className="flex-[2] bg-violet-600 hover:bg-violet-500 text-white font-black py-4 rounded-xl shadow-xl shadow-violet-500/20 transition-all active:scale-[0.98]"
+                                        >
+                                            Confirm Action
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={closeModal}
+                                        className="w-full bg-violet-600 hover:bg-violet-500 text-white font-black py-4 rounded-xl shadow-xl shadow-violet-500/20 transition-all active:scale-[0.98]"
+                                    >
+                                        Dismiss
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div>
