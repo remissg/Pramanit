@@ -529,33 +529,38 @@ function MainApp({ theme, setTheme }) {
       const selectedRecipients = recipients.filter((_, i) => selectedRecipientIndices.includes(i));
       setProgress({ current: 0, total: selectedRecipients.length });
 
-      // 2. Process one-by-one for progress tracking
-      for (let i = 0; i < selectedRecipients.length; i++) {
+      // 2. Process in batches (Concurrent for speed)
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < selectedRecipients.length; i += BATCH_SIZE) {
         if (abortBatchRef.current) {
-          setStatus('idle'); // Or 'cancelled' if we had a specific state
+          setStatus('idle');
           alert(`Batch stopped. Sent ${results.success.length} certificates.`);
           break;
         }
-        const recipient = selectedRecipients[i];
 
-        try {
-          await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
-            templatePath,
-            recipient,
-            fields: fields.filter(f => f.isVisible),
-            subject: emailConfig.subject,
-            body: emailConfig.body,
-            issuerName: emailConfig.issuerName,
-            qrConfig
-          });
-          results.success.push(recipient.email || recipient.name);
-        } catch (err) {
-          results.failed.push({
-            email: recipient.email || recipient.name,
-            error: err.response?.data?.message || err.message
-          });
-        }
-        setProgress({ current: i + 1, total: selectedRecipients.length });
+        const batch = selectedRecipients.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(batch.map(async (recipient) => {
+          try {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
+              templatePath,
+              recipient,
+              fields: fields.filter(f => f.isVisible),
+              subject: emailConfig.subject,
+              body: emailConfig.body,
+              issuerName: emailConfig.issuerName,
+              qrConfig
+            });
+            results.success.push(recipient.email || recipient.name);
+          } catch (err) {
+            results.failed.push({
+              email: recipient.email || recipient.name,
+              error: err.response?.data?.message || err.message
+            });
+          }
+          // Update progress (Use functional update to avoid stale closure issues)
+          setProgress(prev => ({ ...prev, current: Math.min(prev.current + 1, prev.total) }));
+        }));
       }
 
       setResult({ count: results.success.length, failedCount: results.failed.length });
