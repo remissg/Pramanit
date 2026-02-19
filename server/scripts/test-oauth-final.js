@@ -1,12 +1,10 @@
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
+require('dotenv').config({ path: '../.env' }); // Load env from server root
 
-// FINAL VERIFIED CREDENTIALS
-const GOOGLE_CLIENT_ID = '56342780992-h9na19edtktiem0ubguehofr9obgerjt.apps.googleusercontent.com';
-const GOOGLE_CLIENT_SECRET = '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'; // Verified Correct Secret
-const GOOGLE_REFRESH_TOKEN = '1//04CcV6kTAqlWjCgYIARAAGAQSNwF-L9Ir82w9Ec8cLFeqgu-VOKngqVPcQKyLjCXAnUhiirVfvOdrcyTFtVqZMyXk731jk7jkqdQ'; // User Provided
-const EMAIL_USER = 'pramanit.official@gmail.com';
+// CREDENTIALS FROM ENV
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+const EMAIL_USER = process.env.EMAIL_USER;
 
 const createTransporter = async () => {
     try {
