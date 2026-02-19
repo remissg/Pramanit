@@ -19,23 +19,62 @@ const createTransporter = async () => {
     if (transporter) return transporter;
 
     try {
+        const oauth2Client = new OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            "https://developers.google.com/oauthplayground" // Redirect URL
+        );
+
+        oauth2Client.setCredentials({
+            refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+        });
+
+        // Get Access Token
+        const accessToken = await new Promise((resolve, reject) => {
+            oauth2Client.getAccessToken((err, token) => {
+                if (err) {
+                    console.error('[EmailService] Failed to create access token:', err);
+                    // Rejecting here might stop the whole flow, maybe try without token?
+                    // Actually, Gmail OAuth needs it.
+                    reject(err);
+                }
+                resolve(token);
+            });
+        });
+
+        // Resolve IPv4 address for smtp.gmail.com manually to bypass IPv6 issues on Render
+        let smtpHost = 'smtp.gmail.com';
+        try {
+            const addresses = await dns.promises.resolve4('smtp.gmail.com');
+            if (addresses && addresses.length > 0) {
+                smtpHost = addresses[0];
+                console.log(`[EmailService] Resolved smtp.gmail.com to IPv4: ${smtpHost}`);
+            }
+        } catch (dnsErr) {
+            console.warn('[EmailService] Failed to resolve IPv4 for smtp.gmail.com, falling back to hostname:', dnsErr.message);
+        }
+
         transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: smtpHost,
+            port: 465,
+            secure: true,
             auth: {
                 type: 'OAuth2',
                 user: process.env.EMAIL_USER,
                 clientId: process.env.GOOGLE_CLIENT_ID,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                 refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+                accessToken: accessToken
             },
             tls: {
-                rejectUnauthorized: false // Helps inside containers sometimes
+                servername: 'smtp.gmail.com', // Crucial: Verify certificate against real hostname, not IP
+                rejectUnauthorized: false
             },
-            logger: false, // Log to console
-            debug: false,  // Include SMTP traffic in logs
-            connectionTimeout: 120000, // 2 minutes
-            socketTimeout: 120000,    // 2 minutes
-            greetingTimeout: 60000    // 60 seconds
+            logger: false,
+            debug: false,
+            connectionTimeout: 10000, // 10 seconds
+            socketTimeout: 30000,     // 30 seconds
+            greetingTimeout: 5000     // 5 seconds
         });
 
         // Verify connection configuration
