@@ -56,8 +56,9 @@ const createTransporter = async () => {
 
         transporter = nodemailer.createTransport({
             host: smtpHost,
-            port: 465,
-            secure: true,
+            port: 587, // Changed to 587 (STARTTLS) to bypass potential port 465 blocks
+            secure: false, // Must be false for port 587
+            requireTLS: true, // Force TLS upgrade
             auth: {
                 type: 'OAuth2',
                 user: process.env.EMAIL_USER,
