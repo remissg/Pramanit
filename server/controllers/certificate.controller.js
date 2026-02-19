@@ -30,11 +30,23 @@ const logIssuance = async (userId, designId, totalSent, recipientListRef) => {
 
 const getSmtpConfig = async (userId) => {
     try {
-        const user = await User.findById(userId);
+        const user = await User.findById(userId).select('+gmail_refresh_token +gmail_access_token gmail_email smtp_host smtp_port smtp_user smtp_pass');
+
+        // Priority 1: User Gmail OAuth (API - Best for Deliverability)
+        if (user && user.gmail_refresh_token && user.gmail_email) {
+            return {
+                service: 'gmail-api',
+                user: user.gmail_email,
+                refreshToken: user.gmail_refresh_token,
+                accessToken: user.gmail_access_token
+            };
+        }
+
+        // Priority 2: Custom SMTP (Users own provider)
         if (user && user.smtp_host) {
             return {
                 host: user.smtp_host,
-                port: user.smtp_port,
+                port: user.smtp_port || 587,
                 user: user.smtp_user,
                 pass: user.smtp_pass
             };
@@ -366,7 +378,8 @@ const processSingle = async (req, res) => {
             issueDate: new Date().toISOString(),
             dataHash,
             status: 'active',
-            recipientToken
+            recipientToken,
+            designId // Pass designId to save it
         });
 
         const imageBuffer = canvas.toBuffer('image/png');

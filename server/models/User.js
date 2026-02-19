@@ -23,6 +23,10 @@ const UserSchema = new mongoose.Schema({
         default_hashtags: { type: String, default: '#Pramanit #Certified #Professional' },
         allow_sharing: { type: Boolean, default: true }
     },
+    // Gmail OAuth Fields
+    gmail_refresh_token: { type: String, select: false }, // Hide by default for security
+    gmail_access_token: { type: String, select: false },
+    gmail_email: { type: String },
     created_at: { type: Date, default: Date.now }
 });
 

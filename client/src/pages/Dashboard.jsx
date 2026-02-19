@@ -72,6 +72,28 @@ const Dashboard = ({ theme, setTheme }) => {
         }
     }, []);
 
+    const [gmailConnected, setGmailConnected] = useState(false);
+    const [gmailEmail, setGmailEmail] = useState('');
+
+    useEffect(() => {
+        // Handle OAuth Callback Params
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('gmail_connected');
+        const connectedEmail = params.get('email');
+        const error = params.get('error');
+
+        if (status === 'success') {
+            setGmailConnected(true);
+            setGmailEmail(connectedEmail);
+            alert(`Successfully connected Gmail account: ${connectedEmail}`);
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (status === 'failed') {
+            alert(`Failed to connect Gmail: ${error}`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
+
     useEffect(() => {
         if (user) {
             setSettings(prev => ({
@@ -106,8 +128,25 @@ const Dashboard = ({ theme, setTheme }) => {
                 defaultHashtags: data.social_settings?.default_hashtags || '#CertiFlow #Certified #Professional',
                 allowSharing: data.social_settings?.allow_sharing ?? true
             }));
+
+            if (data.gmailEmail) {
+                setGmailConnected(true);
+                setGmailEmail(data.gmailEmail);
+            }
         } catch (err) {
             console.error('Failed to fetch profile', err);
+        }
+    };
+
+    const handleConnectGmail = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/google/connect`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            window.location.href = res.data.url;
+        } catch (err) {
+            console.error('Failed to initiate Gmail connect', err);
+            alert('Failed to connect Gmail');
         }
     };
 
@@ -463,7 +502,7 @@ const Dashboard = ({ theme, setTheme }) => {
                             </div>
                         </div>
 
-                        {/* SMTP Section */}
+                        {/* Email Service Provider Section */}
                         <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-10 overflow-hidden relative group">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                             <div className="relative">
@@ -473,8 +512,8 @@ const Dashboard = ({ theme, setTheme }) => {
                                     </div>
                                     <div className="flex-1 flex justify-between items-start">
                                         <div>
-                                            <h2 className="text-2xl font-black text-[var(--text-heading)]">Custom SMTP Settings</h2>
-                                            <p className="text-sm text-[var(--text-muted)] font-bold">Send emails from your own domain (e.g. hello@yourbrand.com)</p>
+                                            <h2 className="text-2xl font-black text-[var(--text-heading)]">Email Service Provider</h2>
+                                            <p className="text-sm text-[var(--text-muted)] font-bold">Choose how you want to send emails.</p>
                                         </div>
                                         <button
                                             onClick={() => setShowSmtpGuide(true)}
@@ -486,7 +525,54 @@ const Dashboard = ({ theme, setTheme }) => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Option 1: Gmail (Recommended) */}
+                                <div className={`p-6 rounded-3xl border mb-8 transition-all ${gmailConnected ? 'bg-violet-600/5 border-violet-500/30' : 'bg-[var(--bg-input)]/50 border-[var(--border-muted)]'}`}>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" /><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" /><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" /><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" /></svg>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-[var(--text-heading)]">Gmail Account (Recommended)</h3>
+                                                <p className="text-xs text-[var(--text-muted)] font-bold">Connect your personal Gmail to send directly.</p>
+                                            </div>
+                                        </div>
+                                        {gmailConnected && (
+                                            <span className="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-1 rounded-full font-black flex items-center gap-1 uppercase tracking-wider border border-emerald-500/20">
+                                                <Shield size={10} /> Connected
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {gmailConnected ? (
+                                        <div className="flex justify-between items-center bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-muted)] shadow-sm">
+                                            <div>
+                                                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Connected As</p>
+                                                <p className="font-bold text-[var(--text-main)] text-sm flex items-center gap-2">
+                                                    <Mail size={14} className="text-violet-500" />
+                                                    {gmailEmail}
+                                                </p>
+                                            </div>
+                                            {/* Disconnect logic to be added later if needed */}
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleConnectGmail}
+                                            className="w-full py-4 bg-white text-slate-900 hover:bg-slate-100 font-black rounded-2xl shadow-lg border border-slate-200 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" /><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" /><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" /><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" /></svg>
+                                            Connect Gmail Account
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="h-px bg-white/10 flex-1"></div>
+                                    <span className="text-[10px] uppercase font-black text-[var(--text-muted)] tracking-widest">OR USE CUSTOM SMTP</span>
+                                    <div className="h-px bg-white/10 flex-1"></div>
+                                </div>
+
+                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${gmailConnected ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                                     <div className="space-y-4">
                                         <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">SMTP Host</label>
                                         <input
@@ -494,7 +580,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                             value={settings.smtpHost}
                                             onChange={(e) => setSettings({ ...settings, smtpHost: e.target.value })}
                                             className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
-                                            placeholder="smtp.gmail.com"
+                                            placeholder="smtp.office365.com"
                                         />
                                     </div>
                                     <div className="space-y-4">
@@ -514,7 +600,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                             value={settings.smtpUser}
                                             onChange={(e) => setSettings({ ...settings, smtpUser: e.target.value })}
                                             className="w-full px-6 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-sm font-bold"
-                                            placeholder="hello@yourbrand.com"
+                                            placeholder="you@yourcompany.com"
                                         />
                                     </div>
                                     <div className="space-y-4">
@@ -974,7 +1060,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                 <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
                                     <Info size={24} />
                                 </div>
-                                <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight">SMTP Setup Guide</h2>
+                                <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight">Email Setup Guide</h2>
                             </div>
                             <button onClick={() => setShowSmtpGuide(false)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-colors">
                                 <X size={24} />
@@ -983,85 +1069,59 @@ const Dashboard = ({ theme, setTheme }) => {
                         <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar">
                             <section className="space-y-4">
                                 <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Globe size={18} /> 1. Professional Appearance
+                                    <Globe size={18} /> Why connect your email?
                                 </h3>
                                 <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)]">
                                     <p className="text-[var(--text-main)] font-bold leading-relaxed">
-                                        Currently, certificates come from <code className="text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded">no-reply@certiflow.com</code>. Once you set your own SMTP:
+                                        By default, emails come from <code className="text-violet-500 bg-violet-500/10 px-2 py-0.5 rounded">no-reply@pramanit.com</code>. Connecting your own email ensures:
                                     </p>
                                     <ul className="mt-4 space-y-2 text-[var(--text-muted)] font-medium">
                                         <li className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                            <span className="font-bold">From:</span> awards@yourcompany.com
+                                            <span className="font-bold">Better Deliverability:</span> Emails land in the Primary Inbox, not Spam.
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                            <span className="font-bold">Sender Name:</span> Your Organization Name
+                                            <span className="font-bold">Brand Recognition:</span> Recipients see your name and email address.
                                         </li>
                                     </ul>
                                 </div>
                             </section>
 
                             <section className="space-y-4">
-                                <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Shield size={18} /> 2. Avoiding Spam Filters
-                                </h3>
-                                <p className="text-[var(--text-muted)] font-bold leading-relaxed pl-7">
-                                    System emails often get flagged as "Promotions". By using your official mail server, you achieve a <span className="text-emerald-500">100% inbox delivery rate</span>.
-                                </p>
-                            </section>
-
-                            <section className="space-y-4">
                                 <h3 className="text-lg font-black text-violet-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Lock size={18} /> How to get your SMTP Password
+                                    <Zap size={18} /> Option 1: Connect Gmail (Recommended)
                                 </h3>
-                                <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)] space-y-4">
-                                    <p className="text-xs text-[var(--text-muted)] font-bold italic">For security, major providers (Gmail, Outlook) require an <span className="text-violet-500 underline underline-offset-4 decoration-violet-500/30">App Password</span> instead of your regular one.</p>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                        <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-                                            <p className="text-xs font-black text-emerald-500 mb-2 uppercase tracking-[0.1em]">Google / Gmail</p>
-                                            <ol className="text-[11px] text-[var(--text-muted)] font-bold space-y-1">
-                                                <li>1. Enable <span className="text-[var(--text-main)]">2-Step Verification</span>.</li>
-                                                <li>2. Search for <span className="text-[var(--text-main)]">"App Passwords"</span> in Security.</li>
-                                                <li>3. Create one and use that 16-digit code here.</li>
-                                            </ol>
-                                        </div>
-                                        <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
-                                            <p className="text-xs font-black text-blue-500 mb-2 uppercase tracking-[0.1em]">Outlook / Microsoft</p>
-                                            <ol className="text-[11px] text-[var(--text-muted)] font-bold space-y-1">
-                                                <li>1. Go to <span className="text-[var(--text-main)]">Security Basics</span>.</li>
-                                                <li>2. Select <span className="text-[var(--text-main)]">Advanced Security Options</span>.</li>
-                                                <li>3. Click <span className="text-[var(--text-main)]">Create a new app password</span>.</li>
-                                            </ol>
-                                        </div>
-                                    </div>
-                                    <div className="pt-2">
-                                        <p className="text-[10px] text-[var(--text-muted)] font-bold flex items-center gap-2">
-                                            <Info size={12} className="text-violet-500" />
-                                            Don't worry, your credentials are <span className="text-violet-500">AES-256 Encrypted</span> on our server.
-                                        </p>
-                                    </div>
+                                <div className="pl-7">
+                                    <p className="text-[var(--text-muted)] font-medium mb-4">
+                                        The easiest way to send emails. Just click the <span className="font-bold text-violet-500">"Connect Gmail Account"</span> button.
+                                    </p>
+                                    <ul className="space-y-2 text-sm text-[var(--text-main)] font-bold">
+                                        <li className="flex items-center gap-2">✅ No passwords or technical settings required.</li>
+                                        <li className="flex items-center gap-2">✅ Secure OAuth connection.</li>
+                                        <li className="flex items-center gap-2">✅ Works with personal Gmail (@gmail.com).</li>
+                                    </ul>
                                 </div>
                             </section>
 
                             <section className="space-y-4">
-                                <h3 className="text-lg font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Zap size={18} /> 3. How it Works
+                                <h3 className="text-lg font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Shield size={18} /> Option 2: Custom SMTP
                                 </h3>
-                                <div className="space-y-4 pl-7">
-                                    <div className="relative border-l-2 border-emerald-500/30 pl-6 space-y-6">
-                                        <div>
-                                            <p className="font-black text-[var(--text-heading)]">Step A: One-Time Setup</p>
-                                            <p className="text-sm text-[var(--text-muted)] font-medium">Enter your details. (e.g., Gmail uses host <code className="text-violet-500">smtp.gmail.com</code>, port <code className="text-violet-500">587</code> + "App Password")</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-[var(--text-heading)]">Step B: Automatic Usage</p>
-                                            <p className="text-sm text-[var(--text-muted)] font-medium">Click "Issue & Mail" – CertiFlow logs into your server and sends the files instantly.</p>
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-[var(--text-heading)]">Step C: Tracking</p>
-                                            <p className="text-sm text-[var(--text-muted)] font-medium">You can see sent emails directly in your provider's "Sent" folder.</p>
+                                <div className="pl-7 space-y-4">
+                                    <p className="text-[var(--text-muted)] font-medium">
+                                        Use this for Outlook, Zoho, or non-Gmail providers. You will need your SMTP credentials.
+                                    </p>
+                                    
+                                    <div className="bg-[var(--bg-input)] p-6 rounded-3xl border border-[var(--border-muted)] space-y-4">
+                                        <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                                            <p className="text-xs font-black text-blue-500 mb-2 uppercase tracking-[0.1em]">Outlook / Microsoft</p>
+                                            <ol className="text-[11px] text-[var(--text-muted)] font-bold space-y-1">
+                                                <li>1. Go to <span className="text-[var(--text-main)]">Security Basics</span> {'>'} <span className="text-[var(--text-main)]">Advanced Security</span>.</li>
+                                                <li>2. Enable 2FA if not already enabled.</li>
+                                                <li>3. Create a new <span className="text-[var(--text-main)]">App Password</span>.</li>
+                                                <li>4. Use <code className="text-blue-500">smtp.office365.com</code> (Port 587).</li>
+                                            </ol>
                                         </div>
                                     </div>
                                 </div>
@@ -1070,8 +1130,8 @@ const Dashboard = ({ theme, setTheme }) => {
                             <div className="bg-violet-600/10 p-6 rounded-3xl border border-violet-500/20 flex items-start gap-4">
                                 <Shield className="text-violet-500 mt-1 shrink-0" size={20} />
                                 <div>
-                                    <p className="font-black text-violet-500 text-sm italic">Encryption Shield Active</p>
-                                    <p className="text-xs text-[var(--text-muted)] font-bold mt-1">Your SMTP credentials are encrypted with AES-256 before being stored. Only the mail server ever sees your password.</p>
+                                    <p className="font-black text-violet-500 text-sm italic">Security First</p>
+                                    <p className="text-xs text-[var(--text-muted)] font-bold mt-1">We never store your actual Google password. We use secure tokens (OAuth) or encrypted SMTP credentials (AES-256).</p>
                                 </div>
                             </div>
                         </div>

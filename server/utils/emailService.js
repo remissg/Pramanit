@@ -74,11 +74,69 @@ const getClientUrl = () => {
 };
 
 /**
- * Send an email using Gmail API (HTTPS) - Bypasses SMTP Port Blocks
+ * Send an email using Gmail API (HTTPS) or Custom SMTP
  */
-const sendEmail = async (to, subject, html, attachments = []) => {
+const sendEmail = async (to, subject, html, attachments = [], smtpConfig = null) => {
     try {
-        console.log(`[EmailService] Sending email to ${to} via Gmail API (HTTPS)...`);
+        // CASE 1: User-Level Gmail OAuth (API - Best for Deliverability)
+        if (smtpConfig && smtpConfig.service === 'gmail-api') {
+            const userEmail = smtpConfig.user;
+            console.log(`[EmailService] Sending email to ${to} via User Gmail API (${userEmail})...`);
+
+            const auth = new google.auth.OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET
+            );
+            auth.setCredentials({
+                refresh_token: smtpConfig.refreshToken,
+                access_token: smtpConfig.accessToken
+            });
+
+            const gmail = google.gmail({ version: 'v1', auth });
+
+            // Uses user's email as sender
+            const rawMessage = await makeBody(to, userEmail, subject, html, attachments);
+
+            const res = await gmail.users.messages.send({
+                userId: 'me',
+                requestBody: { raw: rawMessage }
+            });
+
+            console.log('[EmailService] Email sent via User Gmail API:', res.data.id);
+            return res.data;
+        }
+
+        // CASE 2: Use Custom SMTP (if provided by user)
+        if (smtpConfig && smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
+            console.log(`[EmailService] Sending email to ${to} via Custom SMTP (${smtpConfig.host})...`);
+
+            const transporter = nodemailer.createTransport({
+                host: smtpConfig.host,
+                port: smtpConfig.port || 587,
+                secure: smtpConfig.port === 465, // true for 465, false for other ports
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass,
+                },
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
+
+            const info = await transporter.sendMail({
+                from: `"${smtpConfig.user}" <${smtpConfig.user}>`, // Use custom sender name
+                to,
+                subject,
+                html,
+                attachments
+            });
+
+            console.log('[EmailService] Email sent via Custom SMTP:', info.messageId);
+            return info;
+        }
+
+        // CASE 3: Use System Gmail API (HTTPS) - Fallback
+        console.log(`[EmailService] Sending email to ${to} via System Gmail API (HTTPS)...`);
 
         const auth = createOAuthClient();
         const gmail = google.gmail({ version: 'v1', auth });

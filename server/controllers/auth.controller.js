@@ -136,6 +136,7 @@ const getProfile = async (req, res) => {
             planType: user.plan_type,
             isVerified: user.is_verified,
             smtpUrl: user.smtp_host, // Do not send pass
+            gmailEmail: user.gmail_email, // Return connected Gmail address
             social_settings: user.social_settings
         });
     } catch (err) {
@@ -396,6 +397,87 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+const { google } = require('googleapis'); // Add Google import
+
+// ...
+
+const getCallbackUrl = () => {
+    // In production, use the actual backend URL
+    if (process.env.BACKEND_URL) return `${process.env.BACKEND_URL}/api/auth/google/callback`;
+    // In development loopback
+    return 'http://localhost:5000/api/auth/google/callback';
+};
+
+// Gmail OAuth - Connect Account
+const connectGmail = async (req, res) => {
+    try {
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            getCallbackUrl()
+        );
+
+        const scopes = [
+            'https://www.googleapis.com/auth/gmail.send',
+            'https://www.googleapis.com/auth/userinfo.email'
+        ];
+
+        const url = oauth2Client.generateAuthUrl({
+            access_type: 'offline', // Critical for refresh token
+            scope: scopes,
+            state: req.user.id, // Pass User ID to callback
+            prompt: 'consent' // Force refresh token generation
+        });
+
+        res.json({ url });
+    } catch (e) {
+        console.error('Connect Gmail Error:', e);
+        res.status(500).json({ message: 'Failed to generate auth URL' });
+    }
+};
+
+const googleCallback = async (req, res) => {
+    const { code, state } = req.query;
+
+    try {
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            getCallbackUrl()
+        );
+
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
+        const { data } = await oauth2.userinfo.get();
+
+        if (!tokens.refresh_token) {
+            console.warn('No refresh token returned. User might have previously authorized.');
+        }
+
+        await User.findByIdAndUpdate(state, {
+            gmail_refresh_token: tokens.refresh_token,
+            gmail_access_token: tokens.access_token,
+            gmail_email: data.email
+        });
+
+        // Determine Frontend URL
+        const frontendUrl = process.env.FRONTEND_URL
+            ? `https://${process.env.FRONTEND_URL}`
+            : 'http://localhost:5173';
+
+        res.redirect(`${frontendUrl}/settings?gmail_connected=success&email=${data.email}`);
+
+    } catch (error) {
+        console.error('Google Callback Error:', error);
+        const frontendUrl = process.env.FRONTEND_URL
+            ? `https://${process.env.FRONTEND_URL}`
+            : 'http://localhost:5173';
+        res.redirect(`${frontendUrl}/settings?gmail_connected=failed&error=${error.message}`);
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -407,5 +489,7 @@ module.exports = {
     toggleUserPlan,
     forgotPassword,
     resetPassword,
-    deleteAccount
+    deleteAccount,
+    connectGmail,
+    googleCallback
 };
