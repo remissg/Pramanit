@@ -36,27 +36,32 @@ const makeBody = async (to, from, subject, message, attachments) => {
         mailComposer.sendMail(mailOptions, (err, info) => {
             if (err) return reject(err);
 
-            // info.message is a stream in streamTransport mode, but nodemailer often returns buffer or stream
-            // Actually, let's use the buffer functionality if possible.
-            // Wait, sendMail with streamTransport returns info.message as a stream.
-            // We need to consume it.
-
-            // Easier approach: Use MailComposer directly if possible, but let's stick to transporter as it handles attachments well.
-            // Nodemailer stream transport provides a stream.
-
-            const stream = info.message.createReadStream();
-            let buf = Buffer.alloc(0);
-            stream.on('data', (chunk) => {
-                buf = Buffer.concat([buf, chunk]);
-            });
-            stream.on('end', () => {
-                const encoded = buf.toString('base64')
+            // Handle Buffer (Nodemailer 6.x often returns this for streamTransport simple cases)
+            if (Buffer.isBuffer(info.message)) {
+                return resolve(info.message.toString('base64')
                     .replace(/\+/g, '-')
                     .replace(/\//g, '_')
-                    .replace(/=+$/, '');
-                resolve(encoded);
-            });
-            stream.on('error', reject);
+                    .replace(/=+$/, ''));
+            }
+
+            // Handle Stream
+            const stream = info.message;
+            if (typeof stream.on === 'function') {
+                let buffer = Buffer.alloc(0);
+                stream.on('data', (chunk) => {
+                    buffer = Buffer.concat([buffer, chunk]);
+                });
+                stream.on('end', () => {
+                    const encoded = buffer.toString('base64')
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    resolve(encoded);
+                });
+                stream.on('error', (streamErr) => reject(streamErr));
+            } else {
+                reject(new Error('Unknown info.message type. Expecting Buffer or Stream.'));
+            }
         });
     });
 };
