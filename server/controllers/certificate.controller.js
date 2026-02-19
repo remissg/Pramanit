@@ -204,10 +204,23 @@ const processSingle = async (req, res) => {
 
 
         const image = await loadImage(templatePath);
-        const canvas = createCanvas(image.width, image.height);
+
+        // Resize if too large to prevent huge attachments (max 2000px width)
+        const MAX_WIDTH = 2000;
+        let canvasWidth = image.width;
+        let canvasHeight = image.height;
+
+        if (canvasWidth > MAX_WIDTH) {
+            const scale = MAX_WIDTH / canvasWidth;
+            canvasWidth = MAX_WIDTH;
+            canvasHeight = canvasHeight * scale;
+        }
+
+        const canvas = createCanvas(canvasWidth, canvasHeight);
         const ctx = canvas.getContext('2d');
 
-        ctx.drawImage(image, 0, 0, image.width, image.height);
+        // Draw image scaled to new canvas dimensions
+        ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
 
         const certId = crypto.randomUUID();
         const recipientToken = crypto.randomBytes(32).toString('hex');
@@ -222,7 +235,7 @@ const processSingle = async (req, res) => {
             certId
         });
 
-        const scaleFactor = image.width / 800; // Reference width from frontend
+        const scaleFactor = canvasWidth / 800; // Reference width from frontend
 
         const fontMap = {
             'Inter': 'sans-serif',
@@ -252,8 +265,8 @@ const processSingle = async (req, res) => {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                const x = parseFloat(field.x) * image.width;
-                const y = parseFloat(field.y) * image.height;
+                const x = parseFloat(field.x) * canvasWidth;
+                const y = parseFloat(field.y) * canvasHeight;
 
                 // const recData = recipient.data || recipient; // Removed to use outer normalized recData
                 const fieldId = (field.id || '').trim().toLowerCase();
@@ -291,8 +304,8 @@ const processSingle = async (req, res) => {
         // Render QR Code if enabled
         if (qrConfig && qrConfig.isVisible) {
             const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
-            const qrX = parseFloat(qrConfig.x) * image.width;
-            const qrY = parseFloat(qrConfig.y) * image.height;
+            const qrX = parseFloat(qrConfig.x) * canvasWidth;
+            const qrY = parseFloat(qrConfig.y) * canvasHeight;
 
             const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
                 margin: 1,

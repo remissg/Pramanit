@@ -1,34 +1,25 @@
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
+const dns = require('dns');
 require('dotenv').config();
+
+// Force IPv4 to prevent Gmail SMTP hangs
+try {
+    dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+    console.warn('Could not set default result order for DNS:', e.message);
+}
 
 const OAuth2 = google.auth.OAuth2;
 
-// Initialize OAuth2 Client
+// Initialize OAuth2 Client (Singleton)
+let transporter = null;
+
 const createTransporter = async () => {
+    if (transporter) return transporter;
+
     try {
-        const oauth2Client = new OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            "https://developers.google.com/oauthplayground" // Redirect URL
-        );
-
-        oauth2Client.setCredentials({
-            refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-        });
-
-        // Get Access Token
-        const accessToken = await new Promise((resolve, reject) => {
-            oauth2Client.getAccessToken((err, token) => {
-                if (err) {
-                    console.error('[EmailService] Failed to create access token:', err);
-                    reject(err);
-                }
-                resolve(token);
-            });
-        });
-
-        const transporter = nodemailer.createTransport({
+        transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 type: 'OAuth2',
@@ -36,11 +27,29 @@ const createTransporter = async () => {
                 clientId: process.env.GOOGLE_CLIENT_ID,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                 refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-                accessToken: accessToken
             },
             tls: {
                 rejectUnauthorized: false // Helps inside containers sometimes
-            }
+            },
+            logger: false, // Log to console
+            debug: false,  // Include SMTP traffic in logs
+            connectionTimeout: 120000, // 2 minutes
+            socketTimeout: 120000,    // 2 minutes
+            greetingTimeout: 60000    // 60 seconds
+        });
+
+        // Verify connection configuration
+        await new Promise((resolve, reject) => {
+            transporter.verify(function (error, success) {
+                if (error) {
+                    console.error('[EmailService] Transporter verification failed:', error);
+                    transporter = null; // Reset if failed
+                    reject(error);
+                } else {
+                    console.log("[EmailService] Server is ready to take our messages");
+                    resolve(success);
+                }
+            });
         });
 
         return transporter;

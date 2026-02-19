@@ -1,5 +1,6 @@
 const { sendEmail } = require('../utils/emailService');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Default to the sender itself for testing
 const testRecipient = 'maitijoydip888@gmail.com'; // User requested test

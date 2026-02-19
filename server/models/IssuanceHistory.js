@@ -11,15 +11,20 @@ const IssuanceHistorySchema = new mongoose.Schema({
 });
 
 // Encryption Hook for array
-IssuanceHistorySchema.pre('save', function (next) {
+// Encryption Hook for array
+IssuanceHistorySchema.pre('save', async function () {
     if (this.isModified('recipient_emails') && this.recipient_emails && this.recipient_emails.length > 0) {
         this.recipient_emails = this.recipient_emails.map(email => {
             // Check if already encrypt (contains colon)
             if (email.includes(':')) return email;
-            return encrypt(email);
+            try {
+                return encrypt(email);
+            } catch (error) {
+                console.error('Encryption failed for email:', email, error);
+                return email; // Fallback to plain text on error to avoid data loss
+            }
         });
     }
-    next();
 });
 
 module.exports = mongoose.model('IssuanceHistory', IssuanceHistorySchema);
