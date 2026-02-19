@@ -1,0 +1,29 @@
+--- Testing Email Delivery via Gmail OAuth2 ---
+Target Recipient: maitijoydip888@gmail.com
+Γ£à Found OAuth2 Credentials in environment.
+[EmailService] Sending email to maitijoydip888@gmail.com via Gmail OAuth2...
+[EmailService] Email sent successfully: 250 2.0.0 OK  1771468737 d2e1a72fcca58-824c6b935c6sm19274831b3a.47 - gsmtp
+
+Γ£à Email Sent Successfully via Gmail API!
+Response: {
+  accepted: [ 'maitijoydip888@gmail.com' ],
+  rejected: [],
+  ehlo: [
+    'SIZE 35882577',
+    '8BITMIME',
+    'AUTH LOGIN PLAIN XOAUTH2 PLAIN-CLIENTTOKEN OAUTHBEARER XOAUTH',
+    'ENHANCEDSTATUSCODES',
+    'PIPELINING',
+    'CHUNKING',
+    'SMTPUTF8'
+  ],
+  envelopeTime: 3384,
+  messageTime: 1288,
+  messageSize: 447,
+  response: '250 2.0.0 OK  1771468737 d2e1a72fcca58-824c6b935c6sm19274831b3a.47 - gsmtp',
+  envelope: {
+    from: 'pramanit.official@gmail.com',
+    to: [ 'maitijoydip888@gmail.com' ]
+  },
+  messageId: '<ca80c183-afd8-487c-6aad-b7c91d85d34b@gmail.com>'
+}

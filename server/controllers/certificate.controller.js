@@ -99,19 +99,33 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     return await pdfDoc.save();
 };
 
-// Helper to parse CSV or Excel
+// Helper to parsing CSV or Excel
 const parseRecipientsFile = async (filePath) => {
     const ext = path.extname(filePath).toLowerCase();
     const results = [];
+
+    const normalizeRow = (row) => {
+        // Smart Email Mapping
+        if (!row.email) {
+            const emailKey = Object.keys(row).find(k => /email|e-mail|mail/i.test(k));
+            if (emailKey) row.email = row[emailKey];
+        }
+        // Smart Name Mapping
+        if (!row.name) {
+            const nameKey = Object.keys(row).find(k => /name|recipient|person|student/i.test(k));
+            if (nameKey) row.name = row[nameKey];
+        }
+        return row;
+    };
 
     if (ext === '.csv') {
         return new Promise((resolve, reject) => {
             fs.createReadStream(filePath)
                 .pipe(csv({ mapHeaders: ({ header }) => header.trim().toLowerCase() }))
                 .on('data', (row) => {
-                    if (row.name || row.recipient || row.email) {
-                        if (!row.name && row.recipient) row.name = row.recipient;
-                        results.push(row);
+                    const normalized = normalizeRow(row);
+                    if (normalized.name || normalized.email) {
+                        results.push(normalized);
                     }
                 })
                 .on('end', () => resolve(results))
@@ -127,15 +141,10 @@ const parseRecipientsFile = async (filePath) => {
         return data.map(row => {
             const normalized = {};
             Object.keys(row).forEach(key => {
-                normalized[key.trim()] = row[key];
+                normalized[key.trim().toLowerCase()] = row[key];
             });
-            // Ensure name is present for legacy logic support
-            const nameKey = Object.keys(normalized).find(k => /name|recipient|person/i.test(k));
-            if (!normalized.name && nameKey) {
-                normalized.name = normalized[nameKey];
-            }
-            return normalized;
-        }).filter(r => r.name || Object.keys(r).length > 0);
+            return normalizeRow(normalized);
+        }).filter(r => r.name || r.email || Object.keys(r).length > 0);
     }
     return results;
 };
@@ -173,6 +182,18 @@ const processSingle = async (req, res) => {
             return res.status(400).json({ message: 'Missing required data' });
         }
 
+        // normalize recipient.data keys to lowercase for consistent access
+        let recData = recipient.data || recipient;
+        const normalizedData = {};
+        Object.keys(recData).forEach(key => {
+            normalizedData[key.trim().toLowerCase()] = recData[key];
+        });
+        // Merge normalized data back to ensure original keys are also available if needed, 
+        // but prefer normalized access.
+        // Actually, let's just use normalizedData for lookups.
+        recData = { ...recData, ...normalizedData };
+
+
         // Check if template exists (Render ephemeral filesystem wipes uploads on restart/deploy)
         if (!fs.existsSync(templatePath)) {
             return res.status(400).json({
@@ -180,6 +201,7 @@ const processSingle = async (req, res) => {
                 code: 'FILE_LOST'
             });
         }
+
 
         const image = await loadImage(templatePath);
         const canvas = createCanvas(image.width, image.height);
@@ -233,7 +255,7 @@ const processSingle = async (req, res) => {
                 const x = parseFloat(field.x) * image.width;
                 const y = parseFloat(field.y) * image.height;
 
-                const recData = recipient.data || recipient;
+                // const recData = recipient.data || recipient; // Removed to use outer normalized recData
                 const fieldId = (field.id || '').trim().toLowerCase();
 
                 let text = '';
@@ -345,7 +367,7 @@ const processSingle = async (req, res) => {
         // Personalize body and subject using all keys in recipient data
         let personalizedBody = body || '';
         let personalizedSubject = subject || '';
-        const recData = recipient.data || recipient;
+        // const recData = recipient.data || recipient; // Removed to use outer normalized recData
 
         // Add verification info and issuer details to personalization
         const mergedData = {
@@ -375,11 +397,14 @@ const processSingle = async (req, res) => {
         personalizedBody = personalizedBody.replace(/Congradulation/gi, 'Congratulations');
 
 
-        if (recData.email || recData.Email) {
+        // Check for email using the normalized 'email' key
+        // We already normalized keys to lowercase in recData, so 'Email' became 'email'
+        if (recData.email) {
             try {
                 const smtpConfig = await getSmtpConfig(req.user.id);
+                console.log(`[Controller] Attempting to send email to ${recData.email}...`);
                 await sendEmail(
-                    recData.email || recData.Email,
+                    recData.email,
                     personalizedSubject || 'Your Certificate',
                     personalizedBody,
                     [
@@ -403,7 +428,12 @@ const processSingle = async (req, res) => {
             }
         }
 
-        res.json({ success: true, email: recData.email, emailSent: true, message: 'Certificate generated and email sent successfully.' });
+        res.json({
+            success: true,
+            email: recData.email,
+            emailSent: true,
+            message: 'Certificate generated and email sent successfully.'
+        });
 
         // Log issuance
         await logIssuance(req.user.id, designId, 1, [recData.email]);
@@ -430,7 +460,11 @@ const processCertificates = async (req, res) => {
         const smtpConfig = await getSmtpConfig(req.user.id);
 
         // Spawn Worker Thread
-        const worker = new Worker(path.join(__dirname, '../workers/certificate.worker.js'), {
+        const workerPath = path.join(__dirname, '../workers/certificate.worker.js');
+        console.log(`[Controller] Spawning worker at: ${workerPath}`);
+        console.log(`[Controller] Worker Data Recipients: ${recipients.length}`);
+
+        const worker = new Worker(workerPath, {
             workerData: {
                 recipients,
                 designConfig: {
@@ -445,6 +479,8 @@ const processCertificates = async (req, res) => {
                 mongoUri: process.env.MONGODB_URI
             }
         });
+
+        console.log('[Controller] Worker spawned successfully.');
 
         worker.on('message', (message) => {
             if (message.type === 'progress') {

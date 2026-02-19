@@ -1,0 +1,3 @@
+[2026-02-19T02:51:56.461Z] Worker script started execution.
+[2026-02-19T02:51:57.280Z] Modules loaded successfully.
+[2026-02-19T02:51:59.191Z] FATAL ERROR in processBatch: Cannot destructure property 'recipients' of 'workerData' as it is null.

@@ -1,8 +1,54 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 require('dotenv').config();
 
-// Initialize Resend with the provided API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+const OAuth2 = google.auth.OAuth2;
+
+// Initialize OAuth2 Client
+const createTransporter = async () => {
+    try {
+        const oauth2Client = new OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            "https://developers.google.com/oauthplayground" // Redirect URL
+        );
+
+        oauth2Client.setCredentials({
+            refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+        });
+
+        // Get Access Token
+        const accessToken = await new Promise((resolve, reject) => {
+            oauth2Client.getAccessToken((err, token) => {
+                if (err) {
+                    console.error('[EmailService] Failed to create access token:', err);
+                    reject(err);
+                }
+                resolve(token);
+            });
+        });
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                type: 'OAuth2',
+                user: process.env.EMAIL_USER,
+                clientId: process.env.GOOGLE_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+                accessToken: accessToken
+            },
+            tls: {
+                rejectUnauthorized: false // Helps inside containers sometimes
+            }
+        });
+
+        return transporter;
+    } catch (error) {
+        console.error('[EmailService] Error creating transporter:', error);
+        throw error;
+    }
+};
 
 // Helper to determine the client URL
 const getClientUrl = () => {
@@ -12,39 +58,25 @@ const getClientUrl = () => {
 };
 
 /**
- * Send an email using Resend API
- * @param {string} to - Recipient email address
- * @param {string} subject - Email subject
- * @param {string} html - Email body (HTML)
- * @param {Array} attachments - Array of attachment objects { filename, content }
- * @param {Object} customSmtp - Ignored now (formerly for custom SMTP)
+ * Send an email using Gmail OAuth2
  */
 const sendEmail = async (to, subject, html, attachments, customSmtp) => {
     try {
-        console.log(`[EmailService] Sending email to ${to} via Resend...`);
+        console.log(`[EmailService] Sending email to ${to} via Gmail OAuth2...`);
 
-        // If attachments have Buffer content, Resend expects them as-is, which is compatible.
-        // We ensure attachments are formatted correctly.
-        const formattedAttachments = attachments ? attachments.map(att => ({
-            filename: att.filename,
-            content: att.content // Buffer
-        })) : [];
+        const transporter = await createTransporter();
 
-        const data = await resend.emails.send({
-            from: 'Pramanit <onboarding@resend.dev>', // Default sender for testing
-            to: [to],
+        const mailOptions = {
+            from: `Pramanit <${process.env.EMAIL_USER}>`,
+            to: to,
             subject: subject,
             html: html,
-            attachments: formattedAttachments
-        });
+            attachments: attachments
+        };
 
-        if (data.error) {
-            console.error('[EmailService] Resend API Error:', data.error);
-            throw new Error(data.error.message);
-        }
-
-        console.log(`[EmailService] Email sent successfully. ID: ${data.data?.id || data.id}`);
-        return data;
+        const result = await transporter.sendMail(mailOptions);
+        console.log('[EmailService] Email sent successfully:', result.response);
+        return result;
 
     } catch (error) {
         console.error('[EmailService] Fatal Error sending email:', error.message);

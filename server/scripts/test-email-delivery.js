@@ -1,27 +1,38 @@
 const { sendEmail } = require('../utils/emailService');
 require('dotenv').config();
 
-const testRecipient = process.env.EMAIL_USER || 'pramanit.official@gmail.com';
+// Default to the sender itself for testing
+const testRecipient = 'maitijoydip888@gmail.com'; // User requested test
 
 async function testDelivery() {
-    console.log('--- Testing Email Delivery via Resend ---');
+    console.log('--- Testing Email Delivery via Gmail OAuth2 ---');
     console.log(`Target Recipient: ${testRecipient}`);
-    console.log(`API Key Loaded: ${process.env.RESEND_API_KEY ? 'Yes' : 'No'}`);
+
+    // Check for required env vars
+    const missing = [];
+    if (!process.env.GOOGLE_CLIENT_ID) missing.push('GOOGLE_CLIENT_ID');
+    if (!process.env.GOOGLE_CLIENT_SECRET) missing.push('GOOGLE_CLIENT_SECRET');
+    if (!process.env.GOOGLE_REFRESH_TOKEN) missing.push('GOOGLE_REFRESH_TOKEN');
+    if (!process.env.EMAIL_USER) missing.push('EMAIL_USER');
+
+    if (missing.length > 0) {
+        console.error('❌ ERROR: Missing Environment Variables for OAuth2:');
+        missing.forEach(v => console.error(`   - ${v}`));
+        console.error('Please update your .env file with the credentials provided.');
+        return;
+    }
+
+    console.log('✅ Found OAuth2 Credentials in environment.');
 
     try {
-        const html = '<h1>Test Email from Pramanit</h1><p>If you see this, Resend is working correctly!</p>';
-        const result = await sendEmail(testRecipient, 'Resend Integration Test', html, []);
-        console.log('\n✅ Email Sent Successfully!');
+        const html = '<h1>Test Email from Pramanit (Gmail OAuth2)</h1><p>If you see this, the Gmail API integration is working perfectly!</p>';
+        const result = await sendEmail(testRecipient, 'Gmail API Integration Test', html, []);
+        console.log('\n✅ Email Sent Successfully via Gmail API!');
         console.log('Response:', result);
     } catch (error) {
         console.error('\n❌ Email Sending Failed!');
         console.error('Error Message:', error.message);
         console.error('Full Error:', error);
-
-        if (error.message && error.message.includes('only send to your own email')) {
-            console.log('\n⚠️ EXPLANATION: On the Resend Free Tier, you can ONLY send emails to the address you signed up with.');
-            console.log('   You are likely trying to send to a different address.');
-        }
     }
 }
 
