@@ -648,7 +648,7 @@ const processCertificates = async (req, res) => {
         const smtpConfig = await getSmtpConfig(req.user.id);
 
         // Spawn Worker Thread
-        const workerPath = path.join(__dirname, '../workers/certificate.worker.js');
+        const workerPath = path.join(__dirname, '../workers/certificate.worker.optimized.js');
         console.log(`[Controller] Spawning worker at: ${workerPath}`);
         console.log(`[Controller] Worker Data Recipients: ${recipients.length}`);
 
