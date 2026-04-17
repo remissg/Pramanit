@@ -419,7 +419,7 @@ const connectGmail = async (req, res) => {
 
         const scopes = [
             'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/userinfo.email'
+            'email'  // Correct scope for user email
         ];
 
         const url = oauth2Client.generateAuthUrl({

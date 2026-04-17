@@ -13,6 +13,15 @@ const createOAuthClient = () => {
     oauth2Client.setCredentials({
         refresh_token: process.env.GOOGLE_REFRESH_TOKEN
     });
+
+    // Handle token refresh errors
+    oauth2Client.on('tokens', (tokens) => {
+        if (tokens.refresh_token) {
+            console.log('New refresh token received - update your environment variables');
+            // In production, you might want to store this securely
+        }
+    });
+
     return oauth2Client;
 };
 
@@ -94,16 +103,24 @@ const sendEmail = async (to, subject, html, attachments = [], smtpConfig = null)
 
             const gmail = google.gmail({ version: 'v1', auth });
 
-            // Uses user's email as sender
-            const rawMessage = await makeBody(to, userEmail, subject, html, attachments);
+            try {
+                // Uses user's email as sender
+                const rawMessage = await makeBody(to, userEmail, subject, html, attachments);
 
-            const res = await gmail.users.messages.send({
-                userId: 'me',
-                requestBody: { raw: rawMessage }
-            });
+                const res = await gmail.users.messages.send({
+                    userId: 'me',
+                    requestBody: { raw: rawMessage }
+                });
 
-            console.log('[EmailService] Email sent via User Gmail API:', res.data.id);
-            return res.data;
+                console.log('[EmailService] Email sent via User Gmail API:', res.data.id);
+                return res.data;
+            } catch (apiError) {
+                if (apiError.code === 400 && apiError.message.includes('invalid_grant')) {
+                    console.error('[EmailService] User refresh token invalid/revoked. User needs to reconnect Gmail.');
+                    throw new Error('GMAIL_TOKEN_EXPIRED: Please reconnect your Gmail account');
+                }
+                throw apiError;
+            }
         }
 
         // CASE 2: Use Custom SMTP (if provided by user)
