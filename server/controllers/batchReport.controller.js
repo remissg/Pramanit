@@ -81,8 +81,8 @@ const getBatchReportDetails = async (req, res) => {
 const createBatchReport = async (userId, designId, totalRecipients, successfulEmails, failedEmails, status = 'completed') => {
     try {
         const report = await BatchReport.findOneAndUpdate(
-            { 
-                user: userId, 
+            {
+                user: userId,
                 design_id: designId,
                 status: 'processing'
             },
@@ -96,7 +96,7 @@ const createBatchReport = async (userId, designId, totalRecipients, successfulEm
                 completion_time: status === 'completed' ? new Date() : undefined
             },
             {
-                new: true, // Create if doesn't exist
+                returnDocument: 'after', // Create if doesn't exist
                 upsert: true
             }
         );
