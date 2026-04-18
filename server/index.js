@@ -18,6 +18,7 @@ const designRoutes = require('./routes/design.routes');
 const emailTemplateRoutes = require('./routes/emailTemplate.routes');
 const externalRoutes = require('./routes/external.routes');
 const batchReportRoutes = require('./routes/batchReport.routes');
+const contactMessageRoutes = require('./routes/contactMessage.routes');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
@@ -64,6 +65,7 @@ app.use('/api/designs', designRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/batch-reports', batchReportRoutes);
+app.use('/api/contact', contactMessageRoutes);
 
 
 app.get('/', (req, res) => {

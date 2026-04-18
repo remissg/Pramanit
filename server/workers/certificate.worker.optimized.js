@@ -12,6 +12,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const { sendEmail } = require('../utils/emailService');
+const { sendCertificateEmail } = require('../utils/enhancedEmailService');
 const { createBatchReport } = require('../controllers/batchReport.controller');
 
 // Rate limiting helper
@@ -117,31 +118,27 @@ const processBatch = async () => {
 
                     await newVerification.save();
 
-                    // Prepare email
+                    // Prepare email with enhanced template
                     const recipientEmail = recipient.email || recipient.data?.email;
                     if (recipientEmail) {
-                        let personalizedBody = emailBody || '';
-                        const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
-                        const mergeData = {
-                            ...recipient,
-                            cert_id: certId,
-                            certificate_link: `${clientUrl}/verify/${certId}`
+                        // Use enhanced email template with issuer contact information
+                        const issuerInfo = {
+                            name: branding.full_name || 'Certificate Issuer',
+                            orgName: branding.org_name || '',
+                            email: branding.email || '',
+                            designation: branding.designation || ''
                         };
 
-                        Object.keys(mergeData).forEach(key => {
-                            const regex = new RegExp(`{{${key}}}`, 'gi');
-                            personalizedBody = personalizedBody.replace(regex, mergeData[key]);
-                        });
-
-                        // Send email with retry logic
-                        await sendEmail(
+                        await sendCertificateEmail(
                             recipientEmail,
-                            subject || 'Your Certificate',
-                            personalizedBody,
+                            certId,
+                            issuerInfo,
                             [{
                                 filename: `certificate-${certId.slice(0, 8)}.png`,
                                 content: buffer
-                            }]
+                            }],
+                            subject, // Issuer's custom subject
+                            emailBody // Issuer's custom email body
                         );
                     }
 

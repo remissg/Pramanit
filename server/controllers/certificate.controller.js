@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { PDFDocument } = require('pdf-lib');
 const { sendEmail } = require('../utils/emailService');
+const { sendCertificateEmail } = require('../utils/enhancedEmailService');
 const { Worker } = require('worker_threads');
 
 const User = require('../models/User');
@@ -581,19 +582,28 @@ const processSingle = async (req, res) => {
         // We already normalized keys to lowercase in recData, so 'Email' became 'email'
         if (recData.email) {
             try {
-                const smtpConfig = await getSmtpConfig(req.user.id);
                 console.log(`[Controller] Attempting to send email to ${recData.email}...`);
-                await sendEmail(
+
+                // Use enhanced email template with issuer contact information
+                const issuerInfo = {
+                    name: branding?.full_name || 'Certificate Issuer',
+                    orgName: branding?.org_name || '',
+                    email: branding?.email || '',
+                    designation: branding?.designation || ''
+                };
+
+                await sendCertificateEmail(
                     recData.email,
-                    personalizedSubject || 'Your Certificate',
-                    personalizedBody,
+                    certId,
+                    issuerInfo,
                     [
                         {
                             filename: `certificate-${(mergedData.name || 'document').replace(/\\s+/g, '_')}.pdf`,
                             content: Buffer.from(pdfContent),
                         },
                     ],
-                    smtpConfig
+                    personalizedSubject, // Issuer's custom subject with merge tags replaced
+                    personalizedBody // Issuer's custom body with merge tags replaced
                 );
             } catch (emailError) {
                 console.error('Email sending failed (Non-blocking):', emailError);
