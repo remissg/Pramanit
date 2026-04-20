@@ -19,6 +19,7 @@ const emailTemplateRoutes = require('./routes/emailTemplate.routes');
 const externalRoutes = require('./routes/external.routes');
 const batchReportRoutes = require('./routes/batchReport.routes');
 const contactMessageRoutes = require('./routes/contactMessage.routes');
+const certificateCorrectionRoutes = require('./routes/certificateCorrection.routes');
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
@@ -58,6 +59,9 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Routes
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/auth', authRoutes);
@@ -66,7 +70,12 @@ app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/batch-reports', batchReportRoutes);
 app.use('/api/contact', contactMessageRoutes);
+app.use('/api/corrections', certificateCorrectionRoutes);
 
+// Serve contact-issuer page
+app.get('/contact-issuer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contact-issuer.html'));
+});
 
 app.get('/', (req, res) => {
   res.send('Pramanit Server is running');
