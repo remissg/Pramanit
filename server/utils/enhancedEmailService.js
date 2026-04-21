@@ -5,11 +5,22 @@ const getClientUrl = () => {
         : 'http://localhost:5173';
 };
 
+// Get server URL for backend routes (like contact-issuer)
+const getServerUrl = () => {
+    // Use SERVER_URL if set, otherwise fallback to FRONTEND_URL or localhost
+    return process.env.SERVER_URL
+        ? (process.env.SERVER_URL.startsWith('http') ? process.env.SERVER_URL : `https://${process.env.SERVER_URL}`)
+        : process.env.FRONTEND_URL
+            ? `https://${process.env.FRONTEND_URL}`
+            : 'http://localhost:5000';
+};
+
 // Enhanced certificate email with issuer contact information and custom content
 const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], customSubject = '', customBody = '') => {
     const clientUrl = getClientUrl();
+    const serverUrl = getServerUrl();
     const verifyUrl = `${clientUrl}/verify/${certId}`;
-    const contactUrl = `${clientUrl}/contact-issuer?cert=${certId}`;
+    const contactUrl = `${serverUrl}/contact-issuer?cert=${certId}`;
 
     // Use custom body if provided, otherwise use default message
     const emailContent = customBody || `
