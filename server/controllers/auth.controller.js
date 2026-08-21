@@ -156,7 +156,7 @@ const verifyEmail = async (req, res) => {
         const user = await User.findOneAndUpdate(
             { verification_token: token },
             { is_verified: true, verification_token: null },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!user) {
@@ -212,7 +212,7 @@ const updateProfile = async (req, res) => {
         // Handle Cloudinary upload for organization logo
         if (req.file) {
             try {
-                const cdnResult = await uploadToCDN(req.file.path, 'logos');
+                const cdnResult = await uploadToCDN(req.file.path, 'pramanit/logos');
                 updateData.org_logo_url = cdnResult.secure_url;
 
                 // Cleanup local file after upload
@@ -224,7 +224,7 @@ const updateProfile = async (req, res) => {
             updateData.org_logo_url = orgLogoUrl;
         }
 
-        const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password_hash -verification_token');
+        const user = await User.findByIdAndUpdate(userId, updateData, { returnDocument: 'after' }).select('-password_hash -verification_token');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -351,7 +351,7 @@ const toggleUserPlan = async (req, res) => {
             return res.status(400).json({ message: 'User ID and Plan Type are required' });
         }
 
-        const user = await User.findByIdAndUpdate(userId, { plan_type: planType }, { new: true });
+        const user = await User.findByIdAndUpdate(userId, { plan_type: planType }, { returnDocument: 'after' });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }

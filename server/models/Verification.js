@@ -22,6 +22,9 @@ const VerificationSchema = new mongoose.Schema({
     requested_name: { type: String },
     correction_status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
     certificate_title: { type: String }, // For LinkedIn/Social metadata
+    rendered_image_url: { type: String }, // Cloudinary CDN URL or persistent image URI of final certificate
+    template_bg_url: { type: String }, // Cloudinary CDN URL of template background
+    qr_config: { type: mongoose.Schema.Types.Mixed }, // QR code configuration snapshot
     created_at: { type: Date, default: Date.now }
 });
 

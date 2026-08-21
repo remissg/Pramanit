@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import FileForm from './components/FileUpload';
 import CertificatePreview from './components/CertificatePreview';
 import EmailForm from './components/EmailForm';
 import BatchPreview from './components/BatchPreview';
 import ManualRecipientEntry from './components/ManualRecipientEntry';
+import RecipientTable from './components/RecipientTable';
 import axios from 'axios';
-import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe, LayoutTemplate } from 'lucide-react';
+import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe, LayoutTemplate, Download, RotateCcw, Clock, AlertCircle, Check, X, Search, Filter } from 'lucide-react';
 import CustomSelect from './components/CustomSelect';
 import Papa from 'papaparse';
 
 import * as XLSX from 'xlsx';
 
-import { useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -414,6 +414,12 @@ function MainApp({ theme, setTheme }) {
   const [previews, setPreviews] = useState([]);
   const [showBatchPreview, setShowBatchPreview] = useState(false);
 
+  // Live granular progress & batch report states
+  const [liveRecipients, setLiveRecipients] = useState([]);
+  const [batchReportRecords, setBatchReportRecords] = useState([]);
+  const [reportSearchTerm, setReportSearchTerm] = useState('');
+  const [reportFilter, setReportFilter] = useState('all'); // 'all', 'success', 'failed'
+
   const processHeaders = (headers, rows) => {
     setAvailableHeaders(headers);
     setRawRows(rows);
@@ -526,7 +532,18 @@ function MainApp({ theme, setTheme }) {
   const handleSubmit = async () => {
     setStatus('uploading');
     setResult(null);
-    setProgress({ current: 0, total: recipients.length });
+
+    const selectedRecipients = recipients.filter((_, i) => selectedRecipientIndices.includes(i));
+    const initialLiveList = selectedRecipients.map((r, idx) => ({
+      id: idx,
+      name: r.name || 'Recipient',
+      email: r.email || r.data?.email || `recipient_${idx + 1}@domain.com`,
+      status: 'queued', // 'queued' | 'processing' | 'success' | 'failed'
+      error: null
+    }));
+
+    setLiveRecipients(initialLiveList);
+    setProgress({ current: 0, total: selectedRecipients.length });
 
     try {
       // 1. Prepare (Upload Template once)
@@ -537,8 +554,7 @@ function MainApp({ theme, setTheme }) {
       const { templatePath } = prepRes.data;
 
       const results = { success: [], failed: [] };
-      const selectedRecipients = recipients.filter((_, i) => selectedRecipientIndices.includes(i));
-      setProgress({ current: 0, total: selectedRecipients.length });
+      const finalReportRecords = [];
 
       // 2. Process in batches (Concurrent for speed)
       const BATCH_SIZE = 3;
@@ -548,9 +564,19 @@ function MainApp({ theme, setTheme }) {
           alert(`Batch stopped. Sent ${results.success.length} certificates.`);
           break;
         }
+
         const batch = selectedRecipients.slice(i, i + BATCH_SIZE);
 
-        await Promise.all(batch.map(async (recipient) => {
+        // Mark items in this batch as 'processing'
+        setLiveRecipients(prev => prev.map((item, idx) =>
+          (idx >= i && idx < i + BATCH_SIZE) ? { ...item, status: 'processing' } : item
+        ));
+
+        await Promise.all(batch.map(async (recipient, batchIdx) => {
+          const globalIdx = i + batchIdx;
+          const recName = recipient.name || 'Recipient';
+          const recEmail = recipient.email || recipient.data?.email || 'N/A';
+
           try {
             const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
               templatePath,
@@ -560,40 +586,92 @@ function MainApp({ theme, setTheme }) {
               body: emailConfig.body,
               issuerName: emailConfig.issuerName,
               qrConfig,
-              designId: currentDesignId // Pass designId to associate with verification record
+              designId: currentDesignId,
+              skipLog: true
             });
 
-            // Check for HTML response (Vercel Index Fallback)
             if (typeof res.data === 'string' && res.data.trim().startsWith('<!doctype html>')) {
               throw new Error("Misconfigured API URL: Frontend is hitting itself. Add VITE_API_BASE_URL to Vercel.");
             }
 
             if (res.data.emailSent === false) {
-              results.failed.push({
-                email: recipient.email || recipient.name,
-                error: "Certificate OK, but Email FAILED (Check Server Logs)."
-              });
+              const errNote = "Certificate generated, but Email delivery failed.";
+              results.failed.push({ email: recEmail, name: recName, error: errNote });
+              finalReportRecords.push({ name: recName, email: recEmail, status: 'failed', error: errNote });
+
+              setLiveRecipients(prev => prev.map((item, idx) => idx === globalIdx ? { ...item, status: 'failed', error: errNote } : item));
             } else {
-              results.success.push(recipient.email || recipient.name);
+              results.success.push(recEmail);
+              finalReportRecords.push({ name: recName, email: recEmail, status: 'success', error: null });
+
+              setLiveRecipients(prev => prev.map((item, idx) => idx === globalIdx ? { ...item, status: 'success' } : item));
             }
           } catch (err) {
-            results.failed.push({
-              email: recipient.email || recipient.name,
-              error: err.response?.data?.message || err.message
-            });
+            const errStr = err.response?.data?.message || err.message;
+            results.failed.push({ email: recEmail, name: recName, error: errStr });
+            finalReportRecords.push({ name: recName, email: recEmail, status: 'failed', error: errStr });
+
+            setLiveRecipients(prev => prev.map((item, idx) => idx === globalIdx ? { ...item, status: 'failed', error: errStr } : item));
           }
-          // Update progress (Use functional update to avoid stale closure issues)
           setProgress(prev => ({ ...prev, current: Math.min(prev.current + 1, prev.total) }));
         }));
       }
 
+      // Log batch summary to server
+      try {
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/log-batch`, {
+          designId: currentDesignId,
+          totalSent: results.success.length,
+          recipientEmails: results.success,
+          failedEmails: results.failed
+        });
+      } catch (logErr) {
+        console.error("Failed to log batch:", logErr);
+      }
+
       setResult({ count: results.success.length, failedCount: results.failed.length });
+      setBatchReportRecords(finalReportRecords);
       setStatus('success');
       setStep(4);
     } catch (error) {
       console.error("Batch failed:", error);
       setStatus('error');
     }
+  };
+
+  const handleExportFailedCSV = () => {
+    const failedItems = batchReportRecords.filter(r => r.status === 'failed');
+    if (failedItems.length === 0) return;
+
+    const csvData = Papa.unparse(failedItems.map(item => ({
+      'Recipient Name': item.name,
+      'Email Address': item.email,
+      'Failure Reason': item.error
+    })));
+
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `failed_recipients_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleRetryFailed = () => {
+    const failedEmails = batchReportRecords.filter(r => r.status === 'failed').map(r => r.email);
+    const failedIndices = recipients
+      .map((r, idx) => (failedEmails.includes(r.email || r.data?.email) ? idx : null))
+      .filter(idx => idx !== null);
+
+    if (failedIndices.length === 0) {
+      alert("No failed recipients to retry.");
+      return;
+    }
+
+    setSelectedRecipientIndices(failedIndices);
+    setStep(3); // Go to email step to retry
   };
 
   const handleSaveDesign = async () => {
@@ -647,31 +725,118 @@ function MainApp({ theme, setTheme }) {
       <div className="pt-32 md:pt-24 pb-8 md:pb-20 max-w-7xl mx-auto px-4 md:px-6 transition-all">
         {/* Progress Overlay during Upload */}
         {status === 'uploading' && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-            <div className="bg-[var(--bg-card)] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 rounded-3xl text-center border border-[var(--glass-border)]">
-              <div className="w-20 h-20 rounded-2xl bg-violet-600/20 flex items-center justify-center mb-6 mx-auto">
-                <Send className="text-violet-400 animate-bounce" size={32} />
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+            <div className="bg-[var(--bg-card)] p-8 max-w-2xl w-full shadow-2xl animate-in zoom-in-95 duration-300 rounded-[2rem] border border-[var(--glass-border)] max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-start pb-4 border-b border-[var(--glass-border)] mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-violet-600/20 flex items-center justify-center">
+                    <Send className="text-violet-400 animate-pulse" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-heading)] tracking-tight">Issuing & Dispatching Batch</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-bold">
+                      Processing {progress.current} of {progress.total} certificates in real-time
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { abortBatchRef.current = true; }}
+                  className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+                >
+                  Stop Sending
+                </button>
               </div>
-              <h3 className="text-2xl font-black text-[var(--text-heading)] mb-2 tracking-tight transition-colors">Sending Batch</h3>
-              <p className="text-[var(--text-muted)] mb-8 font-bold transition-colors">Processing {progress.current} of {progress.total} certificates...</p>
 
-              <div className="w-full h-3 bg-[var(--glass)] rounded-full overflow-hidden mb-4 p-0.5 border border-[var(--glass-border)]">
-                <div
-                  className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-300 rounded-full shadow-[0_0_15px_rgba(124,58,237,0.5)]"
-                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
-                />
+              {/* Main Progress Bar */}
+              <div className="mb-6 space-y-2">
+                <div className="w-full h-3 bg-[var(--glass)] rounded-full overflow-hidden p-0.5 border border-[var(--glass-border)]">
+                  <div
+                    className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-300 rounded-full shadow-[0_0_15px_rgba(124,58,237,0.5)]"
+                    style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  <span>Progress: {Math.round(progress.total > 0 ? (progress.current / progress.total) * 100 : 0)}%</span>
+                  <span className="text-violet-400">Do not close tab while sending</span>
+                </div>
               </div>
-              <p className="text-[10px] font-black text-violet-400 tracking-[0.2em] uppercase mb-6">Please do not close this tab</p>
 
-              <button
-                onClick={() => {
-                  abortBatchRef.current = true;
-                  // Optional: immediate visual feedback, though loop break handles it
-                }}
-                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
-              >
-                Stop Sending
-              </button>
+              {/* Status Summary Pills */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2 text-center">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 block">Done</span>
+                  <span className="text-base font-black text-emerald-400">
+                    {liveRecipients.filter(r => r.status === 'success').length}
+                  </span>
+                </div>
+                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-2 text-center">
+                  <span className="text-[10px] font-black uppercase text-violet-400 block">In Progress</span>
+                  <span className="text-base font-black text-violet-400">
+                    {liveRecipients.filter(r => r.status === 'processing').length}
+                  </span>
+                </div>
+                <div className="bg-slate-500/10 border border-slate-500/20 rounded-xl p-2 text-center">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block">Next / Queued</span>
+                  <span className="text-base font-black text-slate-400">
+                    {liveRecipients.filter(r => r.status === 'queued').length}
+                  </span>
+                </div>
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2 text-center">
+                  <span className="text-[10px] font-black uppercase text-rose-400 block">Failed</span>
+                  <span className="text-base font-black text-rose-400">
+                    {liveRecipients.filter(r => r.status === 'failed').length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Live Granular Recipient Feed */}
+              <div className="flex-1 overflow-y-auto rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-input)] p-3 space-y-2 max-h-60 text-xs">
+                {liveRecipients.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      item.status === 'processing'
+                        ? 'bg-violet-600/10 border-violet-500/40 shadow-sm'
+                        : item.status === 'success'
+                        ? 'bg-emerald-500/5 border-emerald-500/20'
+                        : item.status === 'failed'
+                        ? 'bg-rose-500/5 border-rose-500/20'
+                        : 'bg-slate-500/5 border-transparent opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden pr-2">
+                      <span className="font-mono text-[10px] text-[var(--text-muted)] w-6">{idx + 1}.</span>
+                      <div className="truncate">
+                        <p className="font-bold text-[var(--text-main)] truncate">{item.name}</p>
+                        <p className="text-[10px] font-mono text-[var(--text-muted)] truncate">{item.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.status === 'queued' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-500/20 text-slate-400 border border-slate-500/30 flex items-center gap-1">
+                          <Clock size={10} /> Queued
+                        </span>
+                      )}
+                      {item.status === 'processing' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-violet-600/20 text-violet-400 border border-violet-500/40 flex items-center gap-1 animate-pulse">
+                          <Loader size={10} className="animate-spin" /> In Progress
+                        </span>
+                      )}
+                      {item.status === 'success' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                          <CheckCircle size={10} /> Done
+                        </span>
+                      )}
+                      {item.status === 'failed' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1" title={item.error}>
+                          <AlertCircle size={10} /> Failed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -750,32 +915,42 @@ function MainApp({ theme, setTheme }) {
               </div>
 
               {rawRows.length > 0 && (
-                <div className="bg-[var(--glass)] rounded-[24px] p-8 border border-[var(--glass-border)] space-y-6 animate-in fade-in zoom-in-95 duration-500 transition-colors">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Sparkles className="text-violet-500" size={20} />
-                    <h3 className="text-lg font-black text-[var(--text-heading)] tracking-tight transition-colors">Map Your Columns</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="group">
-                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block group-hover:text-violet-400 transition-colors">Recipient Name Column</label>
-                      <CustomSelect
-                        value={columnMapping.name}
-                        onChange={(val) => setColumnMapping(prev => ({ ...prev, name: val }))}
-                        options={availableHeaders.map(h => ({ name: h, value: h }))}
-                        icon={User}
-                      />
+                <>
+                  <div className="bg-[var(--glass)] rounded-[24px] p-8 border border-[var(--glass-border)] space-y-6 animate-in fade-in zoom-in-95 duration-500 transition-colors">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Sparkles className="text-violet-500" size={20} />
+                      <h3 className="text-lg font-black text-[var(--text-heading)] tracking-tight transition-colors">Map Your Columns</h3>
                     </div>
-                    <div className="group">
-                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block group-hover:text-violet-400 transition-colors">Recipient Email Column</label>
-                      <CustomSelect
-                        value={columnMapping.email}
-                        onChange={(val) => setColumnMapping(prev => ({ ...prev, email: val }))}
-                        options={availableHeaders.map(h => ({ name: h, value: h }))}
-                        icon={Mail}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="group">
+                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block group-hover:text-violet-400 transition-colors">Recipient Name Column</label>
+                        <CustomSelect
+                          value={columnMapping.name}
+                          onChange={(val) => setColumnMapping(prev => ({ ...prev, name: val }))}
+                          options={availableHeaders.map(h => ({ name: h, value: h }))}
+                          icon={User}
+                        />
+                      </div>
+                      <div className="group">
+                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block group-hover:text-violet-400 transition-colors">Recipient Email Column</label>
+                        <CustomSelect
+                          value={columnMapping.email}
+                          onChange={(val) => setColumnMapping(prev => ({ ...prev, email: val }))}
+                          options={availableHeaders.map(h => ({ name: h, value: h }))}
+                          icon={Mail}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  <RecipientTable
+                    headers={availableHeaders}
+                    rows={rawRows}
+                    selectedIndices={selectedRecipientIndices}
+                    onToggleSelection={setSelectedRecipientIndices}
+                    columnMapping={columnMapping}
+                  />
+                </>
               )}
 
               <div className="flex justify-end pt-12 border-t border-[var(--glass-border)] mt-8">
@@ -956,6 +1131,119 @@ function MainApp({ theme, setTheme }) {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Detailed Batch Execution Summary Report Table */}
+              <div className="w-full max-w-4xl bg-[var(--bg-card)] border border-[var(--glass-border)] rounded-[2.5rem] p-8 text-left mt-8 shadow-xl">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-[var(--glass-border)]">
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-heading)] tracking-tight">Batch Sending Audit Report</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-bold mt-1">
+                      Full recipient audit report showing delivery status & failure reasons.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {result?.failedCount > 0 && (
+                      <>
+                        <button
+                          onClick={handleExportFailedCSV}
+                          className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2"
+                        >
+                          <Download size={14} /> Export Unsent CSV
+                        </button>
+                        <button
+                          onClick={handleRetryFailed}
+                          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2 shadow-lg shadow-violet-600/30"
+                        >
+                          <RotateCcw size={14} /> Retry Failed ({result.failedCount})
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search recipient name/email..."
+                      value={reportSearchTerm}
+                      onChange={(e) => setReportSearchTerm(e.target.value)}
+                      className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+
+                  <div className="flex bg-[var(--bg-input)] p-1 rounded-xl border border-[var(--border-interactive)] text-xs font-bold self-start sm:self-auto">
+                    <button
+                      onClick={() => setReportFilter('all')}
+                      className={`px-3 py-1 rounded-lg transition-colors ${reportFilter === 'all' ? 'bg-violet-600 text-white' : 'text-[var(--text-muted)]'}`}
+                    >
+                      All ({batchReportRecords.length})
+                    </button>
+                    <button
+                      onClick={() => setReportFilter('success')}
+                      className={`px-3 py-1 rounded-lg transition-colors ${reportFilter === 'success' ? 'bg-emerald-600 text-white' : 'text-[var(--text-muted)]'}`}
+                    >
+                      Sent ({batchReportRecords.filter(r => r.status === 'success').length})
+                    </button>
+                    <button
+                      onClick={() => setReportFilter('failed')}
+                      className={`px-3 py-1 rounded-lg transition-colors ${reportFilter === 'failed' ? 'bg-rose-600 text-white' : 'text-[var(--text-muted)]'}`}
+                    >
+                      Unsent ({batchReportRecords.filter(r => r.status === 'failed').length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Report Table */}
+                <div className="overflow-x-auto rounded-2xl border border-[var(--glass-border)] max-h-80 overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 bg-[var(--bg-card)] border-b border-[var(--glass-border)] z-10">
+                      <tr>
+                        <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider w-12">#</th>
+                        <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Recipient Name</th>
+                        <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Email Address</th>
+                        <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Status</th>
+                        <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Details / Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--glass-border)]">
+                      {batchReportRecords
+                        .filter(record => {
+                          const matches = record.name.toLowerCase().includes(reportSearchTerm.toLowerCase()) ||
+                            record.email.toLowerCase().includes(reportSearchTerm.toLowerCase());
+                          if (!matches) return false;
+                          if (reportFilter === 'success') return record.status === 'success';
+                          if (reportFilter === 'failed') return record.status === 'failed';
+                          return true;
+                        })
+                        .map((record, idx) => (
+                          <tr key={idx} className="hover:bg-white/5 transition-colors">
+                            <td className="p-3 font-mono text-[var(--text-muted)]">{idx + 1}</td>
+                            <td className="p-3 font-bold text-[var(--text-main)]">{record.name}</td>
+                            <td className="p-3 font-mono text-[var(--text-main)]">{record.email}</td>
+                            <td className="p-3">
+                              {record.status === 'success' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  <CheckCircle size={10} /> Sent Successfully
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                  <AlertCircle size={10} /> Delivery Failed
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-[var(--text-muted)] font-medium">
+                              {record.status === 'success' ? 'Issued & Email Delivered' : (record.error || 'Failed to dispatch email')}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

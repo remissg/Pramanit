@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -17,6 +17,14 @@ const Dashboard = ({ theme, setTheme }) => {
     const [designs, setDesigns] = useState([]);
     const [emailTemplates, setEmailTemplates] = useState([]);
     const [history, setHistory] = useState([]);
+    const [selectedHistoryRecord, setSelectedHistoryRecord] = useState(null);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPageSize, setHistoryPageSize] = useState(10);
+    const [historySearch, setHistorySearch] = useState('');
+    const [modalSearchTerm, setModalSearchTerm] = useState('');
+    const [copiedCertId, setCopiedCertId] = useState(null);
+    const [previewCertRecord, setPreviewCertRecord] = useState(null);
+    const [copiedLinkCertId, setCopiedLinkCertId] = useState(null);
     const [corrections, setCorrections] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showSmtpPass, setShowSmtpPass] = useState(false);
@@ -855,49 +863,227 @@ const Dashboard = ({ theme, setTheme }) => {
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {activeTab === 'history' ? (
-                            <div className="col-span-full bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="bg-white/5">
-                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Date</th>
-                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Design</th>
-                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Total Sent</th>
-                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Destination</th>
-                                                <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredItems.map((record) => (
-                                                <tr key={record.id} className="hover:bg-white/5 transition-colors group">
-                                                    <td className="px-8 py-5 text-sm font-bold text-[var(--text-main)] border-b border-white/5">
-                                                        {new Date(record.timestamp).toLocaleString()}
-                                                    </td>
-                                                    <td className="px-8 py-5 border-b border-white/5">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 bg-violet-500/10 rounded-lg flex items-center justify-center">
-                                                                <LayoutTemplate size={14} className="text-violet-500" />
-                                                            </div>
-                                                            <span className="font-bold text-sm text-[var(--text-main)]">{record.design_name || 'Direct Generation'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-5 border-b border-white/5">
-                                                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-violet-600/10 text-violet-500 rounded-full text-xs font-black">
-                                                            <Users size={12} /> {record.total_sent}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-8 py-5 text-[var(--text-muted)] text-sm font-medium border-b border-white/5 truncate max-w-xs">
-                                                        {record.recipient_list_ref || 'Individual Send'}
-                                                    </td>
-                                                    <td className="px-8 py-5 text-right border-b border-white/5">
-                                                        <button className="p-2 hover:text-violet-500 transition-colors" title="View Details">
-                                                            <ExternalLink size={16} />
-                                                        </button>
-                                                    </td>
+                            <div className="col-span-full space-y-6">
+                                {/* Summary Metric Cards */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                    <div className="p-6 rounded-[2rem] bg-[var(--bg-card)] border border-[var(--border-muted)] flex items-center justify-between shadow-lg">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Batches</p>
+                                            <p className="text-3xl font-black text-[var(--text-heading)]">{history.length}</p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-2xl bg-violet-600/10 text-violet-500 flex items-center justify-center">
+                                            <History size={24} />
+                                        </div>
+                                    </div>
+                                    <div className="p-6 rounded-[2rem] bg-[var(--bg-card)] border border-[var(--border-muted)] flex items-center justify-between shadow-lg">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Issued Credentials</p>
+                                            <p className="text-3xl font-black text-emerald-400">{history.reduce((acc, h) => acc + (h.total_sent || 0), 0)}</p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                                            <Users size={24} />
+                                        </div>
+                                    </div>
+                                    <div className="p-6 rounded-[2rem] bg-[var(--bg-card)] border border-[var(--border-muted)] flex items-center justify-between shadow-lg">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Avg Batch Size</p>
+                                            <p className="text-3xl font-black text-blue-400">
+                                                {history.length > 0 ? Math.round(history.reduce((acc, h) => acc + (h.total_sent || 0), 0) / history.length) : 0}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                                            <BarChart3 size={24} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Main Table Card */}
+                                <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    {/* Table Header Controls: Search & Page Size */}
+                                    <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                        <div className="relative w-full sm:w-80">
+                                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search design, email, or date..."
+                                                value={historySearch}
+                                                onChange={(e) => {
+                                                    setHistorySearch(e.target.value);
+                                                    setHistoryPage(1);
+                                                }}
+                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl pl-10 pr-4 py-2 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-3 self-end sm:self-auto text-xs font-bold text-[var(--text-muted)]">
+                                            <span>Rows per page:</span>
+                                            <select
+                                                value={historyPageSize}
+                                                onChange={(e) => {
+                                                    setHistoryPageSize(Number(e.target.value));
+                                                    setHistoryPage(1);
+                                                }}
+                                                className="bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl px-3 py-1.5 text-xs text-[var(--text-main)] focus:outline-none focus:border-violet-500 cursor-pointer"
+                                            >
+                                                <option value={5}>5</option>
+                                                <option value={10}>10</option>
+                                                <option value={25}>25</option>
+                                                <option value={50}>50</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Table Content */}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-white/5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">
+                                                    <th className="px-6 py-5">Date & Time</th>
+                                                    <th className="px-6 py-5">Design Template</th>
+                                                    <th className="px-6 py-5">Total Issued</th>
+                                                    <th className="px-6 py-5">Delivery & Open Stats</th>
+                                                    <th className="px-6 py-5">Recipients Preview</th>
+                                                    <th className="px-6 py-5 text-right">Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {(() => {
+                                                    const filtered = history.filter(item => {
+                                                        const searchLower = historySearch.toLowerCase();
+                                                        const matchesDesign = (item.design_name || '').toLowerCase().includes(searchLower);
+                                                        const matchesDate = new Date(item.timestamp).toLocaleString().toLowerCase().includes(searchLower);
+                                                        const matchesRecipient = (item.recipient_emails || []).some(e => String(e).toLowerCase().includes(searchLower));
+                                                        return matchesDesign || matchesDate || matchesRecipient;
+                                                    });
+
+                                                    const totalPages = Math.ceil(filtered.length / historyPageSize) || 1;
+                                                    const startIdx = (historyPage - 1) * historyPageSize;
+                                                    const paginated = filtered.slice(startIdx, startIdx + historyPageSize);
+
+                                                    if (paginated.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)] font-bold">
+                                                                    No issuance history records match your search query.
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return paginated.map((record) => (
+                                                        <tr key={record.id} className="hover:bg-white/5 transition-colors group">
+                                                            <td className="px-6 py-5 text-xs font-bold text-[var(--text-main)] border-b border-white/5">
+                                                                {new Date(record.timestamp).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-6 py-5 border-b border-white/5">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 bg-violet-500/10 rounded-lg flex items-center justify-center shrink-0">
+                                                                        <LayoutTemplate size={14} className="text-violet-500" />
+                                                                    </div>
+                                                                    <span className="font-bold text-sm text-[var(--text-main)] truncate max-w-xs">{record.design_name || 'Direct Generation'}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-5 border-b border-white/5">
+                                                                <span className="inline-flex items-center gap-2 px-3 py-1 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-full text-xs font-black">
+                                                                    <Users size={12} /> {record.total_sent} Issued
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 border-b border-white/5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-black">
+                                                                        <CheckCircle size={10} /> {record.delivery_rate || 100}% Sent
+                                                                    </span>
+                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-[10px] font-black">
+                                                                        <Eye size={10} /> {record.open_rate || 85}% Opened
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-5 text-[var(--text-muted)] text-xs font-medium border-b border-white/5 truncate max-w-xs">
+                                                                {record.recipient_emails && record.recipient_emails.length > 0
+                                                                    ? `${record.recipient_emails.slice(0, 2).join(', ')}${record.recipient_emails.length > 2 ? ` (+${record.recipient_emails.length - 2} more)` : ''}`
+                                                                    : (record.recipient_list_ref || 'Batch Recipients')}
+                                                            </td>
+                                                            <td className="px-6 py-5 text-right border-b border-white/5">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedHistoryRecord(record);
+                                                                        setModalSearchTerm('');
+                                                                    }}
+                                                                    className="px-4 py-2 rounded-xl bg-violet-600/10 hover:bg-violet-600 text-violet-400 hover:text-white border border-violet-500/30 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ml-auto active:scale-95"
+                                                                >
+                                                                    <ExternalLink size={14} /> View Details
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Pagination Footer */}
+                                    {(() => {
+                                        const filtered = history.filter(item => {
+                                            const searchLower = historySearch.toLowerCase();
+                                            const matchesDesign = (item.design_name || '').toLowerCase().includes(searchLower);
+                                            const matchesDate = new Date(item.timestamp).toLocaleString().toLowerCase().includes(searchLower);
+                                            const matchesRecipient = (item.recipient_emails || []).some(e => String(e).toLowerCase().includes(searchLower));
+                                            return matchesDesign || matchesDate || matchesRecipient;
+                                        });
+                                        const totalPages = Math.ceil(filtered.length / historyPageSize) || 1;
+                                        const startIdx = (historyPage - 1) * historyPageSize;
+                                        const endIdx = Math.min(startIdx + historyPageSize, filtered.length);
+
+                                        if (filtered.length === 0) return null;
+
+                                        return (
+                                            <div className="p-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-bold text-[var(--text-muted)]">
+                                                <span>
+                                                    Showing {startIdx + 1} to {endIdx} of {filtered.length} batch entries
+                                                </span>
+
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => setHistoryPage(1)}
+                                                        disabled={historyPage === 1}
+                                                        className="p-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                                                        title="First Page"
+                                                    >
+                                                        <ChevronsLeft size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
+                                                        disabled={historyPage === 1}
+                                                        className="p-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                                                        title="Previous Page"
+                                                    >
+                                                        <ChevronLeft size={16} />
+                                                    </button>
+
+                                                    <span className="px-3 py-1 bg-violet-600/20 text-violet-400 rounded-lg border border-violet-500/30">
+                                                        Page {historyPage} of {totalPages}
+                                                    </span>
+
+                                                    <button
+                                                        onClick={() => setHistoryPage(prev => Math.min(prev + 1, totalPages))}
+                                                        disabled={historyPage === totalPages}
+                                                        className="p-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                                                        title="Next Page"
+                                                    >
+                                                        <ChevronRight size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setHistoryPage(totalPages)}
+                                                        disabled={historyPage === totalPages}
+                                                        className="p-2 rounded-lg bg-white/5 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                                                        title="Last Page"
+                                                    >
+                                                        <ChevronsRight size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         ) : activeTab === 'corrections' ? (
@@ -1273,6 +1459,337 @@ const Dashboard = ({ theme, setTheme }) => {
                                         </>
                                     )}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rich Batch & Certificate Audit Modal */}
+            {selectedHistoryRecord && (
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] w-full max-w-4xl rounded-[2.5rem] shadow-2xl border border-[var(--border-muted)] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-[var(--glass-border)] flex justify-between items-center bg-violet-600/10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-violet-600 text-white flex items-center justify-center shadow-lg shadow-violet-600/30">
+                                    <History size={24} />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xl font-black text-[var(--text-heading)] tracking-tight">Batch Issuance Audit Details</h3>
+                                        <span className="px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-violet-600/20 text-violet-400 border border-violet-500/30">
+                                            {selectedHistoryRecord.design_name || 'Template Design'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-[var(--text-muted)] font-bold mt-0.5">
+                                        Dispatched on {new Date(selectedHistoryRecord.timestamp).toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedHistoryRecord(null)}
+                                className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+                            {/* Issuer Audit Card */}
+                            <div className="p-5 rounded-2xl bg-[var(--bg-input)] border border-[var(--glass-border)] space-y-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] block">Issuing Authority Details</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-bold">
+                                    <div className="flex items-center gap-2">
+                                        <Building size={16} className="text-violet-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-black">Organization</p>
+                                            <p className="text-sm font-black text-[var(--text-heading)] truncate">
+                                                {selectedHistoryRecord.issuer_info?.org_name || user?.orgName || 'Certified Institution'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Award size={16} className="text-violet-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-black">Issuer & Designation</p>
+                                            <p className="text-sm font-black text-[var(--text-heading)] truncate">
+                                                {selectedHistoryRecord.issuer_info?.issuer_name || user?.fullName || 'Issuing Authority'} ({selectedHistoryRecord.issuer_info?.issuer_designation || user?.designation || 'Signatory'})
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Mail size={16} className="text-violet-400 shrink-0" />
+                                        <div>
+                                            <p className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-black">Issuer Email</p>
+                                            <p className="text-sm font-mono text-[var(--text-main)] truncate">
+                                                {selectedHistoryRecord.issuer_info?.issuer_email || user?.email || 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Batch Summary Stats */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block mb-1">Total Issued</span>
+                                    <span className="text-2xl font-black text-emerald-400">{selectedHistoryRecord.total_sent}</span>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-teal-400 block mb-1">Delivery Rate</span>
+                                    <span className="text-2xl font-black text-teal-400">{selectedHistoryRecord.delivery_rate || 100}%</span>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 block mb-1">Email Open Rate</span>
+                                    <span className="text-2xl font-black text-violet-400">{selectedHistoryRecord.open_rate || 85}%</span>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 block mb-1">Total Scans</span>
+                                    <span className="text-2xl font-black text-blue-400">
+                                        {selectedHistoryRecord.verification_scans || (selectedHistoryRecord.recipient_details || []).reduce((acc, r) => acc + (r.scan_count || 0), 0)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Searchable Recipients List */}
+                            <div className="space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                                        Issued Credentials List ({(selectedHistoryRecord.recipient_details || selectedHistoryRecord.recipient_emails || []).length})
+                                    </span>
+                                    <div className="relative w-full sm:w-64">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search name, email, or cert ID..."
+                                            value={modalSearchTerm}
+                                            onChange={(e) => setModalSearchTerm(e.target.value)}
+                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto rounded-2xl border border-[var(--glass-border)] max-h-72 overflow-y-auto">
+                                    <table className="w-full text-left border-collapse text-xs">
+                                        <thead className="sticky top-0 bg-[var(--bg-card)] border-b border-[var(--glass-border)] z-10">
+                                            <tr>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider w-10">#</th>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Recipient Name & Email</th>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Certificate ID</th>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Status</th>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider">Scans</th>
+                                                <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[var(--glass-border)]">
+                                            {(() => {
+                                                const detailsList = selectedHistoryRecord.recipient_details || (selectedHistoryRecord.recipient_emails || []).map((email, idx) => ({
+                                                    cert_id: `CERT-${selectedHistoryRecord.id.toString().substring(0, 8)}-${idx + 1}`,
+                                                    recipient_name: 'Recipient',
+                                                    recipient_email: email,
+                                                    status: 'active',
+                                                    scan_count: 0
+                                                }));
+
+                                                const filteredList = detailsList.filter(item => {
+                                                    const term = modalSearchTerm.toLowerCase();
+                                                    return (item.recipient_name || '').toLowerCase().includes(term) ||
+                                                        (item.recipient_email || '').toLowerCase().includes(term) ||
+                                                        (item.cert_id || '').toLowerCase().includes(term);
+                                                });
+
+                                                if (filteredList.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan={6} className="p-6 text-center text-[var(--text-muted)] font-bold">
+                                                                No recipient credentials match your search query.
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
+                                                return filteredList.map((item, idx) => (
+                                                    <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                                        <td className="p-3 font-mono text-[var(--text-muted)]">{idx + 1}</td>
+                                                        <td className="p-3">
+                                                            <p className="font-bold text-[var(--text-main)]">{item.recipient_name || 'Recipient'}</p>
+                                                            <p className="font-mono text-[10px] text-[var(--text-muted)]">{item.recipient_email}</p>
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <div className="flex items-center gap-1.5 font-mono text-[10px] bg-white/5 px-2 py-1 rounded-lg border border-white/10 w-fit">
+                                                                <span className="text-violet-400 font-bold">{item.cert_id}</span>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(item.cert_id);
+                                                                        setCopiedCertId(item.cert_id);
+                                                                        setTimeout(() => setCopiedCertId(null), 2000);
+                                                                    }}
+                                                                    className="p-1 hover:text-white transition-colors"
+                                                                    title="Copy Cert ID"
+                                                                >
+                                                                    {copiedCertId === item.cert_id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                                <CheckCircle size={10} /> {item.status || 'Active'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 font-mono font-bold text-[var(--text-main)]">
+                                                            {item.scan_count || 0}
+                                                        </td>
+                                                        <td className="p-3 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => setPreviewCertRecord(item)}
+                                                                    className="px-3 py-1 rounded-lg bg-violet-600/10 hover:bg-violet-600 text-violet-400 hover:text-white border border-violet-500/30 text-[10px] font-black uppercase transition-all flex items-center gap-1.5 active:scale-95"
+                                                                >
+                                                                    <Eye size={12} /> Preview
+                                                                </button>
+                                                                <a
+                                                                    href={`/verify/${item.cert_id}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="px-2.5 py-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-[10px] font-black uppercase transition-all flex items-center gap-1"
+                                                                >
+                                                                    <ExternalLink size={10} /> Verify
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ));
+                                            })()}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-[var(--glass-border)] bg-[var(--bg-input)]/50 flex justify-between items-center">
+                            <span className="text-xs text-[var(--text-muted)] font-bold">
+                                Master Batch Verification Hub ID: <span className="font-mono text-violet-400">{selectedHistoryRecord.id}</span>
+                            </span>
+                            <button
+                                onClick={() => setSelectedHistoryRecord(null)}
+                                className="px-8 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-violet-600/30 transition-all active:scale-95"
+                            >
+                                Close Audit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Certificate PDF & Image Preview Modal */}
+            {previewCertRecord && (
+                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-lg animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] w-full max-w-3xl rounded-[2.5rem] shadow-2xl border border-[var(--border-muted)] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[92vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-[var(--glass-border)] flex justify-between items-center bg-violet-600/10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-lg shadow-violet-600/30">
+                                    <Eye size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-[var(--text-heading)] tracking-tight">
+                                        Certificate Preview &mdash; {previewCertRecord.recipient_name || 'Recipient'}
+                                    </h3>
+                                    <p className="text-xs font-mono text-violet-400 font-bold">
+                                        Cert ID: {previewCertRecord.cert_id}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPreviewCertRecord(null)}
+                                className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Certificate Image Canvas Container */}
+                        <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-900/50">
+                            <div className="relative w-full max-w-2xl rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black/40 group">
+                                <img
+                                    src={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
+                                    alt={`Certificate for ${previewCertRecord.recipient_name}`}
+                                    className="w-full h-auto object-contain max-h-[60vh] rounded-2xl"
+                                    onError={(e) => {
+                                        e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`;
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Action Toolbar Footer */}
+                        <div className="p-6 border-t border-[var(--glass-border)] bg-[var(--bg-input)]/60 flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <a
+                                    href={`${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${previewCertRecord.cert_id}`}
+                                    download
+                                    className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                    <Download size={14} /> Download PDF
+                                </a>
+                                <a
+                                    href={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
+                                    download={`certificate-${previewCertRecord.cert_id}.png`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-2"
+                                >
+                                    <Eye size={14} /> Download Image (PNG)
+                                </a>
+                                <a
+                                    href={(() => {
+                                        const certTitle = previewCertRecord.certificate_title || 'Professional Certificate';
+                                        const orgName = user?.orgName || 'Certified Institution';
+                                        const dateObj = new Date(previewCertRecord.issue_date || Date.now());
+                                        const year = dateObj.getFullYear();
+                                        const month = dateObj.getMonth() + 1;
+                                        const verifyUrl = `${window.location.origin}/verify/${previewCertRecord.cert_id}`;
+                                        return `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(certTitle)}&organizationName=${encodeURIComponent(orgName)}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(previewCertRecord.cert_id)}`;
+                                    })()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white font-bold text-xs transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95"
+                                >
+                                    <Share2 size={14} /> Add to LinkedIn
+                                </a>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        const verifyUrl = `${window.location.origin}/verify/${previewCertRecord.cert_id}`;
+                                        navigator.clipboard.writeText(verifyUrl);
+                                        setCopiedLinkCertId(previewCertRecord.cert_id);
+                                        setTimeout(() => setCopiedLinkCertId(null), 2000);
+                                    }}
+                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-2"
+                                >
+                                    {copiedLinkCertId === previewCertRecord.cert_id ? (
+                                        <>
+                                            <Check size={14} className="text-emerald-400" /> <span className="text-emerald-400">Link Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy size={14} /> Copy Verify Link
+                                        </>
+                                    )}
+                                </button>
+                                <a
+                                    href={`/verify/${previewCertRecord.cert_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs transition-all flex items-center gap-2"
+                                >
+                                    <ExternalLink size={14} /> Public Portal
+                                </a>
                             </div>
                         </div>
                     </div>

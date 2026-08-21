@@ -141,6 +141,35 @@ X-API-KEY: YOUR_KEY
 }`} />
                     </Section>
 
+                    <Section title="Embeddable 'Verified Issuer' Badge" icon={Globe}>
+                        <p>
+                            Embed an interactive <strong>"Verified by Pramanit"</strong> badge on your organization's website or LMS to showcase your official issuing authority.
+                        </p>
+
+                        <div className="my-6 p-6 bg-slate-900/80 rounded-2xl border border-violet-500/20 flex flex-col items-center justify-center gap-3 text-center">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Live Badge Preview</span>
+                            <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-violet-900/40 via-purple-900/40 to-slate-900 border border-violet-500/40 rounded-2xl shadow-xl">
+                                <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-600/30">
+                                    <Shield size={20} className="text-white" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-black text-white tracking-wide">Pramanit Verified Issuer</span>
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    </div>
+                                    <p className="text-[10px] font-mono text-slate-300">Official Verifiable Authority</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <CodeBlock
+                            language="html"
+                            code={`<!-- Pramanit Verified Issuer Badge Snippet -->
+<div id="pramanit-badge" data-issuer="verified"></div>
+<script src="${window.location.origin}/embed-badge.js" async></script>`}
+                        />
+                    </Section>
+
                 </div>
 
                 {/* Footer */}

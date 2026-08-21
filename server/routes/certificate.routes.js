@@ -25,6 +25,7 @@ router.post('/upload', authenticateToken, upload.fields([{ name: 'template' }, {
 router.post('/test-email', authenticateToken, certificateController.sendEmail);
 router.post('/preview-batch', authenticateToken, upload.fields([{ name: 'template' }, { name: 'data' }]), certificateController.previewBatch);
 router.get('/history', authenticateToken, certificateController.getIssuanceHistory);
+router.post('/log-batch', authenticateToken, certificateController.logBatchIssuance);
 router.get('/verify/:id', certificateController.verifyCertificate);
 router.get('/og-image/:id', certificateController.getCertificateOGImage);
 router.get('/download/:id', certificateController.downloadCertificate);
