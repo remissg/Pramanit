@@ -34,5 +34,8 @@ router.post('/find-certificates', certificateController.findCertificatesByEmail)
 router.post('/request-correction', certificateController.requestCorrection);
 router.get('/corrections', authenticateToken, certificateController.getCorrectionRequests);
 router.post('/corrections/action', authenticateToken, certificateController.handleCorrectionAction);
+router.post('/revoke/:id', authenticateToken, certificateController.revokeCertificate);
+router.get('/batch-zip/:batchId', authenticateToken, certificateController.exportBatchZip);
+router.post('/correct-inperson/:id', authenticateToken, certificateController.correctCertificateInPerson);
 
 module.exports = router;

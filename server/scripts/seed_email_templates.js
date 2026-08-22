@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const EmailTemplate = require('../models/EmailTemplate');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const BASE_TEMPLATES = [
     {
@@ -28,6 +29,13 @@ const BASE_TEMPLATES = [
         name: 'Academic Excellence',
         subject: 'Notification of Academic Completion: {{event_name}}',
         body_html: '<p>To <strong>{{name}}</strong>,</p><p>Please find attached your formal certificate of completion for the academic module <strong>{{event_name}}</strong>.</p><p>This document verifies your successful fulfillment of all required criteria as of today.</p><p>Sincerely,<br>Office of Academic Affairs<br><strong>{{issuer_name}}</strong></p>',
+        is_system: true,
+        is_default: false
+    },
+    {
+        name: '🇮🇳 79th Independence Day Participation',
+        subject: '🇮🇳 Happy 79th Independence Day! Your Certificate of Participation is Here',
+        body_html: '<div style="background-color: #fffdf7; border: 2px solid #ff9933; padding: 24px; border-radius: 16px; font-family: Georgia, serif;"><h2 style="color: #000080; margin-top: 0;">Happy 79th Independence Day! 🇮🇳</h2><p>Dear <strong>{{name}}</strong>,</p><p>Thank you for your active participation in our <strong>79th Independence Day Celebrations & Cultural Fest</strong>!</p><p>We are proud to award you this <strong>Certificate of Participation</strong> for your enthusiasm in <strong>{{event_category}}</strong> ({{department}}).</p><p>Your verifiable certificate PDF is attached to this email. You can also view and verify your credential anytime online.</p><p>Jai Hind! 🇮🇳<br>Warm regards,<br><strong>{{issuer_name}}</strong></p></div>',
         is_system: true,
         is_default: false
     }

@@ -187,7 +187,7 @@ const verifyEmail = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-    const { orgName, fullName, designation, orgLogoUrl, smtpHost, smtpPort, smtpUser, smtpPass, defaultHashtags, allowSharing } = req.body;
+    const { orgName, fullName, designation, orgLogoUrl, certPrefix, smtpHost, smtpPort, smtpUser, smtpPass, defaultHashtags, allowSharing } = req.body;
     const userId = req.user.id;
 
     try {
@@ -198,6 +198,7 @@ const updateProfile = async (req, res) => {
         if (orgName !== undefined) updateData.org_name = orgName;
         if (fullName !== undefined) updateData.full_name = fullName;
         if (designation !== undefined) updateData.designation = designation;
+        if (certPrefix !== undefined) updateData.cert_prefix = certPrefix.trim().toUpperCase() || 'CERT';
         if (encryptedPass !== undefined) updateData.smtp_pass = encryptedPass;
 
         // SMTP Settings

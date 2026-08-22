@@ -6,6 +6,7 @@ const XLSX = require('xlsx');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { PDFDocument } = require('pdf-lib');
+const JSZip = require('jszip');
 const { sendEmail } = require('../utils/emailService');
 const { sendCertificateEmail } = require('../utils/enhancedEmailService');
 const { Worker } = require('worker_threads');
@@ -81,7 +82,9 @@ const saveVerification = async (record) => {
             design_id: record.designId,
             rendered_image_url: record.renderedImageUrl,
             template_bg_url: record.templateBgUrl,
-            qr_config: record.qrConfig
+            qr_config: record.qrConfig,
+            field_data: record.fieldData || {},
+            fields: record.fields || []
         });
     } catch (e) {
         console.error('Failed to save verification:', e);
@@ -264,7 +267,13 @@ const renderCertificateToBuffer = async (record) => {
                 const qrX = parseFloat(qrConf.x) * canvas.width;
                 const qrY = parseFloat(qrConf.y) * canvas.height;
 
-                const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1 });
+                const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+                    margin: 1,
+                    color: {
+                        dark: qrConf.darkColor || qrConf.color?.dark || '#000000',
+                        light: qrConf.lightColor || qrConf.color?.light || '#ffffff'
+                    }
+                });
                 const qrImage = await loadImage(qrDataUrl);
                 ctx.drawImage(qrImage, qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
             } catch (qrErr) {
@@ -382,7 +391,21 @@ const prepareBatch = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No template file uploaded' });
         }
-        res.json({ templatePath: req.file.path });
+
+        const originalName = req.file.originalname || '';
+        // Strip extension (.png, .jpg, .jpeg, .svg, .webp)
+        const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+        // Replace underscores and hyphens with spaces, clean multiple spaces
+        const suggestedTitle = nameWithoutExt
+            .replace(/[_|-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        res.json({
+            templatePath: req.file.path,
+            originalName,
+            suggestedTitle: suggestedTitle || 'Certificate Template'
+        });
     } catch (error) {
         console.error('Prepare batch error:', error);
         res.status(500).json({ message: 'Failed to prepare batch' });
@@ -444,7 +467,9 @@ const processSingle = async (req, res) => {
         // Draw image scaled to new canvas dimensions
         ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
 
-        const certId = crypto.randomUUID();
+        const userRecord = req.user?.id ? await User.findById(req.user.id).select('cert_prefix') : null;
+        const prefix = (userRecord?.cert_prefix || 'CERT').trim().toUpperCase();
+        const certId = `${prefix}-${crypto.randomUUID()}`;
         const recipientToken = crypto.randomBytes(32).toString('hex');
         const clientUrl = getClientUrl();
         const verifyUrl = `${clientUrl}/verify/${certId}`;
@@ -532,8 +557,8 @@ const processSingle = async (req, res) => {
             const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
                 margin: 1,
                 color: {
-                    dark: '#000000',
-                    light: '#ffffff'
+                    dark: qrConfig.darkColor || qrConfig.color?.dark || '#000000',
+                    light: qrConfig.lightColor || qrConfig.color?.light || '#ffffff'
                 }
             });
 
@@ -604,7 +629,9 @@ const processSingle = async (req, res) => {
             recipientToken,
             designId,
             renderedImageUrl,
-            qrConfig
+            qrConfig,
+            fieldData: recData,
+            fields: fields || []
         });
         const pdfContent = await createPdfWithMetadata(imageBuffer, {
             certId,
@@ -1456,24 +1483,149 @@ const downloadCertificate = async (req, res) => {
     }
 };
 
-module.exports = {
-    prepareBatch,
-    processSingle,
-    processCertificates,
-    sendEmail, // This is the simple alias now? No, sendEmail is imported from utils. 
-    // Wait, previous exports had 'sendEmail: sendTestEmail' alias but 'sendEmail' key? 
-    // Step 9988 showed: sendEmail, ... sendTestEmail ...
-    // Actually, line 999 shows `sendEmail,` (from import), and line 1007 `sendTestEmail`.
-    // And line 1058 `sendEmail: sendTestEmail`
-    // I will keep it consistent with what it SHOULD be.
-    // sendEmail (utility) shouldn't satisfy the route handler if it's the util.
-    // The route 'test-email' likely uses `sendTestEmail` controller.
-    // ROUTE: router.post('/test-email', ..., certificateController.sendEmail);
-    // So the EXPORT named 'sendEmail' MUST be the `sendTestEmail` function?
-    // Let's check imports. `const { sendEmail } = require('../utils/emailService');` at line 9.
-    // So I should export `sendTestEmail` AS `sendEmail` or rename route usage.
-    // Existing export was: `sendEmail: sendTestEmail`.
+const revokeCertificate = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
 
+        const record = await Verification.findOne({ cert_id: id, issuer_id: userId });
+
+        if (!record) {
+            return res.status(404).json({ message: 'Certificate not found or unauthorized' });
+        }
+
+        record.status = 'revoked';
+        await record.save();
+
+        res.json({
+            message: 'Certificate revoked successfully',
+            certId: record.cert_id,
+            status: record.status
+        });
+    } catch (error) {
+        console.error('Revoke certificate error:', error);
+        res.status(500).json({ message: 'Failed to revoke certificate' });
+    }
+};
+
+const exportBatchZip = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        const userId = req.user.id;
+
+        const records = await Verification.find({ batch_id: batchId, issuer_id: userId }).populate('design_id');
+
+        if (!records || records.length === 0) {
+            return res.status(404).json({ message: 'No certificates found for this batch' });
+        }
+
+        const zip = new JSZip();
+
+        for (const record of records) {
+            try {
+                const imageBuffer = await renderCertificateToBuffer(record);
+                const pdfBuffer = await createPdfWithMetadata(imageBuffer, {
+                    certId: record.cert_id,
+                    recipientName: record.recipient_name,
+                    issuerName: record.issuer_name,
+                    verifyUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${record.cert_id}`
+                });
+
+                const sanitizedName = (record.recipient_name || 'recipient').replace(/[^a-zA-Z0-9_-]/g, '_');
+                const filename = `${sanitizedName}_${record.cert_id.slice(0, 8)}.pdf`;
+                zip.file(filename, pdfBuffer);
+            } catch (err) {
+                console.error(`Failed to add ${record.cert_id} to ZIP:`, err);
+            }
+        }
+
+        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="batch-${batchId.slice(0, 8)}.zip"`);
+        res.send(zipBuffer);
+    } catch (error) {
+        console.error('Export batch ZIP error:', error);
+        res.status(500).json({ message: 'Failed to generate batch ZIP archive' });
+    }
+};
+
+const correctCertificateInPerson = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const { recipientName, recipientEmail, fieldData } = req.body;
+
+        const record = await Verification.findOne({ cert_id: id, issuer_id: userId }).populate('design_id');
+
+        if (!record) {
+            return res.status(404).json({ message: 'Certificate not found or unauthorized' });
+        }
+
+        if (recipientName) record.recipient_name = recipientName;
+        if (recipientEmail) record.recipient_email = recipientEmail;
+
+        if (fieldData && typeof fieldData === 'object') {
+            record.field_data = { ...(record.field_data || {}), ...fieldData };
+        }
+
+        // Re-render certificate image canvas with updated fields
+        const imageBuffer = await renderCertificateToBuffer(record);
+
+        // Re-upload updated image to Cloudinary CDN
+        try {
+            const cdnResult = await uploadToCDN(imageBuffer, 'pramanit/certificates');
+            if (cdnResult && cdnResult.secure_url) {
+                record.rendered_image_url = cdnResult.secure_url;
+            }
+        } catch (cdnErr) {
+            console.error('Cloudinary CDN update note:', cdnErr.message || cdnErr);
+        }
+
+        record.correction_status = 'approved';
+        await record.save();
+
+        // Optionally send updated PDF email
+        const targetEmail = recipientEmail || (record.getDecryptedEmail ? record.getDecryptedEmail() : '');
+        if (targetEmail) {
+            try {
+                const pdfBuffer = await createPdfWithMetadata(imageBuffer, {
+                    certId: record.cert_id,
+                    recipientName: record.recipient_name,
+                    issuerName: record.issuer_name,
+                    verifyUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${record.cert_id}`
+                });
+
+                await sendCertificateEmail({
+                    to: targetEmail,
+                    subject: `Updated: Your Official Certificate (${record.recipient_name})`,
+                    bodyHtml: `<p>Dear <strong>${record.recipient_name}</strong>,</p><p>Your certificate details have been updated by the issuing authority. Attached is your updated official credential.</p>`,
+                    pdfBuffer,
+                    filename: `certificate-${record.recipient_name.replace(/\s+/g, '_')}.pdf`,
+                    userId
+                });
+            } catch (emailErr) {
+                console.error('Re-issuance email note:', emailErr.message || emailErr);
+            }
+        }
+
+        res.json({
+            message: 'Certificate updated and re-issued successfully',
+            certificate: {
+                cert_id: record.cert_id,
+                recipient_name: record.recipient_name,
+                recipient_email: targetEmail,
+                rendered_image_url: record.rendered_image_url,
+                field_data: record.field_data
+            }
+        });
+    } catch (error) {
+        console.error('In-person correction error:', error);
+        res.status(500).json({ message: 'Failed to update certificate' });
+    }
+};
+
+module.exports = {
     prepareBatch,
     processSingle,
     processCertificates,
@@ -1485,10 +1637,11 @@ module.exports = {
     requestCorrection,
     getCorrectionRequests,
     handleCorrectionAction,
-    sendEmail: sendTestEmail, // Aliasing for route compatibility
+    sendEmail: sendTestEmail,
     getCertificateOGImage,
     findCertificatesByEmail,
-    downloadCertificate
+    downloadCertificate,
+    revokeCertificate,
+    exportBatchZip,
+    correctCertificateInPerson
 };
-
-

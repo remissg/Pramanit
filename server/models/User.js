@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     verification_token: { type: String },
     is_verified: { type: Boolean, default: false },
     org_logo_url: { type: String },
+    cert_prefix: { type: String, default: 'CERT' },
     plan_type: { type: String, default: 'free' },
     smtp_host: { type: String },
     smtp_port: { type: Number },

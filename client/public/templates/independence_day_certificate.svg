@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" width="1200" height="850">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF7" />
+      <stop offset="50%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FFF9F0" />
+    </linearGradient>
+    
+    <!-- Tricolor Top Ribbon Gradient -->
+    <linearGradient id="saffronGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF9933" />
+      <stop offset="100%" stop-color="#E67E22" />
+    </linearGradient>
+
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#138808" />
+      <stop offset="100%" stop-color="#0E6606" />
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37" />
+      <stop offset="50%" stop-color="#F3E5AB" />
+      <stop offset="100%" stop-color="#AA7C11" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base Canvas Background -->
+  <rect width="1200" height="850" fill="url(#bgGrad)" />
+
+  <!-- Outer Decorative Tricolor Border -->
+  <rect x="25" y="25" width="1150" height="800" rx="16" fill="none" stroke="url(#goldGrad)" stroke-width="4" />
+  <rect x="35" y="35" width="1130" height="780" rx="12" fill="none" stroke="#000080" stroke-width="1.5" stroke-dasharray="6,4" />
+
+  <!-- Top Tricolor Ribbon Banner -->
+  <path d="M 35 35 Q 600 55 1165 35 L 1165 55 Q 600 75 35 55 Z" fill="url(#saffronGrad)" opacity="0.9" />
+  <path d="M 35 55 Q 600 75 1165 55 L 1165 75 Q 600 95 35 75 Z" fill="#FFFFFF" />
+  <path d="M 35 75 Q 600 95 1165 75 L 1165 95 Q 600 115 35 95 Z" fill="url(#greenGrad)" opacity="0.9" />
+
+  <!-- Corner Ornamental Rosettes -->
+  <g fill="url(#goldGrad)">
+    <circle cx="60" cy="60" r="14" />
+    <circle cx="1140" cy="60" r="14" />
+    <circle cx="60" cy="790" r="14" />
+    <circle cx="1140" cy="790" r="14" />
+  </g>
+
+  <!-- Watermark Ashoka Chakra in Center Background -->
+  <g transform="translate(600, 440) scale(1.6)" opacity="0.04" fill="none" stroke="#000080" stroke-width="2">
+    <circle cx="0" cy="0" r="100" />
+    <circle cx="0" cy="0" r="18" />
+    <!-- 24 Spokes -->
+    <path d="M0,0 L0,-100 M0,0 L25.88,-96.59 M0,0 L50,-86.6 M0,0 L70.71,-70.71 M0,0 L86.6,-50 M0,0 L96.59,-25.88 M0,0 L100,0 M0,0 L96.59,25.88 M0,0 L86.6,50 M0,0 L70.71,70.71 M0,0 L50,86.6 M0,0 L25.88,96.59 M0,0 L0,100 M0,0 L-25.88,96.59 M0,0 L-50,86.6 M0,0 L-70.71,70.71 M0,0 L-86.6,50 M0,0 L-96.59,25.88 M0,0 L-100,0 M0,0 L-96.59,-25.88 M0,0 L-86.6,-50 M0,0 L-70.71,-70.71 M0,0 L-50,-86.6 M0,0 L-25.88,-96.59" />
+  </g>
+
+  <!-- Ashoka Chakra Crest Seal (Top Center) -->
+  <g transform="translate(600, 140) scale(0.35)" fill="none" stroke="#000080" stroke-width="4">
+    <circle cx="0" cy="0" r="100" fill="#FFFFFF" />
+    <circle cx="0" cy="0" r="95" stroke="url(#goldGrad)" stroke-width="8" />
+    <circle cx="0" cy="0" r="20" fill="#000080" />
+    <path d="M0,0 L0,-95 M0,0 L24.59,-91.75 M0,0 L47.5,-82.27 M0,0 L67.17,-67.17 M0,0 L82.27,-47.5 M0,0 L91.75,-24.59 M0,0 L95,0 M0,0 L91.75,24.59 M0,0 L82.27,47.5 M0,0 L67.17,67.17 M0,0 L47.5,82.27 M0,0 L24.59,91.75 M0,0 L0,95 M0,0 L-24.59,91.75 M0,0 L-47.5,82.27 M0,0 L-67.17,67.17 M0,0 L-82.27,47.5 M0,0 L-91.75,24.59 M0,0 L-95,0 M0,0 L-91.75,-24.59 M0,0 L-82.27,-47.5 M0,0 L-67.17,-67.17 M0,0 L-47.5,-82.27 M0,0 L-24.59,-91.75" />
+  </g>
+
+  <!-- Typography Headings -->
+  <text x="600" y="210" text-anchor="middle" font-family="'Georgia', 'Playfair Display', serif" font-size="20" font-weight="bold" fill="#FF9933" letter-spacing="4">
+    79TH INDEPENDENCE DAY CELEBRATIONS
+  </text>
+
+  <text x="600" y="260" text-anchor="middle" font-family="'Times New Roman', serif" font-size="44" font-weight="bold" fill="#000080" letter-spacing="2">
+    CERTIFICATE OF PARTICIPATION
+  </text>
+
+  <text x="600" y="300" text-anchor="middle" font-family="'Segoe UI', 'Arial', sans-serif" font-size="15" font-weight="600" fill="#138808" letter-spacing="3">
+    PROUDLY PRESENTED TO
+  </text>
+
+  <!-- Recipient Name Placeholder Area (Guided baseline) -->
+  <line x1="300" y1="400" x2="900" y2="400" stroke="url(#goldGrad)" stroke-width="1.5" />
+
+  <!-- Citation Body Text -->
+  <text x="600" y="440" text-anchor="middle" font-family="'Georgia', serif" font-size="16" fill="#334155" font-style="italic">
+    for actively participating in the Independence Day Cultural & Extra-Curricular Event
+  </text>
+  
+  <text x="600" y="475" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="bold" fill="#0f172a">
+    Event / Category: Flag Hoisting & Patriotic Cultural Presentation
+  </text>
+
+  <text x="600" y="515" text-anchor="middle" font-family="'Georgia', serif" font-size="15" fill="#475569">
+    Demonstrating exemplary national spirit, dedication, and patriotic enthusiasm.
+  </text>
+
+  <!-- Bottom Details & Signature Area -->
+  <g transform="translate(0, 680)">
+    <!-- Signature Line 1 -->
+    <line x1="180" y1="40" x2="400" y2="40" stroke="#94a3b8" stroke-width="1" />
+    <text x="290" y="60" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="bold" fill="#1e293b">Event Coordinator</text>
+    <text x="290" y="78" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="11" fill="#64748b">Cultural Committee</text>
+
+    <!-- Center Seal Emblem Ribbon -->
+    <circle cx="600" cy="30" r="38" fill="url(#goldGrad)" />
+    <circle cx="600" cy="30" r="32" fill="#000080" />
+    <text x="600" y="35" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="12" font-weight="bold" fill="#FFFFFF">OFFICIAL</text>
+    <text x="600" y="48" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="8" font-weight="bold" fill="#F3E5AB">SEAL</text>
+
+    <!-- Signature Line 2 -->
+    <line x1="800" y1="40" x2="1020" y2="40" stroke="#94a3b8" stroke-width="1" />
+    <text x="910" y="60" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="14" font-weight="bold" fill="#1e293b">Principal / Director</text>
+    <text x="910" y="78" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="11" fill="#64748b">Institution Authority</text>
+  </g>
+
+  <!-- Bottom Tricolor Footer Ribbon -->
+  <rect x="35" y="805" width="1130" height="3" fill="#FF9933" />
+  <rect x="35" y="808" width="1130" height="3" fill="#FFFFFF" />
+  <rect x="35" y="811" width="1130" height="3" fill="#138808" />
+</svg>

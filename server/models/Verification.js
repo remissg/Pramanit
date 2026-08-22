@@ -25,6 +25,8 @@ const VerificationSchema = new mongoose.Schema({
     rendered_image_url: { type: String }, // Cloudinary CDN URL or persistent image URI of final certificate
     template_bg_url: { type: String }, // Cloudinary CDN URL of template background
     qr_config: { type: mongoose.Schema.Types.Mixed }, // QR code configuration snapshot
+    field_data: { type: mongoose.Schema.Types.Mixed, default: {} }, // Dynamic CSV key-value map
+    fields: { type: Array, default: [] }, // Canvas positioning snapshot
     created_at: { type: Date, default: Date.now }
 });
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check, Archive } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -24,6 +24,8 @@ const Dashboard = ({ theme, setTheme }) => {
     const [modalSearchTerm, setModalSearchTerm] = useState('');
     const [copiedCertId, setCopiedCertId] = useState(null);
     const [previewCertRecord, setPreviewCertRecord] = useState(null);
+    const [isEditingCert, setIsEditingCert] = useState(false);
+    const [editCertForm, setEditCertForm] = useState({ name: '', email: '', fields: {} });
     const [copiedLinkCertId, setCopiedLinkCertId] = useState(null);
     const [corrections, setCorrections] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,6 +35,7 @@ const Dashboard = ({ theme, setTheme }) => {
         orgLogoUrl: user?.orgLogo || '',
         fullName: user?.fullName || '',
         designation: user?.designation || '',
+        certPrefix: 'CERT',
         smtpHost: '',
         smtpPort: 587,
         smtpUser: '',
@@ -169,6 +172,7 @@ const Dashboard = ({ theme, setTheme }) => {
                 orgLogoUrl: data.org_logo_url || '',
                 fullName: data.full_name || '',
                 designation: data.designation || '',
+                certPrefix: data.cert_prefix || 'CERT',
                 smtpHost: data.smtp_host || '',
                 smtpPort: data.smtp_port || 587,
                 smtpUser: data.smtp_user || '',
@@ -1559,15 +1563,24 @@ const Dashboard = ({ theme, setTheme }) => {
                                     <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
                                         Issued Credentials List ({(selectedHistoryRecord.recipient_details || selectedHistoryRecord.recipient_emails || []).length})
                                     </span>
-                                    <div className="relative w-full sm:w-64">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
-                                        <input
-                                            type="text"
-                                            placeholder="Search name, email, or cert ID..."
-                                            value={modalSearchTerm}
-                                            onChange={(e) => setModalSearchTerm(e.target.value)}
-                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
-                                        />
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <a
+                                            href={`${import.meta.env.VITE_API_BASE_URL}/api/certificates/batch-zip/${selectedHistoryRecord.batch_id}`}
+                                            download
+                                            className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95 shrink-0"
+                                        >
+                                            <Archive size={14} /> Download All PDFs (ZIP)
+                                        </a>
+                                        <div className="relative w-full sm:w-64">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search name, email, or cert ID..."
+                                                value={modalSearchTerm}
+                                                onChange={(e) => setModalSearchTerm(e.target.value)}
+                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1711,13 +1724,96 @@ const Dashboard = ({ theme, setTheme }) => {
                             </button>
                         </div>
 
+                        {/* Inline Multi-Field Corrector Drawer */}
+                        {isEditingCert && (
+                            <div className="p-6 border-b border-[var(--glass-border)] bg-violet-950/60 space-y-4 max-h-[55vh] overflow-y-auto animate-in slide-in-from-top-4 duration-300">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-black text-violet-300 uppercase tracking-widest flex items-center gap-2">
+                                        <Wand2 size={16} /> On-The-Spot Full-Field Corrector
+                                    </span>
+                                    <span className="text-[10px] text-[var(--text-muted)] font-bold">Edit any field to re-render & re-issue in real-time</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">Recipient Name</label>
+                                        <input
+                                            type="text"
+                                            value={editCertForm.name}
+                                            onChange={(e) => setEditCertForm({ ...editCertForm, name: e.target.value })}
+                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl py-2 px-3 text-xs text-[var(--text-main)] font-bold focus:border-violet-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">Recipient Email</label>
+                                        <input
+                                            type="text"
+                                            value={editCertForm.email}
+                                            onChange={(e) => setEditCertForm({ ...editCertForm, email: e.target.value })}
+                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl py-2 px-3 text-xs text-[var(--text-main)] font-bold focus:border-violet-500"
+                                        />
+                                    </div>
+
+                                    {/* Render custom CSV fields */}
+                                    {Object.keys(editCertForm.fields || {}).map((key) => (
+                                        <div key={key}>
+                                            <label className="block text-[10px] font-black text-violet-400 uppercase tracking-wider mb-1">{key}</label>
+                                            <input
+                                                type="text"
+                                                value={editCertForm.fields[key] || ''}
+                                                onChange={(e) => setEditCertForm({
+                                                    ...editCertForm,
+                                                    fields: { ...editCertForm.fields, [key]: e.target.value }
+                                                })}
+                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl py-2 px-3 text-xs text-[var(--text-main)] font-bold focus:border-violet-500"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button
+                                        onClick={() => setIsEditingCert(false)}
+                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--text-muted)] rounded-xl text-xs font-bold transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/correct-inperson/${previewCertRecord.cert_id}`, {
+                                                    recipientName: editCertForm.name,
+                                                    recipientEmail: editCertForm.email,
+                                                    fieldData: editCertForm.fields
+                                                });
+                                                const updatedCert = res.data.certificate;
+                                                setPreviewCertRecord(prev => ({
+                                                    ...prev,
+                                                    recipient_name: updatedCert.recipient_name,
+                                                    recipient_email: updatedCert.recipient_email,
+                                                    rendered_image_url: updatedCert.rendered_image_url + '?t=' + Date.now(),
+                                                    field_data: updatedCert.field_data
+                                                }));
+                                                setIsEditingCert(false);
+                                                alert('Certificate updated and re-issued successfully!');
+                                            } catch (err) {
+                                                console.error(err);
+                                                alert('Failed to update certificate.');
+                                            }
+                                        }}
+                                        className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                                    >
+                                        <Wand2 size={14} /> Save & Re-Issue Certificate
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Certificate Image Canvas Container */}
-                        <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-900/50">
-                            <div className="relative w-full max-w-2xl rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black/40 group">
+                        <div className="p-6 overflow-auto flex-1 flex flex-col items-center bg-slate-900/50 max-h-[70vh] custom-scrollbar">
+                            <div className="relative w-full rounded-2xl overflow-auto border border-white/10 shadow-2xl bg-black/40 group p-2">
                                 <img
                                     src={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
                                     alt={`Certificate for ${previewCertRecord.recipient_name}`}
-                                    className="w-full h-auto object-contain max-h-[60vh] rounded-2xl"
+                                    className="w-full h-auto object-contain min-w-[650px] rounded-xl"
                                     onError={(e) => {
                                         e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`;
                                     }}
@@ -1790,6 +1886,48 @@ const Dashboard = ({ theme, setTheme }) => {
                                 >
                                     <ExternalLink size={14} /> Public Portal
                                 </a>
+                                <button
+                                    onClick={() => {
+                                        setEditCertForm({
+                                            name: previewCertRecord.recipient_name || '',
+                                            email: previewCertRecord.recipient_email || '',
+                                            fields: previewCertRecord.field_data || {}
+                                        });
+                                        setIsEditingCert(!isEditingCert);
+                                    }}
+                                    className="px-4 py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-400 border border-violet-500/30 font-bold text-xs transition-all flex items-center gap-2 active:scale-95"
+                                >
+                                    <Edit size={14} /> {isEditingCert ? 'Close Editor' : 'Edit / Correct Fields'}
+                                </button>
+                                {previewCertRecord.status === 'revoked' ? (
+                                    <span className="px-4 py-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                        <AlertCircle size={14} /> Status: Revoked
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm(`Are you sure you want to REVOKE certificate ${previewCertRecord.cert_id}? This will invalidate verification on the public portal.`)) {
+                                                try {
+                                                    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/revoke/${previewCertRecord.cert_id}`);
+                                                    setPreviewCertRecord(prev => ({ ...prev, status: 'revoked' }));
+                                                    if (selectedHistoryRecord && selectedHistoryRecord.recipient_details) {
+                                                        setSelectedHistoryRecord(prev => ({
+                                                            ...prev,
+                                                            recipient_details: prev.recipient_details.map(r => r.cert_id === previewCertRecord.cert_id ? { ...r, status: 'revoked' } : r)
+                                                        }));
+                                                    }
+                                                    alert('Certificate has been revoked successfully.');
+                                                } catch (err) {
+                                                    alert('Failed to revoke certificate.');
+                                                    console.error(err);
+                                                }
+                                            }
+                                        }}
+                                        className="px-4 py-2.5 rounded-xl bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 font-bold text-xs transition-all flex items-center gap-2 active:scale-95"
+                                    >
+                                        <Trash2 size={14} /> Revoke Certificate
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

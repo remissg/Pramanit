@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, CheckSquare, Square, CheckCircle, AlertCircle, Trash2, Filter } from 'lucide-react';
+import { Search, CheckSquare, Square, CheckCircle, AlertCircle, Trash2, Filter, Sparkles } from 'lucide-react';
 
 const RecipientTable = ({
     headers = [],
@@ -7,7 +7,8 @@ const RecipientTable = ({
     selectedIndices = [],
     onToggleSelection,
     columnMapping = { name: '', email: '' },
-    onDeleteRow
+    onDeleteRow,
+    onCleanCsvData
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'valid', 'invalid', 'selected'
@@ -34,6 +35,23 @@ const RecipientTable = ({
             };
         });
     }, [rows, columnMapping, selectedIndices]);
+
+    // Compute duplicate email count
+    const duplicateCount = useMemo(() => {
+        const seen = new Set();
+        let dupes = 0;
+        processedRows.forEach(item => {
+            if (item.email) {
+                const norm = item.email.trim().toLowerCase();
+                if (seen.has(norm)) {
+                    dupes++;
+                } else {
+                    seen.add(norm);
+                }
+            }
+        });
+        return dupes;
+    }, [processedRows]);
 
     // Filter rows based on search and status filter
     const filteredRows = useMemo(() => {
@@ -102,6 +120,20 @@ const RecipientTable = ({
                         <span className="text-[10px] font-black uppercase tracking-widest text-rose-400 flex items-center gap-1">
                             <AlertCircle size={12} className="text-rose-400" /> {invalidCount} Invalid Email
                         </span>
+                    )}
+                    {duplicateCount > 0 && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1">
+                            <AlertCircle size={12} className="text-amber-400" /> {duplicateCount} Duplicate
+                        </span>
+                    )}
+                    {onCleanCsvData && (duplicateCount > 0 || invalidCount > 0) && (
+                        <button
+                            onClick={onCleanCsvData}
+                            className="ml-2 px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                            title="Automatically purge duplicate emails and invalid address rows"
+                        >
+                            <Sparkles size={13} /> Clean CSV ({duplicateCount + invalidCount} Issues)
+                        </button>
                     )}
                 </div>
             </div>

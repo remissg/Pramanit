@@ -358,6 +358,30 @@ const CertificatePreview = ({
                                         </button>
                                     </div>
 
+                                    <div className="flex items-center gap-2 pr-3 border-r border-violet-500/10">
+                                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">QR Color</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <label className="flex items-center gap-1 cursor-pointer" title="QR Code Module Color (Dark)">
+                                                <input
+                                                    type="color"
+                                                    value={qrConfig.darkColor || '#000000'}
+                                                    onChange={(e) => onQrConfigChange({ ...qrConfig, darkColor: e.target.value })}
+                                                    className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
+                                                />
+                                                <span className="text-[9px] font-mono text-slate-400">Dark</span>
+                                            </label>
+                                            <label className="flex items-center gap-1 cursor-pointer" title="QR Background Color (Light)">
+                                                <input
+                                                    type="color"
+                                                    value={qrConfig.lightColor || '#ffffff'}
+                                                    onChange={(e) => onQrConfigChange({ ...qrConfig, lightColor: e.target.value })}
+                                                    className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
+                                                />
+                                                <span className="text-[9px] font-mono text-slate-400">BG</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <button
                                         onClick={() => onQrConfigChange({ ...qrConfig, showManualId: !qrConfig.showManualId })}
                                         className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${qrConfig.showManualId
@@ -487,10 +511,14 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale })
                 className="absolute top-0 left-0 cursor-move z-[60] group"
             >
                 <div
-                    className="bg-white/90 backdrop-blur-sm border-2 border-violet-500 p-2 rounded-xl shadow-2xl flex flex-col items-center justify-center group-hover:scale-105 transition-all"
-                    style={{ width: config.size, height: config.size }}
+                    className="border-2 border-violet-500 p-2 rounded-xl shadow-2xl flex flex-col items-center justify-center group-hover:scale-105 transition-all overflow-hidden"
+                    style={{
+                        width: config.size,
+                        height: config.size,
+                        backgroundColor: config.lightColor || '#ffffff'
+                    }}
                 >
-                    <QrCode size={config.size * 0.6} className="text-violet-600 opacity-60" />
+                    <QrCode size={config.size * 0.6} color={config.darkColor || '#000000'} />
                     {config.showManualId && (
                         <div className="absolute top-[110%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
                             <p className="text-[6px] font-black text-slate-500 uppercase tracking-[.2em] whitespace-nowrap">Security Serial</p>

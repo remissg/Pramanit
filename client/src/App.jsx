@@ -420,6 +420,137 @@ function MainApp({ theme, setTheme }) {
   const [reportSearchTerm, setReportSearchTerm] = useState('');
   const [reportFilter, setReportFilter] = useState('all'); // 'all', 'success', 'failed'
 
+  // Tab Closure & Unload Guard during active batch dispatch
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (status === 'uploading' || status === 'processing') {
+        e.preventDefault();
+        e.returnValue = '⚠️ Active Certificate Batch Dispatch in Progress! If you close or leave this page now, remaining certificate dispatches will be paused.';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [status]);
+
+  const [sendingTest, setSendingTest] = useState(false);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
+  // Auto-Save Draft to localStorage
+  useEffect(() => {
+    if (fields.length > 0) {
+      const draftData = {
+        fields,
+        qrConfig,
+        emailConfig,
+        savedAt: Date.now()
+      };
+      localStorage.setItem('pramanit_cert_draft', JSON.stringify(draftData));
+    }
+  }, [fields, qrConfig, emailConfig]);
+
+  // Check for restored draft on load
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('pramanit_cert_draft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && parsed.fields && parsed.fields.length > 0) {
+          setHasRestoredDraft(true);
+        }
+      } catch (e) {
+        console.error('Failed to parse draft:', e);
+      }
+    }
+  }, []);
+
+  const handleRestoreDraft = () => {
+    const savedDraft = localStorage.getItem('pramanit_cert_draft');
+    if (savedDraft) {
+      const parsed = JSON.parse(savedDraft);
+      if (parsed.fields) setFields(parsed.fields);
+      if (parsed.qrConfig) setQrConfig(parsed.qrConfig);
+      if (parsed.emailConfig) setEmailConfig(parsed.emailConfig);
+      setShowApp(true);
+      setStep(2);
+      setHasRestoredDraft(false);
+      alert('Restored your previous canvas draft layout successfully!');
+    }
+  };
+
+  const handleClearDraft = () => {
+    localStorage.removeItem('pramanit_cert_draft');
+    setHasRestoredDraft(false);
+  };
+
+  const handleCleanCsvData = () => {
+    if (!rawRows || rawRows.length === 0) return;
+    const emailKey = columnMapping.email;
+    const seenEmails = new Set();
+    const cleanedRows = [];
+
+    rawRows.forEach(row => {
+      const emailVal = row[emailKey] || row.email || '';
+      const emailNorm = String(emailVal).trim().toLowerCase();
+      const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm);
+      if (isValid && !seenEmails.has(emailNorm)) {
+        seenEmails.add(emailNorm);
+        cleanedRows.push(row);
+      }
+    });
+
+    const removedCount = rawRows.length - cleanedRows.length;
+    setRawRows(cleanedRows);
+    alert(`CSV Cleaning Complete! Removed ${removedCount} duplicate/invalid rows.`);
+  };
+
+  const handleSendTestToMe = async () => {
+    if (!files.template) {
+      alert('Please upload a certificate template first.');
+      return;
+    }
+    const targetEmail = user?.email || user?.gmailEmail;
+    if (!targetEmail) {
+      alert('Could not determine your email address. Please make sure you are logged in.');
+      return;
+    }
+
+    setSendingTest(true);
+    try {
+      const sampleRecipient = {
+        name: user?.fullName || 'Sample Recipient',
+        email: targetEmail,
+        data: recipients[0]?.data || { Name: user?.fullName || 'Sample Recipient', Email: targetEmail }
+      };
+
+      let templatePath = files.template;
+      if (files.template instanceof File) {
+        const formData = new FormData();
+        formData.append('template', files.template);
+        const uploadRes = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/upload-temp`, formData);
+        templatePath = uploadRes.data.path;
+      }
+
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
+        templatePath,
+        recipient: sampleRecipient,
+        fields: fields.filter(f => f.isVisible),
+        subject: emailConfig.subject || 'Sample Certificate Preview',
+        body: emailConfig.body || 'Attached is your sample certificate preview.',
+        issuerName: emailConfig.issuerName || user?.fullName || 'Pramanit Issuer',
+        qrConfig,
+        designId: currentDesignId
+      });
+
+      alert(`Sample certificate sent successfully to ${targetEmail}! Check your inbox.`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send sample test certificate: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const processHeaders = (headers, rows) => {
     setAvailableHeaders(headers);
     setRawRows(rows);
@@ -578,17 +709,29 @@ function MainApp({ theme, setTheme }) {
           const recEmail = recipient.email || recipient.data?.email || 'N/A';
 
           try {
-            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
-              templatePath,
-              recipient,
-              fields: fields.filter(f => f.isVisible),
-              subject: emailConfig.subject,
-              body: emailConfig.body,
-              issuerName: emailConfig.issuerName,
-              qrConfig,
-              designId: currentDesignId,
-              skipLog: true
-            });
+            let res;
+            let retries = 0;
+            const MAX_RETRIES = 3;
+            while (retries < MAX_RETRIES) {
+              try {
+                res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/process-single`, {
+                  templatePath,
+                  recipient,
+                  fields: fields.filter(f => f.isVisible),
+                  subject: emailConfig.subject,
+                  body: emailConfig.body,
+                  issuerName: emailConfig.issuerName,
+                  qrConfig,
+                  designId: currentDesignId,
+                  skipLog: true
+                });
+                break;
+              } catch (retryErr) {
+                retries++;
+                if (retries >= MAX_RETRIES) throw retryErr;
+                await new Promise(r => setTimeout(r, 1500 * retries));
+              }
+            }
 
             if (typeof res.data === 'string' && res.data.trim().startsWith('<!doctype html>')) {
               throw new Error("Misconfigured API URL: Frontend is hitting itself. Add VITE_API_BASE_URL to Vercel.");
@@ -677,7 +820,11 @@ function MainApp({ theme, setTheme }) {
   const handleSaveDesign = async () => {
     if (!files || !files.template) return;
 
-    const designName = prompt('Enter a name for this design:');
+    const defaultDesignName = files?.template?.name
+      ? files.template.name.replace(/\.[^/.]+$/, '').replace(/[_|-]+/g, ' ').replace(/\s+/g, ' ').trim()
+      : 'Certificate Design';
+
+    const designName = prompt('Enter a name for this design:', defaultDesignName);
     if (!designName) return;
 
     setSaving(true);
@@ -861,6 +1008,29 @@ function MainApp({ theme, setTheme }) {
           )}
         </div>
 
+        {hasRestoredDraft && (
+          <div className="mb-6 p-4 bg-violet-600/15 border border-violet-500/30 rounded-2xl max-w-2xl mx-auto animate-in slide-in-from-top-4 duration-500 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+            <div className="flex items-center gap-3 text-violet-300 font-bold text-xs">
+              <Sparkles size={18} className="text-violet-400 shrink-0" />
+              <span>We found an unsaved certificate design draft from your previous session!</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleRestoreDraft}
+                className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-violet-600/30 active:scale-95"
+              >
+                Resume Draft
+              </button>
+              <button
+                onClick={handleClearDraft}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold rounded-xl transition-all"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className={`flex justify-between items-center relative px-12 max-w-3xl mx-auto ${step === 2 ? 'mb-8 md:mb-16' : 'mb-6 md:mb-16'}`}>
           <div className="absolute top-1/2 left-0 w-full h-1 bg-[var(--glass)] -z-0 transform -translate-y-1/2 rounded-full border border-[var(--glass-border)]"></div>
           <div className={`absolute top-1/2 left-0 h-1 bg-violet-600 -z-0 transform -translate-y-1/2 rounded-full transition-all duration-700 shadow-[0_0_15px_rgba(124,58,237,0.5)]`} style={{ width: `${((step - 1) / 3) * 100}%` }}></div>
@@ -949,6 +1119,7 @@ function MainApp({ theme, setTheme }) {
                     selectedIndices={selectedRecipientIndices}
                     onToggleSelection={setSelectedRecipientIndices}
                     columnMapping={columnMapping}
+                    onCleanCsvData={handleCleanCsvData}
                   />
                 </>
               )}
@@ -1025,6 +1196,16 @@ function MainApp({ theme, setTheme }) {
                 </button>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                  <button
+                    onClick={handleSendTestToMe}
+                    disabled={sendingTest}
+                    className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 font-black transition-all flex items-center justify-center gap-2.5 active:scale-95 text-xs uppercase tracking-wider"
+                    title="Send a single sample certificate to your own email address to inspect rendering"
+                  >
+                    {sendingTest ? <Loader className="animate-spin" size={16} /> : <Mail size={16} />}
+                    {sendingTest ? 'Sending Test...' : 'Send Test To Me'}
+                  </button>
+
                   <button
                     onClick={handleBatchPreview}
                     disabled={status === 'previewing'}
