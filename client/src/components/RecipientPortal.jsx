@@ -18,7 +18,9 @@ import {
     ArrowLeft,
     Maximize2,
     Eye,
-    Grid
+    Grid,
+    Search,
+    Copy
 } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
@@ -39,6 +41,8 @@ export default function RecipientPortal({ theme, setTheme }) {
     const [searchEmail, setSearchEmail] = useState('');
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchStatus, setSearchStatus] = useState(null); // { type: 'success' | 'error', text: string }
+    const [vaultSearchTerm, setVaultSearchTerm] = useState('');
+    const [copiedCardId, setCopiedCardId] = useState(null);
 
     // Restore session from sessionStorage if user refreshes page or navigates back/forward
     useEffect(() => {
@@ -442,64 +446,99 @@ export default function RecipientPortal({ theme, setTheme }) {
                             </button>
                         </div>
 
+                        {/* Search Filter Bar if multiple certificates */}
+                        {certificatesList.length > 1 && (
+                            <div className="relative max-w-md">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Filter by certificate title, issuer, or serial ID..."
+                                    value={vaultSearchTerm}
+                                    onChange={(e) => setVaultSearchTerm(e.target.value)}
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--glass-border)] rounded-2xl pl-12 pr-4 py-3.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 transition-all placeholder:text-[var(--text-muted)]"
+                                />
+                            </div>
+                        )}
+
                         {/* 3-Column Certificate Gallery Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {certificatesList.map((cert, idx) => (
-                                <div
-                                    key={cert.certId || idx}
-                                    onClick={() => {
-                                        setCertificate(cert);
-                                        setNewName(cert.recipientName);
-                                        setViewMode('detail');
-                                    }}
-                                    className="bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-interactive)] hover:border-violet-500/60 p-6 flex flex-col justify-between shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer group relative overflow-hidden"
-                                >
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 bg-violet-500/10 px-3 py-1 rounded-full">
-                                                #{idx + 1} &bull; Verified
-                                            </span>
-                                            <span className="text-[10px] font-mono font-bold text-slate-400">
-                                                {formatDateDDMMYYYY(cert.issueDate)}
-                                            </span>
-                                        </div>
+                            {certificatesList
+                                .filter(cert =>
+                                    (cert.certificateTitle || '').toLowerCase().includes(vaultSearchTerm.toLowerCase()) ||
+                                    (cert.orgName || cert.issuerName || '').toLowerCase().includes(vaultSearchTerm.toLowerCase()) ||
+                                    (cert.recipientName || '').toLowerCase().includes(vaultSearchTerm.toLowerCase()) ||
+                                    (cert.certId || '').toLowerCase().includes(vaultSearchTerm.toLowerCase())
+                                )
+                                .map((cert, idx) => (
+                                    <div
+                                        key={cert.certId || idx}
+                                        onClick={() => {
+                                            setCertificate(cert);
+                                            setNewName(cert.recipientName);
+                                            setViewMode('detail');
+                                        }}
+                                        className="bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-interactive)] hover:border-violet-500/60 p-6 flex flex-col justify-between shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer group relative overflow-hidden"
+                                    >
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 bg-violet-500/10 px-3 py-1 rounded-full">
+                                                    #{idx + 1} &bull; Verified
+                                                </span>
+                                                <span className="text-[10px] font-mono font-bold text-slate-400">
+                                                    {formatDateDDMMYYYY(cert.issueDate)}
+                                                </span>
+                                            </div>
 
-                                        {/* Certificate Image Thumbnail Preview */}
-                                        <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-[var(--glass-border)] aspect-[4/3] flex items-center justify-center group-hover:border-violet-500/40 transition-colors">
-                                            <img
-                                                src={cert.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${cert.certId}`}
-                                                alt={cert.certificateTitle}
-                                                className="w-full h-full object-contain transition-transform group-hover:scale-105"
-                                                onError={(e) => {
-                                                    e.target.onerror = null;
-                                                    e.target.src = '/assets/academic-template-D-Nc10FI.jpg';
-                                                }}
-                                            />
-                                            <div className="absolute inset-0 bg-violet-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-black text-xs uppercase tracking-widest backdrop-blur-[2px]">
-                                                <Eye size={18} /> Open Certificate
+                                            {/* Certificate Image Thumbnail Preview */}
+                                            <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-[var(--glass-border)] aspect-[4/3] flex items-center justify-center group-hover:border-violet-500/40 transition-colors">
+                                                <img
+                                                    src={cert.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${cert.certId}`}
+                                                    alt={cert.certificateTitle}
+                                                    className="w-full h-full object-contain transition-transform group-hover:scale-105"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = '/assets/academic-template-D-Nc10FI.jpg';
+                                                    }}
+                                                />
+                                                <div className="absolute inset-0 bg-violet-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-black text-xs uppercase tracking-widest backdrop-blur-[2px]">
+                                                    <Eye size={18} /> Open Certificate
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h3 className="text-lg font-black text-[var(--text-heading)] group-hover:text-violet-400 transition-colors line-clamp-1">
+                                                    {cert.certificateTitle || 'Certificate of Achievement'}
+                                                </h3>
+                                                <p className="text-xs font-bold text-[var(--text-muted)] mt-1">
+                                                    Issued by {cert.orgName || cert.issuerName}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <h3 className="text-lg font-black text-[var(--text-heading)] group-hover:text-violet-400 transition-colors line-clamp-1">
-                                                {cert.certificateTitle || 'Certificate of Achievement'}
-                                            </h3>
-                                            <p className="text-xs font-bold text-[var(--text-muted)] mt-1">
-                                                Issued by {cert.orgName || cert.issuerName}
-                                            </p>
+                                        <div className="mt-6 pt-4 border-t border-[var(--border-muted)] flex items-center justify-between">
+                                            <span className="text-xs font-bold text-[var(--text-main)] truncate max-w-[140px]">
+                                                {cert.recipientName}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigator.clipboard.writeText(`${window.location.origin}/verify/${cert.certId}`);
+                                                        setCopiedCardId(cert.certId);
+                                                        setTimeout(() => setCopiedCardId(null), 2500);
+                                                    }}
+                                                    className="p-2 bg-[var(--bg-input)] hover:bg-violet-600 hover:text-white text-[var(--text-muted)] rounded-xl text-xs transition-colors"
+                                                    title="Copy Verification Link"
+                                                >
+                                                    {copiedCardId === cert.certId ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                                                </button>
+                                                <div className="w-8 h-8 rounded-xl bg-violet-600/10 text-violet-500 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                                                    <ChevronRight size={18} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="mt-6 pt-4 border-t border-[var(--border-muted)] flex items-center justify-between">
-                                        <span className="text-xs font-bold text-[var(--text-main)]">
-                                            {cert.recipientName}
-                                        </span>
-                                        <div className="w-8 h-8 rounded-xl bg-violet-600/10 text-violet-500 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors">
-                                            <ChevronRight size={18} />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
                     </div>
                 )}
@@ -509,33 +548,15 @@ export default function RecipientPortal({ theme, setTheme }) {
                 {viewMode === 'detail' && certificate && (
                     <div className="space-y-8 animate-in fade-in duration-500">
 
-                        {/* Top Back Header & Switcher */}
+                        {/* Top Back Header */}
                         {certificatesList.length > 1 && (
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-card)] rounded-[2.5rem] p-6 border border-[var(--glass-border)] shadow-xl">
+                            <div className="flex items-center justify-between gap-4 bg-[var(--bg-card)] rounded-[2.5rem] p-6 border border-[var(--glass-border)] shadow-xl">
                                 <button
                                     onClick={() => setViewMode('grid')}
                                     className="flex items-center gap-3 px-5 py-3 bg-[var(--bg-input)] hover:bg-violet-600 hover:text-white text-xs font-black uppercase tracking-widest text-[var(--text-heading)] rounded-2xl border border-[var(--glass-border)] transition-all active:scale-95 shrink-0"
                                 >
                                     <ArrowLeft size={16} /> Back to Credential Vault ({certificatesList.length})
                                 </button>
-                                <div className="flex gap-2 overflow-x-auto custom-scrollbar">
-                                    {certificatesList.map((c, i) => (
-                                        <button
-                                            key={c.certId || i}
-                                            onClick={() => {
-                                                setCertificate(c);
-                                                setNewName(c.recipientName);
-                                            }}
-                                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                                certificate.certId === c.certId
-                                                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
-                                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-white'
-                                            }`}
-                                        >
-                                            #{i + 1} &bull; {c.certificateTitle || 'Certificate'}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                         )}
 

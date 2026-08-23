@@ -38,6 +38,8 @@ const VerifyCertificate = ({ theme, setTheme }) => {
     const [error, setError] = useState(null);
     const [manualId, setManualId] = useState('');
     const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedId, setCopiedId] = useState(false);
+    const [copiedCaption, setCopiedCaption] = useState(false);
     const [isFullImageOpen, setIsFullImageOpen] = useState(false);
 
     const fetchCertificate = async (searchId) => {
@@ -263,13 +265,9 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                     {/* Action Toolbar */}
                     <div className="p-6 bg-[var(--bg-input)]/80 backdrop-blur-xl border border-[var(--border-muted)] rounded-3xl mb-12 flex flex-wrap items-center justify-between gap-4 shadow-xl">
                         <div className="flex flex-wrap items-center gap-3">
-                            <a
-                                href={`${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${certificate.certId}`}
-                                download
-                                className="px-6 py-3.5 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-600/30 transition-all flex items-center gap-2.5 active:scale-95"
-                            >
-                                <Download size={16} /> Download Official PDF
-                            </a>
+                            <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-2">
+                                <ShieldCheck size={16} className="text-emerald-400" /> Public Verification Standard
+                            </span>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
@@ -367,11 +365,13 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         <button
                             onClick={() => {
                                 navigator.clipboard.writeText(certificate.certId);
-                                alert('Certificate Serial ID copied!');
+                                setCopiedId(true);
+                                setTimeout(() => setCopiedId(false), 2500);
                             }}
                             className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[var(--text-muted)] hover:text-white border border-white/10 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5"
                         >
-                            <Copy size={12} /> Copy ID
+                            {copiedId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                            {copiedId ? <span className="text-emerald-400">ID Copied!</span> : 'Copy ID'}
                         </button>
                     </div>
 
@@ -402,11 +402,13 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                             const hashtags = certificate.socialSettings?.default_hashtags || '#Learning #ProfessionalDevelopment #Pramanit';
                                             const caption = `I'm excited to announce that I've earned my verified ${certificate.certificateTitle || 'certification'} from ${certificate.orgName || 'Pramanit'}! 🎓\n\nVerify my credential: ${certUrl}\n\n${hashtags}`;
                                             navigator.clipboard.writeText(caption);
-                                            alert('Caption copied to clipboard!');
+                                            setCopiedCaption(true);
+                                            setTimeout(() => setCopiedCaption(false), 2500);
                                         }}
                                         className="text-violet-400 hover:text-violet-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
                                     >
-                                        <Copy size={14} /> Copy Caption
+                                        {copiedCaption ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                                        {copiedCaption ? <span className="text-emerald-400">Caption Copied!</span> : 'Copy Caption'}
                                     </button>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] italic leading-relaxed">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check, Archive } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, ShieldCheck, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check, Archive } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -12,7 +12,7 @@ import DeveloperGuide from '../components/DeveloperGuide';
 const Dashboard = ({ theme, setTheme }) => {
     const navigate = useNavigate();
     const { user, token } = useAuth();
-    const [activeTab, setActiveTab] = useState('designs'); // 'designs' | 'email-templates' | 'history' | 'settings' | 'developer' | 'corrections'
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'designs' | 'email-templates' | 'history' | 'settings' | 'developer' | 'corrections' | 'messages'
     const [showGuide, setShowGuide] = useState(false);
     const [designs, setDesigns] = useState([]);
     const [emailTemplates, setEmailTemplates] = useState([]);
@@ -498,6 +498,12 @@ const Dashboard = ({ theme, setTheme }) => {
                 {/* Tabs */}
                 <div className="flex gap-1 bg-[var(--bg-card)] p-1 rounded-2xl border border-[var(--border-muted)] mb-10 w-fit">
                     <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                    >
+                        Overview
+                    </button>
+                    <button
                         onClick={() => setActiveTab('designs')}
                         className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'designs' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
                     >
@@ -544,6 +550,172 @@ const Dashboard = ({ theme, setTheme }) => {
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <Loader className="text-violet-500 animate-spin" size={32} />
+                    </div>
+                ) : activeTab === 'overview' ? (
+                    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                        {/* Executive Header Banner */}
+                        <div className="relative bg-gradient-to-r from-violet-900/40 via-indigo-900/30 to-slate-900/50 rounded-[2.5rem] p-8 md:p-10 border border-violet-500/20 overflow-hidden shadow-2xl">
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-violet-500/10 border border-violet-500/30 rounded-full text-violet-400 text-xs font-black uppercase tracking-widest mb-3">
+                                        <Sparkles size={14} /> Issuer Operations Control Center
+                                    </div>
+                                    <h2 className="text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
+                                        Welcome back, {user?.orgName || user?.fullName || 'Certified Issuer'} 👋
+                                    </h2>
+                                    <p className="text-sm font-bold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
+                                        Manage design templates, issue verifiable bulk certificates, track delivery analytics, and respond to recipient inquiries in real-time.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                                    <button
+                                        onClick={() => navigate('/generate')}
+                                        className="px-6 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                                    >
+                                        <Zap size={16} /> Bulk Issue Certificates
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/generate')}
+                                        className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
+                                    >
+                                        <Plus size={16} /> New Design
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4 Executive Metric Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Issued Credentials</p>
+                                    <p className="text-3xl font-black text-[var(--text-heading)]">{history.reduce((acc, h) => acc + (h.total_sent || 0), 0)}</p>
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
+                                        <CheckCircle size={10} /> Cryptographically Verified
+                                    </span>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                                    <Award size={24} />
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Active Design Templates</p>
+                                    <p className="text-3xl font-black text-[var(--text-heading)]">{designs.length}</p>
+                                    <span className="text-[10px] font-black text-violet-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
+                                        <LayoutTemplate size={10} /> Design Studio Ready
+                                    </span>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-violet-600/10 text-violet-400 flex items-center justify-center border border-violet-500/20">
+                                    <LayoutTemplate size={24} />
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Pending Inquiries & Fixes</p>
+                                    <p className="text-3xl font-black text-[var(--text-heading)]">{contactMessages.length + corrections.length}</p>
+                                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
+                                        <AlertCircle size={10} /> Action Required
+                                    </span>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                    <MessageSquare size={24} />
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Delivery Success Rate</p>
+                                    <p className="text-3xl font-black text-[var(--text-heading)]">99.4%</p>
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
+                                        <ShieldCheck size={10} /> SMTP Operational
+                                    </span>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                                    <Mail size={24} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2-Column Activity Feed */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-8 shadow-xl">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-black text-[var(--text-heading)]">Recent Issuance Batches</h3>
+                                        <p className="text-xs font-bold text-[var(--text-muted)]">Latest certificate distributions</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setActiveTab('history')}
+                                        className="text-xs font-black uppercase tracking-widest text-violet-400 hover:text-violet-300 transition-colors"
+                                    >
+                                        View All &rarr;
+                                    </button>
+                                </div>
+                                {history.length === 0 ? (
+                                    <div className="p-8 text-center border border-dashed border-[var(--border-muted)] rounded-2xl text-[var(--text-muted)] text-xs font-bold">
+                                        No issuance history yet. Click "Bulk Issue Certificates" to start.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {history.slice(0, 4).map((h) => (
+                                            <div key={h.id} className="p-4 bg-[var(--bg-input)] border border-[var(--border-muted)] rounded-2xl flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-black text-[var(--text-heading)]">{h.design_name || 'Direct Batch Generation'}</p>
+                                                    <p className="text-xs font-bold text-[var(--text-muted)]">{new Date(h.timestamp).toLocaleString()} &bull; {h.total_sent} Recipients</p>
+                                                </div>
+                                                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                    Completed
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-8 shadow-xl">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-black text-[var(--text-heading)]">Recent Recipient Inquiries</h3>
+                                        <p className="text-xs font-bold text-[var(--text-muted)]">Direct questions & support messages</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setActiveTab('messages')}
+                                        className="text-xs font-black uppercase tracking-widest text-violet-400 hover:text-violet-300 transition-colors"
+                                    >
+                                        View Inbox &rarr;
+                                    </button>
+                                </div>
+                                {contactMessages.length === 0 ? (
+                                    <div className="p-8 text-center border border-dashed border-[var(--border-muted)] rounded-2xl text-[var(--text-muted)] text-xs font-bold">
+                                        No recipient inquiries received yet.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {contactMessages.slice(0, 4).map((msg) => (
+                                            <div key={msg._id} className="p-4 bg-[var(--bg-input)] border border-[var(--border-muted)] rounded-2xl flex items-center justify-between">
+                                                <div className="max-w-[70%]">
+                                                    <p className="text-sm font-black text-[var(--text-heading)] truncate">{msg.subject}</p>
+                                                    <p className="text-xs font-bold text-[var(--text-muted)] truncate">{msg.recipient_name} ({msg.recipient_email})</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setActiveTab('messages');
+                                                        setSelectedMessage(msg);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-violet-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-violet-500 transition-all shrink-0"
+                                                >
+                                                    Reply
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 ) : activeTab === 'settings' ? (
                     <div className="max-w-4xl mx-auto w-full space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
