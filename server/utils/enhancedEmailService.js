@@ -15,8 +15,16 @@ const getServerUrl = () => {
             : 'http://localhost:5000';
 };
 
+const formatDateDDMMYYYY = (dateVal) => {
+    const d = new Date(dateVal || Date.now());
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
 // Enhanced certificate email with issuer contact information and custom content
-const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], customSubject = '', customBody = '') => {
+const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], customSubject = '', customBody = '', issueDate = null) => {
     const clientUrl = getClientUrl();
     const serverUrl = getServerUrl();
     const verifyUrl = `${clientUrl}/verify/${certId}`;
@@ -48,12 +56,15 @@ const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], cu
         <p><strong>Certificate ID:</strong> ${certId}</p>
         <p><strong>Issued by:</strong> ${issuerInfo.name || 'Certificate Issuer'}</p>
         <p><strong>Organization:</strong> ${issuerInfo.orgName || 'N/A'}</p>
-        <p><strong>Issue Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <p><strong>Issue Date:</strong> ${formatDateDDMMYYYY(issueDate)}</p>
     </div>
 
     <div style="text-align: center; margin-bottom: 32px;">
-        <a href="${verifyUrl}" style="display: inline-block; background: linear-gradient(to right, #7c3aed, #4f46e5); color: #ffffff; padding: 16px 40px; border-radius: 16px; font-weight: 800; text-decoration: none; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.2);">
+        <a href="${verifyUrl}" style="display: inline-block; background: linear-gradient(to right, #7c3aed, #4f46e5); color: #ffffff; padding: 14px 28px; border-radius: 16px; font-weight: 800; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 8px; margin-bottom: 8px;">
             Verify Certificate
+        </a>
+        <a href="${clientUrl}/portal?email=${encodeURIComponent(to)}" style="display: inline-block; background: #0f172a; color: #38bdf8; border: 1px solid #0284c7; padding: 14px 28px; border-radius: 16px; font-weight: 800; text-decoration: none; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+            🎓 View My Credentials Portal
         </a>
     </div>
 

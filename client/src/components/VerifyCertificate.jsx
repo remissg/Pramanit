@@ -260,26 +260,6 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         </p>
                     </div>
 
-                    {/* Live Certificate High-Res Canvas Card */}
-                    <div className="relative mb-12 group rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-black/60">
-                        <div className="relative aspect-[1.414/1] w-full max-h-[650px] overflow-hidden flex items-center justify-center bg-slate-950">
-                            <img
-                                src={certImage}
-                                alt={`Certificate for ${certificate.recipientName}`}
-                                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-[1.01]"
-                                onError={(e) => {
-                                    e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}`;
-                                }}
-                            />
-                            <button
-                                onClick={() => setIsFullImageOpen(true)}
-                                className="absolute top-4 right-4 p-3 bg-black/60 hover:bg-black/90 backdrop-blur-md text-white rounded-2xl border border-white/20 transition-transform active:scale-95 shadow-xl flex items-center gap-2 text-xs font-bold"
-                            >
-                                <Maximize2 size={16} /> Full View
-                            </button>
-                        </div>
-                    </div>
-
                     {/* Action Toolbar */}
                     <div className="p-6 bg-[var(--bg-input)]/80 backdrop-blur-xl border border-[var(--border-muted)] rounded-3xl mb-12 flex flex-wrap items-center justify-between gap-4 shadow-xl">
                         <div className="flex flex-wrap items-center gap-3">
@@ -289,15 +269,6 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                                 className="px-6 py-3.5 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-600/30 transition-all flex items-center gap-2.5 active:scale-95"
                             >
                                 <Download size={16} /> Download Official PDF
-                            </a>
-                            <a
-                                href={certImage}
-                                download={`certificate-${certificate.certId}.png`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-2"
-                            >
-                                <Eye size={16} /> High-Res PNG
                             </a>
                         </div>
 
@@ -364,7 +335,10 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         <InfoCard
                             icon={Calendar}
                             label="Issue Date"
-                            value={new Date(certificate.issueDate).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                            value={(() => {
+                                const d = new Date(certificate.issueDate);
+                                return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                            })()}
                             color="indigo"
                         />
                         <InfoCard

@@ -37,5 +37,7 @@ router.post('/corrections/action', authenticateToken, certificateController.hand
 router.post('/revoke/:id', authenticateToken, certificateController.revokeCertificate);
 router.get('/batch-zip/:batchId', authenticateToken, certificateController.exportBatchZip);
 router.post('/correct-inperson/:id', authenticateToken, certificateController.correctCertificateInPerson);
+router.post('/request-otp', certificateController.requestRecipientOtp);
+router.post('/verify-otp', certificateController.verifyRecipientOtp);
 
 module.exports = router;

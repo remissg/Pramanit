@@ -28,6 +28,10 @@ const Dashboard = ({ theme, setTheme }) => {
     const [editCertForm, setEditCertForm] = useState({ name: '', email: '', fields: {} });
     const [copiedLinkCertId, setCopiedLinkCertId] = useState(null);
     const [corrections, setCorrections] = useState([]);
+    const [contactMessages, setContactMessages] = useState([]);
+    const [selectedMessage, setSelectedMessage] = useState(null);
+    const [replyText, setReplyText] = useState('');
+    const [sendingReply, setSendingReply] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showSmtpPass, setShowSmtpPass] = useState(false);
     const [settings, setSettings] = useState({
@@ -217,6 +221,9 @@ const Dashboard = ({ theme, setTheme }) => {
             } else if (activeTab === 'corrections') {
                 const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/corrections`);
                 setCorrections(res.data);
+            } else if (activeTab === 'messages') {
+                const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/contact/messages`);
+                setContactMessages(res.data.messages || []);
             } else if (activeTab === 'developer') {
                 await fetchDeveloperSettings();
             }
@@ -224,6 +231,29 @@ const Dashboard = ({ theme, setTheme }) => {
             console.error('Failed to fetch data', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSendReply = async (e) => {
+        e.preventDefault();
+        if (!selectedMessage || !replyText.trim()) return;
+
+        setSendingReply(true);
+        try {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/contact/messages/${selectedMessage._id}/respond`, {
+                response: replyText
+            });
+            showModal('Response Sent', `Your response has been sent to ${selectedMessage.recipient_email}`, 'success');
+            setReplyText('');
+            setSelectedMessage(null);
+            // Refresh messages
+            const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/contact/messages`);
+            setContactMessages(res.data.messages || []);
+        } catch (err) {
+            console.error('Failed to send response', err);
+            showModal('Error', err.response?.data?.message || 'Failed to send response', 'error');
+        } finally {
+            setSendingReply(false);
         }
     };
 
@@ -415,7 +445,9 @@ const Dashboard = ({ theme, setTheme }) => {
             ? emailTemplates.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()))
             : activeTab === 'history'
                 ? history.filter(h => (h.design_name || 'Generic').toLowerCase().includes(searchTerm.toLowerCase()))
-                : corrections.filter(c => c.recipientName.toLowerCase().includes(searchTerm.toLowerCase()) || c.requestedName.toLowerCase().includes(searchTerm.toLowerCase()));
+                : activeTab === 'messages'
+                    ? contactMessages.filter(m => (m.recipient_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (m.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) || (m.recipient_email || '').toLowerCase().includes(searchTerm.toLowerCase()))
+                    : corrections.filter(c => c.recipientName.toLowerCase().includes(searchTerm.toLowerCase()) || c.requestedName.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="min-h-screen bg-[var(--bg-main)] font-sans text-[var(--text-main)] transition-colors duration-500">
@@ -451,13 +483,15 @@ const Dashboard = ({ theme, setTheme }) => {
                                 className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all font-medium"
                             />
                         </div>
-                        <button
-                            onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
-                            className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-violet-600/20 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
-                        >
-                            <Plus size={18} />
-                            New {activeTab === 'designs' ? 'Design' : 'Template'}
-                        </button>
+                        {(activeTab === 'designs' || activeTab === 'email-templates') && (
+                            <button
+                                onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
+                                className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-violet-600/20 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+                            >
+                                <Plus size={18} />
+                                New {activeTab === 'designs' ? 'Design' : 'Template'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -486,6 +520,12 @@ const Dashboard = ({ theme, setTheme }) => {
                         className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'corrections' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
                     >
                         Corrections {corrections.length > 0 && <span className="ml-2 bg-amber-500 text-[10px] px-1.5 py-0.5 rounded-full">{corrections.length}</span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('messages')}
+                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'messages' ? 'bg-violet-600 text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                    >
+                        Inquiries {contactMessages.length > 0 && <span className="ml-2 bg-violet-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{contactMessages.length}</span>}
                     </button>
                     <button
                         onClick={() => setActiveTab('settings')}
@@ -854,8 +894,16 @@ const Dashboard = ({ theme, setTheme }) => {
                             {activeTab === 'designs' ? <LayoutTemplate className="text-violet-400" size={32} /> : activeTab === 'email-templates' ? <Mail className="text-violet-400" size={32} /> : activeTab === 'history' ? <History className="text-violet-400" size={32} /> : <AlertCircle className="text-violet-400" size={32} />}
                         </div>
                         <h3 className="text-xl font-black text-[var(--text-heading)] mb-2">No {activeTab.replace('-', ' ')} found</h3>
-                        <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">It looks empty here. {activeTab !== 'history' ? `Start by creating your first ${activeTab === 'designs' ? 'certificate design' : 'email template'}.` : 'You haven\'t issued any certificates yet.'}</p>
-                        {activeTab !== 'history' && (
+                        <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
+                            {activeTab === 'messages'
+                                ? 'When recipients send questions or feedback regarding their certificates, messages will appear here.'
+                                : activeTab === 'corrections'
+                                    ? 'No name correction requests from recipients.'
+                                    : activeTab === 'history'
+                                        ? 'You haven\'t issued any certificates yet.'
+                                        : `It looks empty here. Start by creating your first ${activeTab === 'designs' ? 'certificate design' : 'email template'}.`}
+                        </p>
+                        {(activeTab === 'designs' || activeTab === 'email-templates') && (
                             <button
                                 onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
                                 className="text-violet-400 hover:text-violet-300 font-bold underline underline-offset-4 transition-colors"
@@ -1135,6 +1183,68 @@ const Dashboard = ({ theme, setTheme }) => {
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+                        ) : activeTab === 'messages' ? (
+                            <div className="col-span-full bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                {filteredItems.length === 0 ? (
+                                    <div className="p-16 text-center space-y-4">
+                                        <div className="w-16 h-16 bg-violet-500/10 text-violet-500 rounded-3xl mx-auto flex items-center justify-center">
+                                            <MessageSquare size={32} />
+                                        </div>
+                                        <h3 className="text-xl font-black text-[var(--text-heading)]">No Inquiries Found</h3>
+                                        <p className="text-sm font-bold text-[var(--text-muted)]">When recipients send questions or feedback regarding their certificates, they will appear here.</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-white/5">
+                                                    <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Recipient</th>
+                                                    <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Subject</th>
+                                                    <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Cert ID</th>
+                                                    <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10">Status</th>
+                                                    <th className="px-8 py-5 text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-white/10 text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredItems.map((msg) => (
+                                                    <tr key={msg._id} className="hover:bg-white/5 transition-colors group">
+                                                        <td className="px-8 py-5 border-b border-white/5">
+                                                            <p className="text-sm font-black text-[var(--text-heading)]">{msg.recipient_name || 'Recipient'}</p>
+                                                            <p className="text-xs font-bold text-[var(--text-muted)]">{msg.recipient_email}</p>
+                                                        </td>
+                                                        <td className="px-8 py-5 border-b border-white/5">
+                                                            <span className="font-bold text-sm text-[var(--text-heading)]">{msg.subject}</span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-[var(--text-muted)] text-xs font-mono font-bold border-b border-white/5">
+                                                            {msg.certificate_id}
+                                                        </td>
+                                                        <td className="px-8 py-5 border-b border-white/5">
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${
+                                                                msg.status === 'responded' || msg.status === 'resolved'
+                                                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                                                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                                            }`}>
+                                                                {msg.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-right border-b border-white/5">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedMessage(msg);
+                                                                    setReplyText(msg.issuer_response || '');
+                                                                }}
+                                                                className="px-4 py-2 bg-violet-600/10 hover:bg-violet-600 text-violet-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                                            >
+                                                                View & Reply
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         ) : filteredItems.map((item) => (
                             <div key={item.id} className="group bg-[var(--bg-card)] rounded-3xl border border-[var(--border-muted)] overflow-hidden hover:shadow-2xl hover:shadow-violet-900/10 hover:border-violet-500/30 transition-all duration-300 flex flex-col">

@@ -16,6 +16,7 @@ const Design = require('../models/Design');
 const IssuanceHistory = require('../models/IssuanceHistory');
 const Verification = require('../models/Verification');
 const BatchReport = require('../models/BatchReport');
+const OtpToken = require('../models/OtpToken');
 const webhookService = require('../utils/webhookService');
 const { hash, decrypt } = require('../utils/encryption');
 const { uploadToCDN } = require('../utils/cloudinaryService');
@@ -276,6 +277,23 @@ const renderCertificateToBuffer = async (record) => {
                 });
                 const qrImage = await loadImage(qrDataUrl);
                 ctx.drawImage(qrImage, qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
+
+                // Overlay Org Logo in center of QR Code if available
+                const logoUrl = qrConf.logoUrl || record.org_logo_url;
+                if (logoUrl) {
+                    try {
+                        const logoImg = await loadImage(logoUrl);
+                        const logoSize = qrSize * 0.24;
+                        const logoX = qrX - logoSize / 2;
+                        const logoY = qrY - logoSize / 2;
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(logoX - 3, logoY - 3, logoSize + 6, logoSize + 6);
+                        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+                    } catch (logoErr) {
+                        console.error('QR Logo Overlay Note:', logoErr.message);
+                    }
+                }
             } catch (qrErr) {
                 console.error('Failed to render QR in fallback mode:', qrErr);
             }
@@ -565,6 +583,23 @@ const processSingle = async (req, res) => {
             const qrImage = await loadImage(qrDataUrl);
             ctx.drawImage(qrImage, qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
 
+            // Overlay Org Logo in center of QR Code if available
+            const logoUrl = qrConfig.logoUrl || branding?.org_logo_url;
+            if (logoUrl) {
+                try {
+                    const logoImg = await loadImage(logoUrl);
+                    const logoSize = qrSize * 0.24;
+                    const logoX = qrX - logoSize / 2;
+                    const logoY = qrY - logoSize / 2;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(logoX - 3, logoY - 3, logoSize + 6, logoSize + 6);
+                    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+                } catch (logoErr) {
+                    console.error('QR Logo Overlay Note:', logoErr.message);
+                }
+            }
+
             // Render Manual ID if enabled
             if (qrConfig.showManualId) {
                 const fontSize = Math.max(10, qrSize * 0.12);
@@ -705,7 +740,8 @@ const processSingle = async (req, res) => {
                         },
                     ],
                     personalizedSubject, // Issuer's custom subject with merge tags replaced
-                    personalizedBody // Issuer's custom body with merge tags replaced
+                    personalizedBody, // Issuer's custom body with merge tags replaced
+                    new Date()
                 );
             } catch (emailError) {
                 console.error('Email sending failed (Non-blocking):', emailError);
@@ -1009,7 +1045,7 @@ const getRecipientPortal = async (req, res) => {
             correctionStatus: record.correction_status,
             requestedName: record.requested_name,
             certificateTitle: record.certificate_title || 'Professional Certificate',
-            renderedImageUrl: record.rendered_image_url || ''
+            renderedImageUrl: record.rendered_image_url || `/api/certificates/og-image/${record.cert_id}`
         });
     } catch (e) {
         console.error('Portal access error:', e);
@@ -1032,53 +1068,144 @@ const findCertificatesByEmail = async (req, res) => {
         }).sort({ issue_date: -1 });
 
         if (records.length === 0) {
-            // return 200 to avoid email harvesting, but informative for real usage
-            return res.json({ message: 'If certificates are found for this email, a recovery link has been sent.' });
+            return res.status(404).json({ message: 'No active certificates found for this email address.' });
         }
 
-        // Prepare recovery email content
-        const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
+        const formattedCertificates = records.map(r => ({
+            certId: r.cert_id,
+            recipientName: r.recipient_name,
+            recipientEmail: email,
+            issuerName: r.issuer_name,
+            orgName: r.org_name || r.issuer_name,
+            orgLogoUrl: r.org_logo_url,
+            issueDate: r.issue_date,
+            certificateTitle: r.certificate_title || 'Certificate of Achievement',
+            renderedImageUrl: r.rendered_image_url || `/api/certificates/og-image/${r.cert_id}`,
+            recipientToken: r.recipient_token,
+            correctionRequested: r.correction_requested,
+            correctionStatus: r.correction_status,
+            status: r.status
+        }));
 
-        // Group by Issuer/Org if found
-        let linksList = records.map(r => {
-            const portalLink = `${clientUrl}/portal?token=${r.recipient_token}`;
-            return `<li><strong>${r.certificate_title || 'Certificate'}</strong> issued by ${r.org_name || r.issuer_name}<br/><a href="${portalLink}">${portalLink}</a></li>`;
-        }).join('');
-
-        const html = `
-<div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-    <div style="text-align: center; margin-bottom: 32px;">
-        <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Pramanit</h1>
-    </div>
-    
-    <div style="text-align: center; margin-bottom: 32px;">
-        <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">Certificate Recovery</h2>
-        <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
-            We found ${records.length} certificate(s) associated with this email address. Click the links below to access your digital certificates.
-        </p>
-    </div>
-
-    <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 32px;">
-        <ul style="margin: 0; padding-left: 20px; color: #334155; line-height: 1.8;">
-            ${linksList}
-        </ul>
-    </div>
-
-    <div style="text-align: center; padding-top: 32px; border-top: 1px solid #f1f5f9;">
-        <p style="color: #94a3b8; font-size: 12px; font-weight: 600; margin: 0;">
-            If you didn't request this email, you can safely ignore it.
-        </p>
-    </div>
-</div>
-`;
-
-        // Send via System Email (Priority for recovery)
-        await sendEmail(email, 'Your Certificate Recovery Links - Pramanit', html);
-
-        res.json({ message: 'If certificates are found for this email, a recovery link has been sent.' });
+        res.json({
+            success: true,
+            count: formattedCertificates.length,
+            message: `Found ${formattedCertificates.length} certificate(s).`,
+            certificates: formattedCertificates
+        });
     } catch (e) {
         console.error('Certificate recovery error:', e);
         res.status(500).json({ message: 'Failed to process recovery request.' });
+    }
+};
+
+const requestRecipientOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required.' });
+
+        const emailNorm = email.toLowerCase().trim();
+        const emailHash = hash(emailNorm);
+
+        // Check if certificates exist
+        const records = await Verification.find({ recipient_email_hash: emailHash, status: 'active' });
+        if (records.length === 0) {
+            return res.status(404).json({ message: 'No active certificates found for this email address.' });
+        }
+
+        // Generate 6-digit PIN
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
+
+        // Remove previous OTPs for this email hash
+        await OtpToken.deleteMany({ email_hash: emailHash });
+
+        // Save new OTP
+        await OtpToken.create({
+            email_hash: emailHash,
+            otp_hash: otpHash
+        });
+
+        const otpHtml = `
+<div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); text-align: center;">
+    <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; margin: 0 0 16px 0;">Pramanit</h1>
+    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 8px;">Vault Verification PIN</h2>
+    <p style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 24px;">
+        Use the 6-digit PIN below to unlock your Credential Vault on Pramanit:
+    </p>
+    <div style="background-color: #f1f5f9; padding: 20px; border-radius: 16px; font-size: 36px; font-weight: 900; letter-spacing: 0.3em; color: #6366f1; margin-bottom: 24px;">
+        ${otpCode}
+    </div>
+    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+        This PIN is valid for 10 minutes. If you did not request this code, you can safely ignore this email.
+    </p>
+</div>
+`;
+
+        // Email OTP code to recipient
+        console.log(`[PRAMANIT OTP] Sent verification PIN ${otpCode} to ${emailNorm}`);
+        try {
+            await sendEmail(emailNorm, 'Your Credential Vault Verification PIN - Pramanit', otpHtml);
+        } catch (emailErr) {
+            console.error('SMTP Email failed (fallback to console PIN):', emailErr.message);
+        }
+
+        res.json({ success: true, message: `A 6-digit verification PIN has been sent to ${emailNorm}.` });
+    } catch (e) {
+        console.error('Request OTP error:', e);
+        res.status(500).json({ message: 'Failed to send verification PIN.' });
+    }
+};
+
+const verifyRecipientOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) return res.status(400).json({ message: 'Email and 6-digit PIN are required.' });
+
+        const emailNorm = email.toLowerCase().trim();
+        const emailHash = hash(emailNorm);
+        const otpHash = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+
+        const otpRecord = await OtpToken.findOne({ email_hash: emailHash, otp_hash: otpHash });
+
+        if (!otpRecord) {
+            return res.status(401).json({ message: 'Invalid or expired 6-digit PIN. Please try again.' });
+        }
+
+        // Delete used OTP
+        await OtpToken.deleteOne({ _id: otpRecord._id });
+
+        // Fetch recipient's active certificates
+        const records = await Verification.find({
+            recipient_email_hash: emailHash,
+            status: 'active'
+        }).sort({ issue_date: -1 });
+
+        const formattedCertificates = records.map(r => ({
+            certId: r.cert_id,
+            recipientName: r.recipient_name,
+            recipientEmail: emailNorm,
+            issuerName: r.issuer_name,
+            orgName: r.org_name || r.issuer_name,
+            orgLogoUrl: r.org_logo_url,
+            issueDate: r.issue_date,
+            certificateTitle: r.certificate_title || 'Certificate of Achievement',
+            renderedImageUrl: r.rendered_image_url || `/api/certificates/og-image/${r.cert_id}`,
+            recipientToken: r.recipient_token,
+            correctionRequested: r.correction_requested,
+            correctionStatus: r.correction_status,
+            status: r.status
+        }));
+
+        res.json({
+            success: true,
+            count: formattedCertificates.length,
+            message: 'PIN verified successfully!',
+            certificates: formattedCertificates
+        });
+    } catch (e) {
+        console.error('Verify OTP error:', e);
+        res.status(500).json({ message: 'Failed to verify PIN.' });
     }
 };
 
@@ -1643,5 +1770,7 @@ module.exports = {
     downloadCertificate,
     revokeCertificate,
     exportBatchZip,
-    correctCertificateInPerson
+    correctCertificateInPerson,
+    requestRecipientOtp,
+    verifyRecipientOtp
 };
