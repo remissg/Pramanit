@@ -33,15 +33,23 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-router.post('/signup', authController.signup);
+router.post('/signup', upload.single('officialIdDoc'), authController.signup);
 router.post('/login', authController.login);
 router.get('/profile', authenticateToken, authController.getProfile);
 router.post('/update-profile', authenticateToken, upload.single('orgLogo'), authController.updateProfile);
+router.post('/submit-verification', authenticateToken, upload.single('officialIdDoc'), authController.submitVerification);
 router.get('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authenticateToken, authController.resendVerification);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.get('/admin/users', authenticateToken, authController.getAllUsers);
+router.get('/admin/pending-verifications', authenticateToken, authController.getPendingVerifications);
+router.get('/admin/security-logs', authenticateToken, authController.getAdminSecurityLogs);
+router.get('/admin/email-logs', authenticateToken, authController.getAdminEmailLogs);
+router.get('/admin/settings', authenticateToken, authController.getAdminSettings);
+router.post('/admin/settings', authenticateToken, authController.updateAdminSettings);
+router.get('/public-settings', authController.getPublicSettings);
+router.post('/admin/verify-user', authenticateToken, authController.adminVerifyUser);
 router.post('/admin/toggle-plan', authenticateToken, authController.toggleUserPlan);
 router.delete('/delete-account', authenticateToken, authController.deleteAccount);
 router.get('/google/connect', authenticateToken, authController.connectGmail);

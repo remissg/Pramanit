@@ -17,6 +17,17 @@
     --border-muted: rgba(255, 255, 255, 0.05);
     --border-interactive: rgba(255, 255, 255, 0.1);
     --stepper-inactive: #1e293b;
+
+    /* Theme Adaptive Banner & Charts */
+    --banner-bg: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(99, 102, 241, 0.2) 50%, rgba(15, 23, 42, 0.7) 100%);
+    --banner-border: rgba(139, 92, 246, 0.3);
+    --banner-badge-bg: rgba(139, 92, 246, 0.15);
+    --banner-badge-border: rgba(139, 92, 246, 0.3);
+    --banner-badge-text: #c4b5fd;
+    --banner-btn-sec-bg: rgba(255, 255, 255, 0.08);
+    --banner-btn-sec-border: rgba(255, 255, 255, 0.15);
+    --banner-btn-sec-text: #f8fafc;
+    --chart-track-bg: rgba(139, 92, 246, 0.15);
 }
 
 [data-theme='light'] {
@@ -31,6 +42,17 @@
     --border-muted: rgba(0, 0, 0, 0.05);
     --border-interactive: rgba(15, 23, 42, 0.1);
     --stepper-inactive: #e2e8f0;
+
+    /* Theme Adaptive Banner & Charts */
+    --banner-bg: linear-gradient(135deg, rgba(237, 233, 254, 0.95) 0%, rgba(224, 231, 255, 0.85) 50%, rgba(243, 232, 255, 0.95) 100%);
+    --banner-border: rgba(139, 92, 246, 0.25);
+    --banner-badge-bg: rgba(139, 92, 246, 0.12);
+    --banner-badge-border: rgba(139, 92, 246, 0.3);
+    --banner-badge-text: #6d28d9;
+    --banner-btn-sec-bg: rgba(255, 255, 255, 0.9);
+    --banner-btn-sec-border: rgba(139, 92, 246, 0.25);
+    --banner-btn-sec-text: #4c1d95;
+    --chart-track-bg: rgba(139, 92, 246, 0.1);
 }
 
 body {

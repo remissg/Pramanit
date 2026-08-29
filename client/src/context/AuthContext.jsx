@@ -38,8 +38,22 @@ export const AuthProvider = ({ children }) => {
         return res.data.user;
     };
 
-    const signup = async (email, password, orgName, fullName, designation) => {
-        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password, orgName, fullName, designation });
+    const signup = async (email, password, orgName, fullName, designation, issuerType, institutionIdNumber, officialIdDoc) => {
+        let res;
+        if (officialIdDoc) {
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('orgName', orgName);
+            formData.append('fullName', fullName);
+            formData.append('designation', designation);
+            formData.append('issuerType', issuerType || 'institution');
+            formData.append('institutionIdNumber', institutionIdNumber || '');
+            formData.append('officialIdDoc', officialIdDoc);
+            res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, formData);
+        } else {
+            res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password, orgName, fullName, designation, issuerType, institutionIdNumber });
+        }
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);
         setUser(res.data.user);

@@ -554,30 +554,46 @@ const Dashboard = ({ theme, setTheme }) => {
                 ) : activeTab === 'overview' ? (
                     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
                         {/* Executive Header Banner */}
-                        <div className="relative bg-gradient-to-r from-violet-900/40 via-indigo-900/30 to-slate-900/50 rounded-[2.5rem] p-8 md:p-10 border border-violet-500/20 overflow-hidden shadow-2xl">
-                            <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-                            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div
+                            className="relative rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 md:p-10 border overflow-hidden shadow-xl"
+                            style={{ background: 'var(--banner-bg)', borderColor: 'var(--banner-border)' }}
+                        >
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div>
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-violet-500/10 border border-violet-500/30 rounded-full text-violet-400 text-xs font-black uppercase tracking-widest mb-3">
-                                        <Sparkles size={14} /> Issuer Operations Control Center
+                                    <div
+                                        className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest mb-3 border max-w-full leading-normal"
+                                        style={{
+                                            background: 'var(--banner-badge-bg)',
+                                            borderColor: 'var(--banner-badge-border)',
+                                            color: 'var(--banner-badge-text)'
+                                        }}
+                                    >
+                                        <Sparkles size={14} className="shrink-0" />
+                                        <span className="truncate">Issuer Operations Control Center</span>
                                     </div>
-                                    <h2 className="text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
+                                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
                                         Welcome back, {user?.orgName || user?.fullName || 'Certified Issuer'} 👋
                                     </h2>
-                                    <p className="text-sm font-bold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
+                                    <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
                                         Manage design templates, issue verifiable bulk certificates, track delivery analytics, and respond to recipient inquiries in real-time.
                                     </p>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto mt-2 lg:mt-0">
                                     <button
                                         onClick={() => navigate('/generate')}
-                                        className="px-6 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                                        className="w-full sm:w-auto justify-center px-6 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
                                     >
                                         <Zap size={16} /> Bulk Issue Certificates
                                     </button>
                                     <button
                                         onClick={() => navigate('/generate')}
-                                        className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
+                                        className="w-full sm:w-auto justify-center px-5 py-3.5 font-bold text-xs rounded-2xl transition-all flex items-center gap-2 shadow-sm border"
+                                        style={{
+                                            background: 'var(--banner-btn-sec-bg)',
+                                            borderColor: 'var(--banner-btn-sec-border)',
+                                            color: 'var(--banner-btn-sec-text)'
+                                        }}
                                     >
                                         <Plus size={16} /> New Design
                                     </button>

@@ -27,7 +27,7 @@ const logIssuance = async (userId, designId, totalSent, recipientListRef) => {
             user: userId,
             design_id: designId || null,
             total_certificates: totalSent,
-            recipient_emails: Array.isArray(recipientListRef) ? recipientListRef : [recipientListRef] // Store emails directly or ref string
+            recipient_emails: Array.isArray(recipientListRef) ? recipientListRef : [recipientListRef]
         });
     } catch (e) {
         console.error('Failed to log issuance history:', e);
@@ -38,7 +38,6 @@ const getSmtpConfig = async (userId) => {
     try {
         const user = await User.findById(userId).select('+gmail_refresh_token +gmail_access_token gmail_email smtp_host smtp_port smtp_user smtp_pass');
 
-        // Priority 1: User Gmail OAuth (API - Best for Deliverability)
         if (user && user.gmail_refresh_token && user.gmail_email) {
             return {
                 service: 'gmail-api',
@@ -48,7 +47,6 @@ const getSmtpConfig = async (userId) => {
             };
         }
 
-        // Priority 2: Custom SMTP (Users own provider)
         if (user && user.smtp_host) {
             return {
                 host: user.smtp_host,
@@ -63,9 +61,9 @@ const getSmtpConfig = async (userId) => {
     return null;
 };
 
-// Verification schema implementation
 const saveVerification = async (record) => {
     try {
+        const issuerInfo = record.issuerId ? await User.findById(record.issuerId) : null;
         await Verification.create({
             cert_id: record.certId,
             recipient_name: record.recipientName,
@@ -85,7 +83,12 @@ const saveVerification = async (record) => {
             template_bg_url: record.templateBgUrl,
             qr_config: record.qrConfig,
             field_data: record.fieldData || {},
-            fields: record.fields || []
+            fields: record.fields || [],
+            issuer_type: issuerInfo?.issuer_type || 'institution',
+            institution_id_number: issuerInfo?.institution_id_number || '',
+            official_id_url: issuerInfo?.official_id_url || '',
+            verification_status: issuerInfo?.verification_status || 'unverified',
+            verified_at: issuerInfo?.verified_at || null
         });
     } catch (e) {
         console.error('Failed to save verification:', e);
@@ -95,7 +98,7 @@ const saveVerification = async (record) => {
 const drawWatermark = (ctx, canvasWidth, canvasHeight) => {
     const fontSize = Math.max(12, canvasWidth * 0.015);
     ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
-    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)'; // Slate-500 with opacity
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText('Verified by Pramanit', canvasWidth / 2, canvasHeight - (canvasHeight * 0.03));
@@ -111,7 +114,6 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     const page = pdfDoc.addPage([image.width, image.height]);
     page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
 
-    // Embed Metadata
     pdfDoc.setTitle('Verified Certificate');
     pdfDoc.setAuthor(metadata.issuerName);
     pdfDoc.setSubject(`Credential for ${metadata.recipientName}`);
@@ -122,78 +124,64 @@ const createPdfWithMetadata = async (imageBuffer, metadata) => {
     return await pdfDoc.save();
 };
 
-const renderCertificateToBuffer = async (record) => {
-    // 1. Prioritize Cloudinary CDN / persistent image URL if present
-    if (record.rendered_image_url && typeof record.rendered_image_url === 'string') {
-        try {
-            const cdnImage = await loadImage(record.rendered_image_url);
-            const canvas = createCanvas(cdnImage.width, cdnImage.height);
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cdnImage, 0, 0);
-            return canvas.toBuffer('image/png');
-        } catch (err) {
-            console.error('Failed to load rendered_image_url from Cloudinary CDN:', err.message);
+const fontMap = {
+    'Inter': 'sans-serif',
+    'Montserrat': 'sans-serif',
+    'Outfit': 'sans-serif',
+    'Playfair Display': 'serif',
+    'serif': 'serif',
+    'Times New Roman': 'serif',
+    'Cursive': 'cursive',
+    'Pacifico': 'cursive',
+    'UnifrakturMaguntia': 'serif',
+    'Monospace': 'monospace'
+};
+
+const renderFields = async (ctx, fields, width, height, data) => {
+    const scaleFactor = width / 800;
+    fields.forEach(field => {
+        const baseSize = parseFloat(field.fontSize) || 40;
+        const scaledFontSize = baseSize * scaleFactor;
+
+        let family = field.fontFamily ? field.fontFamily.replace(/"/g, '') : 'Arial';
+        if (fontMap[family]) family = fontMap[family];
+
+        const style = (field.isBold ? 'bold ' : '') + (field.isItalic ? 'italic ' : '');
+        ctx.font = `${style}${scaledFontSize}px "${family}"`;
+        ctx.fillStyle = field.color || '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const x = parseFloat(field.x) * width;
+        const y = parseFloat(field.y) * height;
+
+        let text = field.text || field.label || '';
+        if (text.includes('{{') || text.includes('{')) {
+            Object.keys(data).forEach(key => {
+                const regex = new RegExp(`{{${key}}}|{${key}}`, 'gi');
+                text = text.replace(regex, data[key] || '');
+            });
+            text = text.replace(/{{.*?}}|{.*?}/g, '');
+        } else if (field.id) {
+            const key = field.id.trim().toLowerCase();
+            const match = Object.keys(data).find(k => k.toLowerCase() === key);
+            if (match) text = data[match];
         }
-    }
 
-    // 2. Fallback to design_id / design_json / template_bg_url
-    let image, canvas, ctx;
-    const fontMap = {
-        'Inter': 'sans-serif',
-        'Montserrat': 'sans-serif',
-        'Outfit': 'sans-serif',
-        'Playfair Display': 'serif',
-        'serif': 'serif',
-        'Times New Roman': 'serif',
-        'Cursive': 'cursive',
-        'Pacifico': 'cursive',
-        'UnifrakturMaguntia': 'serif',
-        'Monospace': 'monospace'
-    };
+        if (field.textCase === 'uppercase') text = text.toUpperCase();
+        ctx.fillText(text, x, y);
 
-    // Helper to render text fields
-    const renderFields = async (ctx, fields, width, height, data) => {
-        const scaleFactor = width / 800;
-        fields.forEach(field => {
-            const baseSize = parseFloat(field.fontSize) || 40;
-            const scaledFontSize = baseSize * scaleFactor;
+        if (field.isUnderline) {
+            const metrics = ctx.measureText(text);
+            const underlineY = y + (scaledFontSize / 2) * 0.8;
+            const h = Math.max(1, scaledFontSize / 20);
+            ctx.fillRect(x - metrics.width / 2, underlineY, metrics.width, h);
+        }
+    });
+};
 
-            let family = field.fontFamily ? field.fontFamily.replace(/"/g, '') : 'Arial';
-            if (fontMap[family]) family = fontMap[family];
-
-            const style = (field.isBold ? 'bold ' : '') + (field.isItalic ? 'italic ' : '');
-            ctx.font = `${style}${scaledFontSize}px "${family}"`;
-            ctx.fillStyle = field.color || '#000000';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            const x = parseFloat(field.x) * width;
-            const y = parseFloat(field.y) * height;
-
-            let text = field.text || field.label || '';
-            if (text.includes('{{') || text.includes('{')) {
-                Object.keys(data).forEach(key => {
-                    const regex = new RegExp(`{{${key}}}|{${key}}`, 'gi');
-                    text = text.replace(regex, data[key] || '');
-                });
-                text = text.replace(/{{.*?}}|{.*?}/g, '');
-            } else if (field.id) {
-                const key = field.id.trim().toLowerCase();
-                const match = Object.keys(data).find(k => k.toLowerCase() === key);
-                if (match) text = data[match];
-            }
-
-            if (field.textCase === 'uppercase') text = text.toUpperCase();
-            ctx.fillText(text, x, y);
-
-            if (field.isUnderline) {
-                const metrics = ctx.measureText(text);
-                const underlineY = y + (scaledFontSize / 2) * 0.8;
-                const h = Math.max(1, scaledFontSize / 20);
-                ctx.fillRect(x - metrics.width / 2, underlineY, metrics.width, h);
-            }
-        });
-    };
+const renderCertificateToBuffer = async (record) => {
+    let canvas, ctx, image;
 
     if (record.design_id && record.design_id.design_json) {
         const design = record.design_id.design_json;
@@ -1247,8 +1235,8 @@ const verifyCertificate = async (req, res) => {
             { returnDocument: 'after' }
         );
 
-        // Fetch Issuer Settings
-        const issuer = await User.findById(updatedRecord.issuer_id).select('social_settings webhook_url');
+        // Fetch Issuer Settings & Verification Metadata
+        const issuer = await User.findById(updatedRecord.issuer_id).select('social_settings webhook_url issuer_type verification_status official_id_url institution_id_number verified_at');
 
         // Map Mongoose DB fields to camelCase for frontend
         res.json({
@@ -1264,7 +1252,13 @@ const verifyCertificate = async (req, res) => {
             scanCount: updatedRecord.scan_count,
             status: updatedRecord.status,
             certificateTitle: updatedRecord.certificate_title || 'Professional Certificate',
-            socialSettings: issuer?.social_settings || { allow_sharing: true, default_hashtags: '' }
+            socialSettings: issuer?.social_settings || { allow_sharing: true, default_hashtags: '' },
+            // Verified Identity Metadata
+            issuerType: issuer?.issuer_type || updatedRecord.issuer_type || 'institution',
+            verificationStatus: issuer?.verification_status || updatedRecord.verification_status || 'unverified',
+            institutionIdNumber: issuer?.institution_id_number || updatedRecord.institution_id_number || '',
+            officialIdUrl: issuer?.official_id_url || updatedRecord.official_id_url || '',
+            verifiedAt: issuer?.verified_at || updatedRecord.verified_at || null
         });
 
         // Trigger Webhook if configured
@@ -1752,6 +1746,43 @@ const correctCertificateInPerson = async (req, res) => {
     }
 };
 
+const getAdminAllCredentials = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Admin access required.' });
+        }
+
+        const verifications = await Verification.find({})
+            .populate('issuer_id', 'org_name full_name email')
+            .sort({ issue_date: -1, created_at: -1 })
+            .limit(150);
+
+        const list = verifications.map(v => {
+            let emailDecrypted = 'N/A';
+            try {
+                emailDecrypted = decrypt(v.recipient_email);
+            } catch (e) {
+                emailDecrypted = v.recipient_email || 'N/A';
+            }
+            return {
+                id: v.cert_id || String(v._id),
+                recipientName: v.recipient_name || 'Recipient',
+                recipientEmail: emailDecrypted,
+                orgName: v.org_name || (v.issuer_id ? v.issuer_id.org_name : 'Verified Issuer'),
+                issuerName: v.issuer_name || (v.issuer_id ? v.issuer_id.full_name : 'Signer'),
+                issueDate: v.issue_date || v.created_at || Date.now(),
+                status: v.status || 'valid',
+                scanCount: v.scan_count || 0
+            };
+        });
+
+        res.json(list);
+    } catch (err) {
+        console.error('Admin all credentials fetch error:', err);
+        res.status(500).json({ message: 'Failed to fetch global credentials' });
+    }
+};
+
 module.exports = {
     prepareBatch,
     processSingle,
@@ -1772,5 +1803,6 @@ module.exports = {
     exportBatchZip,
     correctCertificateInPerson,
     requestRecipientOtp,
-    verifyRecipientOtp
+    verifyRecipientOtp,
+    getAdminAllCredentials
 };

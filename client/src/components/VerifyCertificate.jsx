@@ -353,6 +353,40 @@ const VerifyCertificate = ({ theme, setTheme }) => {
                         />
                     </div>
 
+                    {/* INSTITUTION IDENTITY TRANSPARENCY CARD */}
+                    {certificate.verificationStatus === 'approved' && (
+                        <div className="p-6 bg-emerald-950/30 border border-emerald-500/30 rounded-3xl mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl animate-in fade-in duration-500">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
+                                    <ShieldCheck size={32} />
+                                </div>
+                                <div>
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/40 mb-1">
+                                        {certificate.issuerType === 'student_council' ? '🎓 Verified Campus Student Council' : '🏛️ Verified Educational Institution'}
+                                    </span>
+                                    <h4 className="text-lg font-black text-[var(--text-heading)]">
+                                        Identity Verified & Authorized Issuer
+                                    </h4>
+                                    <p className="text-xs font-bold text-[var(--text-muted)] mt-0.5">
+                                        Official Registration / Roll ID: <span className="text-emerald-400 font-mono">#{certificate.institutionIdNumber}</span>
+                                        {certificate.verifiedAt && ` • Approved on ${new Date(certificate.verifiedAt).toLocaleDateString()}`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {certificate.officialIdUrl && (
+                                <a
+                                    href={certificate.officialIdUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 shrink-0 active:scale-95"
+                                >
+                                    <ExternalLink size={16} /> View Faculty Authorization Letter / ID
+                                </a>
+                            )}
+                        </div>
+                    )}
+
                     {/* Digital Fingerprint Block */}
                     <div className="p-6 bg-[var(--bg-input)]/80 backdrop-blur-xl border border-[var(--border-muted)] rounded-3xl mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl">
                         <div>

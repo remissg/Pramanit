@@ -30,6 +30,13 @@ const UserSchema = new mongoose.Schema({
     gmail_refresh_token: { type: String, select: false }, // Hide by default for security
     gmail_access_token: { type: String, select: false },
     gmail_email: { type: String },
+    // Institutional Identity & Verification Fields
+    issuer_type: { type: String, enum: ['institution', 'student_council', 'club'], default: 'institution' },
+    verification_status: { type: String, enum: ['unverified', 'pending', 'approved', 'rejected'], default: 'unverified' },
+    official_id_url: { type: String, default: '' },
+    institution_id_number: { type: String, default: '' },
+    rejection_reason: { type: String, default: '' },
+    verified_at: { type: Date },
     created_at: { type: Date, default: Date.now }
 });
 

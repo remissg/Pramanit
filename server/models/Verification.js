@@ -27,6 +27,12 @@ const VerificationSchema = new mongoose.Schema({
     qr_config: { type: mongoose.Schema.Types.Mixed }, // QR code configuration snapshot
     field_data: { type: mongoose.Schema.Types.Mixed, default: {} }, // Dynamic CSV key-value map
     fields: { type: Array, default: [] }, // Canvas positioning snapshot
+    // Issuer Identity Snapshot
+    issuer_type: { type: String },
+    institution_id_number: { type: String },
+    official_id_url: { type: String },
+    verification_status: { type: String },
+    verified_at: { type: Date },
     created_at: { type: Date, default: Date.now }
 });
 

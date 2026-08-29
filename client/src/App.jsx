@@ -23,13 +23,30 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmailPage from './pages/VerifyEmail';
-import Dashboard from './pages/Dashboard';
+import DashboardLayout from './pages/dashboard/DashboardLayout';
+import OverviewPage from './pages/dashboard/OverviewPage';
+import DesignsPage from './pages/dashboard/DesignsPage';
+import TemplatesPage from './pages/dashboard/TemplatesPage';
+import HistoryPage from './pages/dashboard/HistoryPage';
+import CorrectionsPage from './pages/dashboard/CorrectionsPage';
+import InquiriesPage from './pages/dashboard/InquiriesPage';
+import SettingsPage from './pages/dashboard/SettingsPage';
+import DeveloperPage from './pages/dashboard/DeveloperPage';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Refund from './pages/Refund';
+import PricingPage from './pages/PricingPage';
+import SubscriptionPage from './pages/dashboard/SubscriptionPage';
 import RecipientPortal from './components/RecipientPortal';
-import AdminPanel from './components/AdminPanel';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminVerificationsPage from './pages/admin/AdminVerificationsPage';
+import AdminCredentialsPage from './pages/admin/AdminCredentialsPage';
+import AdminSecurityPage from './pages/admin/AdminSecurityPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
 const VerificationNotice = () => {
   const { logout, user } = useAuth();
@@ -192,6 +209,13 @@ function App() {
         resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.setAttribute('data-theme', resolvedTheme);
+      if (resolvedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      }
     };
 
     applyTheme(theme);
@@ -226,33 +250,49 @@ function App() {
             path="/dashboard"
             element={
               <RequireAuth>
-                <Dashboard theme={theme} setTheme={setTheme} />
+                <DashboardLayout theme={theme} setTheme={setTheme} />
               </RequireAuth>
             }
-          />
-          <Route
-            path="/generate"
-            element={
-              <RequireAuth>
-                <MainApp theme={theme} setTheme={setTheme} />
-              </RequireAuth>
-            }
-          />
+          >
+            <Route index element={<OverviewPage />} />
+            <Route path="generate" element={<MainApp theme={theme} setTheme={setTheme} />} />
+            <Route path="designs" element={<DesignsPage />} />
+            <Route path="email-templates" element={<TemplatesPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="corrections" element={<CorrectionsPage />} />
+            <Route path="inquiries" element={<InquiriesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="developer" element={<DeveloperPage />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
+          </Route>
+          <Route path="/generate" element={<Navigate to="/dashboard/generate" replace />} />
           {/* Public Routing */}
           <Route path="/verify/:id" element={<VerifyCertificate theme={theme} setTheme={setTheme} />} />
           <Route path="/portal" element={<RecipientPortal theme={theme} setTheme={setTheme} />} />
-          <Route path="/admin" element={
-            <AdminGuard>
-              <AdminPanel theme={theme} setTheme={setTheme} />
-            </AdminGuard>
-          } />
+          <Route path="/pricing" element={<PricingPage theme={theme} setTheme={setTheme} />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminGuard>
+                <AdminLayout theme={theme} setTheme={setTheme} />
+              </AdminGuard>
+            }
+          >
+            <Route index element={<AdminOverviewPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="verifications" element={<AdminVerificationsPage />} />
+            <Route path="credentials" element={<AdminCredentialsPage />} />
+            <Route path="security" element={<AdminSecurityPage />} />
+            <Route path="settings" element={<AdminSettingsPage />} />
+          </Route>
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
+          <Route path="/about" element={<About theme={theme} setTheme={setTheme} />} />
+          <Route path="/contact" element={<Contact theme={theme} setTheme={setTheme} />} />
+          <Route path="/privacy" element={<Privacy theme={theme} setTheme={setTheme} />} />
+          <Route path="/terms" element={<Terms theme={theme} setTheme={setTheme} />} />
+          <Route path="/refund" element={<Refund theme={theme} setTheme={setTheme} />} />
           <Route
             path="/"
             element={<LandingPageWrapper theme={theme} setTheme={setTheme} />}
@@ -861,15 +901,19 @@ function MainApp({ theme, setTheme }) {
     }
   };
 
+  const isDashboardSubroute = location.pathname.startsWith('/dashboard');
+
   return (
     <div className="min-h-screen bg-[var(--bg-main)] font-sans text-[var(--text-main)] selection:bg-violet-500/30 transition-colors duration-500">
-      <Header
-        onGetStarted={() => setShowApp(true)}
-        theme={theme}
-        setTheme={setTheme}
-      />
+      {!isDashboardSubroute && (
+        <Header
+          onGetStarted={() => setShowApp(true)}
+          theme={theme}
+          setTheme={setTheme}
+        />
+      )}
 
-      <div className="pt-32 md:pt-24 pb-8 md:pb-20 max-w-7xl mx-auto px-4 md:px-6 transition-all">
+      <div className={`max-w-7xl mx-auto transition-all ${isDashboardSubroute ? 'pt-2 px-0 pb-12' : 'pt-32 md:pt-24 pb-8 md:pb-20 px-4 md:px-6'}`}>
         {/* Progress Overlay during Upload */}
         {status === 'uploading' && (
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] flex items-center justify-center p-4">
@@ -1432,7 +1476,7 @@ function MainApp({ theme, setTheme }) {
         </div>
       </div>
 
-      <Footer />
+      {!isDashboardSubroute && <Footer />}
 
       {
         showBatchPreview && (

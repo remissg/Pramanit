@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric'; // v6 import
-import { Type, Square, Download, Palette, Undo, RefreshCw, Check, MousePointer2, Type as TypeIcon, Circle, Triangle, LayoutTemplate, Image as ImageIcon, AlignCenter, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Bold, Italic, Underline, Plus, Minus, ChevronDown } from 'lucide-react';
+import { Type, Square, Download, Palette, Undo, RefreshCw, Check, MousePointer2, Type as TypeIcon, Circle, Triangle, LayoutTemplate, Image as ImageIcon, AlignCenter, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Bold, Italic, Underline, Plus, Minus, ChevronDown, Sparkles, Award } from 'lucide-react';
 import CustomSelect from './CustomSelect';
+import corporateTemplate from '../assets/corporate-template.png';
+import creativeTemplate from '../assets/creative-template.png';
+import academicTemplate from '../assets/academic-template.jpg';
+import premiumTemplate from '../assets/premium-template.png';
+import gradientTemplate from '../assets/gradient-modern.png';
+import patternTemplate from '../assets/pattern-tech.png';
 
 const FONTS = [
     { name: 'Inter', value: 'Inter, sans-serif' },
@@ -12,13 +18,15 @@ const FONTS = [
     { name: 'Pacifico', value: '"Pacifico", cursive' }, // Needs webfont loader if not system
 ];
 
-const CertificateDesigner = ({ onSave, onCancel }) => {
+const CertificateDesigner = ({ initialTemplate, onSave, onCancel }) => {
     const canvasRef = useRef(null);
     const fabricRef = useRef(null);
     const [fabricCanvas, setFabricCanvas] = useState(null);
     const [selectedObject, setSelectedObject] = useState(null);
     const [bgColor, setBgColor] = useState('#ffffff');
     const [showGrid, setShowGrid] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState(null);
     const fileInputRef = useRef(null);
     const bgInputRef = useRef(null);
     const sigInputRef = useRef(null);
@@ -37,38 +45,36 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
             fabricRef.current = canvas;
             setFabricCanvas(canvas);
 
-            // Add a default border frame
-            const rect = new fabric.Rect({
-                left: 400, // Center X
-                top: 300, // Center Y
-                fill: 'transparent',
-                width: 640, // 800 - 160 (80px margins)
-                height: 440, // 600 - 160 (80px margins)
-                stroke: '#7c3aed', // violet-600
-                strokeWidth: 5,
-                selectable: false,
-                evented: false,
-                rx: 10,
-                ry: 10,
-                id: 'frame',
-                originX: 'center', // Center origin
-                originY: 'center' // Center origin
-            });
-            canvas.add(rect);
+            // Load initial preset background if passed
+            if (initialTemplate) {
+                const imgObj = new Image();
+                imgObj.src = initialTemplate;
+                imgObj.onload = () => {
+                    const imgInstance = new fabric.Image(imgObj);
+                    const scaleX = 800 / imgInstance.width;
+                    const scaleY = 600 / imgInstance.height;
+                    const scale = Math.max(scaleX, scaleY);
+                    imgInstance.scale(scale);
+                    imgInstance.set({
+                        originX: 'center',
+                        originY: 'center',
+                        left: 400,
+                        top: 300,
+                        selectable: false,
+                        evented: false
+                    });
+                    canvas.backgroundImage = imgInstance;
+                    canvas.renderAll();
+                };
+            }
 
             // Event listeners
             canvas.on('selection:created', (e) => setSelectedObject(e.selected[0]));
             canvas.on('selection:updated', (e) => setSelectedObject(e.selected[0]));
             canvas.on('selection:cleared', () => setSelectedObject(null));
 
-            // Fix for visual scaling/offset issues
-            // We set the dimensions on the wrapper element if needed, but here we strictly control the canvas
-            // requestAnimationFrame ensures we run after React's paint
-            requestAnimationFrame(() => {
-                canvas.setDimensions({ width: 800, height: 600 });
-                canvas.calcOffset();
-                canvas.renderAll();
-            });
+            canvas.calcOffset();
+            canvas.renderAll();
         }
 
         return () => {
@@ -276,158 +282,243 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
         });
     };
 
+    const loadPresetImageTemplate = (imgSrc) => {
+        if (!fabricCanvas) return;
+        const imgObj = new Image();
+        imgObj.src = imgSrc;
+        imgObj.onload = () => {
+            const imgInstance = new fabric.Image(imgObj);
+            const scaleX = 800 / imgInstance.width;
+            const scaleY = 600 / imgInstance.height;
+            const scale = Math.max(scaleX, scaleY);
+            imgInstance.scale(scale);
+            imgInstance.set({
+                originX: 'center',
+                originY: 'center',
+                left: 400,
+                top: 300,
+                selectable: false,
+                evented: false
+            });
+            fabricCanvas.backgroundImage = imgInstance;
+            fabricCanvas.renderAll();
+        };
+    };
+
     const loadTemplate = (templateName) => {
         if (!fabricCanvas) return;
-        resetCanvas();
 
-        if (templateName === 'modern') {
-            changeBgColor('#f8fafc');
-            const title = new fabric.IText('CERTIFICATE', { fontSize: 50, top: 80, fill: '#334155', fontFamily: 'serif' });
-            fabricCanvas.add(title);
-            fabricCanvas.centerObjectH(title); // Auto center horizontally
+        // Clear existing canvas text objects except frame
+        const objects = fabricCanvas.getObjects();
+        objects.forEach(obj => {
+            if (obj.id !== 'frame') fabricCanvas.remove(obj);
+        });
 
-            const sub = new fabric.IText('OF APPRECIATION', { fontSize: 20, top: 140, fill: '#64748b' });
-            // Manually setting 'charSpacing' is v6 property? fabric usually uses charSpacing
-            sub.set({ charSpacing: 200 });
-            fabricCanvas.add(sub);
-            fabricCanvas.centerObjectH(sub);
-
-            const body1 = new fabric.IText('This certificate is proudly presented to', { fontSize: 16, top: 220, fill: '#94a3b8' });
-            fabricCanvas.add(body1);
-            fabricCanvas.centerObjectH(body1);
-
-            const name = new fabric.IText('{{Name Here}}', { fontSize: 40, top: 260, fill: '#0f172a' });
-            fabricCanvas.add(name);
-            fabricCanvas.centerObjectH(name);
-
-            const line = new fabric.Rect({ top: 320, width: 400, height: 2, fill: '#e2e8f0' });
-            fabricCanvas.add(line);
-            fabricCanvas.centerObjectH(line);
-
-            // Signature area
-            const sigText = new fabric.IText('Authorized Signature', { fontSize: 14, left: 550, top: 450, fill: '#64748b' });
-            fabricCanvas.add(sigText);
-            const sigLine = new fabric.Rect({ left: 530, top: 440, width: 200, height: 1, fill: '#cbd5e1' });
-            fabricCanvas.add(sigLine);
-
-        } else if (templateName === 'elegant') {
-            changeBgColor('#fffbeb');
-            const frame = fabricCanvas.getObjects().find(o => o.id === 'frame');
-            if (frame) frame.set({ stroke: '#b45309' });
-
-            const title = new fabric.IText('Certificate of Achievement', { fontSize: 45, top: 80, fill: '#78350f', fontFamily: 'cursive' });
+        if (templateName === 'modern' || templateName === 'corporate') {
+            const title = new fabric.IText('CERTIFICATE OF ACHIEVEMENT', {
+                fontSize: 34,
+                top: 85,
+                fill: '#1e293b',
+                fontFamily: 'serif',
+                fontWeight: 'bold',
+                charSpacing: 80
+            });
             fabricCanvas.add(title);
             fabricCanvas.centerObjectH(title);
 
-            const body = new fabric.IText('Awarded to', { fontSize: 18, top: 180, fill: '#92400e' });
+            const sub = new fabric.IText('THIS CREDENTIAL IS PROUDLY PRESENTED TO', {
+                fontSize: 11,
+                top: 155,
+                fill: '#64748b',
+                fontWeight: 'bold',
+                charSpacing: 180
+            });
+            fabricCanvas.add(sub);
+            fabricCanvas.centerObjectH(sub);
+
+            const name = new fabric.IText('{{Recipient Name}}', {
+                fontSize: 42,
+                top: 220,
+                fill: '#0f172a',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
+            fabricCanvas.add(name);
+            fabricCanvas.centerObjectH(name);
+
+            const body = new fabric.IText('for successfully completing the accredited program of excellence', {
+                fontSize: 14,
+                top: 310,
+                fill: '#475569',
+                fontFamily: 'Inter, sans-serif'
+            });
             fabricCanvas.add(body);
             fabricCanvas.centerObjectH(body);
 
-            const name = new fabric.IText('{{Name Here}}', { fontSize: 42, top: 230, fill: '#451a03', fontFamily: 'serif' });
-            fabricCanvas.add(name);
-            fabricCanvas.centerObjectH(name);
+            const date = new fabric.IText('Issue Date: {{Issue Date}}', { fontSize: 12, left: 160, top: 460, fill: '#64748b' });
+            fabricCanvas.add(date);
 
-            // Decoration
-            const circle = new fabric.Circle({ left: 350, top: 350, radius: 40, fill: 'transparent', stroke: '#b45309', strokeWidth: 2 });
-            fabricCanvas.add(circle);
-            const logoText = new fabric.IText('Logo', { fontSize: 12, left: 375, top: 385, fill: '#b45309' });
-            fabricCanvas.add(logoText);
-        } else if (templateName === 'luxury') {
-            // Luxury: Black & Gold
-            changeBgColor('#0f172a'); // Slate 900
-            const frame = fabricCanvas.getObjects().find(o => o.id === 'frame');
-            if (frame) frame.set({ stroke: '#fbbf24', strokeWidth: 8 }); // Amber 400
+            const sig = new fabric.IText('Authorized Signature', { fontSize: 12, left: 520, top: 460, fill: '#64748b' });
+            fabricCanvas.add(sig);
 
-            const title = new fabric.IText('Excellence Award', { fontSize: 50, top: 80, fill: '#fbbf24', fontFamily: 'serif', fontWeight: 'bold' });
+        } else if (templateName === 'elegant' || templateName === 'academic') {
+            const title = new fabric.IText('ACADEMIC DIPLOMA', {
+                fontSize: 38,
+                top: 90,
+                fill: '#1e3a8a',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
             fabricCanvas.add(title);
             fabricCanvas.centerObjectH(title);
 
-            const sub = new fabric.IText('Presented to', { fontSize: 20, top: 160, fill: '#94a3b8' });
+            const sub = new fabric.IText('BY THE AUTHORITY OF THE ACADEMIC BOARD', {
+                fontSize: 10,
+                top: 155,
+                fill: '#475569',
+                charSpacing: 160
+            });
             fabricCanvas.add(sub);
             fabricCanvas.centerObjectH(sub);
 
-            const name = new fabric.IText('{{Name Here}}', { fontSize: 48, top: 220, fill: '#fcd34d', fontFamily: 'serif' });
+            const name = new fabric.IText('{{Recipient Name}}', {
+                fontSize: 44,
+                top: 220,
+                fill: '#0f172a',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
             fabricCanvas.add(name);
             fabricCanvas.centerObjectH(name);
 
-            const line = new fabric.Rect({ top: 300, width: 300, height: 3, fill: '#fbbf24' });
-            fabricCanvas.add(line);
-            fabricCanvas.centerObjectH(line);
+            const body = new fabric.IText('has met all graduation criteria & academic requirements for', {
+                fontSize: 13,
+                top: 305,
+                fill: '#334155'
+            });
+            fabricCanvas.add(body);
+            fabricCanvas.centerObjectH(body);
 
-            const sigText = new fabric.IText('Signature', { fontSize: 16, left: 500, top: 380, fill: '#fbbf24' });
-            fabricCanvas.add(sigText);
+            const course = new fabric.IText('{{Course Title}}', {
+                fontSize: 22,
+                top: 340,
+                fill: '#1e40af',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
+            fabricCanvas.add(course);
+            fabricCanvas.centerObjectH(course);
+
+        } else if (templateName === 'luxury' || templateName === 'premium') {
+            const title = new fabric.IText('PRESIDENTIAL EXCELLENCE AWARD', {
+                fontSize: 32,
+                top: 80,
+                fill: '#b45309',
+                fontFamily: 'serif',
+                fontWeight: 'bold',
+                charSpacing: 100
+            });
+            fabricCanvas.add(title);
+            fabricCanvas.centerObjectH(title);
+
+            const name = new fabric.IText('{{Recipient Name}}', {
+                fontSize: 46,
+                top: 210,
+                fill: '#78350f',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
+            fabricCanvas.add(name);
+            fabricCanvas.centerObjectH(name);
+
+            const body = new fabric.IText('in recognition of distinguished leadership & exceptional service', {
+                fontSize: 14,
+                top: 300,
+                fill: '#451a03'
+            });
+            fabricCanvas.add(body);
+            fabricCanvas.centerObjectH(body);
 
         } else if (templateName === 'tech') {
-            // Tech: Matrix style or Dark Cyber
-            changeBgColor('#111827');
-            const frame = fabricCanvas.getObjects().find(o => o.id === 'frame');
-            if (frame) frame.set({ stroke: '#06b6d4' }); // Cyan 500
-
-            const title = new fabric.IText('CERTIFIED DEVELOPER', { fontSize: 40, top: 70, fill: '#22d3ee', fontFamily: 'monospace', fontWeight: 'bold' });
+            const title = new fabric.IText('CERTIFIED SYSTEM ARCHITECT', {
+                fontSize: 32,
+                top: 80,
+                fill: '#0284c7',
+                fontFamily: 'monospace',
+                fontWeight: 'bold'
+            });
             fabricCanvas.add(title);
             fabricCanvas.centerObjectH(title);
 
-            const name = new fabric.IText('< {{Name Here}} />', { fontSize: 36, top: 200, fill: '#e879f9', fontFamily: 'monospace' });
+            const name = new fabric.IText('< {{Recipient Name}} />', {
+                fontSize: 38,
+                top: 210,
+                fill: '#0f172a',
+                fontFamily: 'monospace',
+                fontWeight: 'bold'
+            });
             fabricCanvas.add(name);
             fabricCanvas.centerObjectH(name);
 
-            const codeDeco = new fabric.IText('isValid = true;', { fontSize: 14, left: 50, top: 50, fill: '#164e63' });
-            fabricCanvas.add(codeDeco);
+            const sub = new fabric.IText('SHA-256 VERIFIED CREDENTIAL NODE', {
+                fontSize: 11,
+                top: 300,
+                fill: '#0369a1',
+                fontFamily: 'monospace',
+                charSpacing: 140
+            });
+            fabricCanvas.add(sub);
+            fabricCanvas.centerObjectH(sub);
 
-            const box = new fabric.Rect({ left: 300, top: 320, width: 200, height: 60, fill: 'transparent', stroke: '#06b6d4', strokeWidth: 2 });
-            fabricCanvas.add(box);
-            const badge = new fabric.IText('SKILL VERIFIED', { fontSize: 18, left: 335, top: 340, fill: '#22d3ee', fontFamily: 'monospace' });
-            fabricCanvas.add(badge);
         } else if (templateName === 'minimalist') {
-            // Minimalist: Clean, Lots of white space, Thin lines
-            changeBgColor('#ffffff');
-            const frame = fabricCanvas.getObjects().find(o => o.id === 'frame');
-            if (frame) frame.set({ stroke: '#e2e8f0', strokeWidth: 1 });
-
-            const title = new fabric.IText('CERTIFICATE', { fontSize: 32, top: 100, fill: '#0f172a', fontWeight: 'light', charSpacing: 400 });
+            const title = new fabric.IText('CERTIFICATE OF RECOGNITION', {
+                fontSize: 28,
+                top: 110,
+                fill: '#0f172a',
+                fontFamily: 'serif',
+                charSpacing: 250
+            });
             fabricCanvas.add(title);
             fabricCanvas.centerObjectH(title);
 
-            const name = new fabric.IText('{{Name Here}}', { fontSize: 44, top: 240, fill: '#1e293b', fontFamily: 'serif' });
+            const name = new fabric.IText('{{Recipient Name}}', {
+                fontSize: 42,
+                top: 240,
+                fill: '#1e293b',
+                fontFamily: 'serif',
+                fontWeight: 'bold'
+            });
             fabricCanvas.add(name);
             fabricCanvas.centerObjectH(name);
 
-            const line = new fabric.Rect({ top: 310, width: 200, height: 1, fill: '#334155' });
-            fabricCanvas.add(line);
-            fabricCanvas.centerObjectH(line);
-
-            const sub = new fabric.IText('For outstanding participation and achievement', { fontSize: 14, top: 330, fill: '#64748b' });
-            fabricCanvas.add(sub);
-            fabricCanvas.centerObjectH(sub);
-
-        } else if (templateName === 'modern2') {
-            // Modern II: Geometric accents, bold colors
-            changeBgColor('#f1f5f9');
-            const frame = fabricCanvas.getObjects().find(o => o.id === 'frame');
-            if (frame) frame.set({ stroke: '#3b82f6', strokeWidth: 10 });
-
-            // Geometric accents
-            const rectLeft = new fabric.Rect({ left: 0, top: 0, width: 100, height: 600, fill: '#3b82f6', opacity: 0.1, selectable: false });
-            fabricCanvas.add(rectLeft);
-
-            const title = new fabric.IText('AWARD OF COMPLETION', { fontSize: 38, top: 80, fill: '#1e3a8a', fontWeight: '900' });
-            fabricCanvas.add(title);
-            fabricCanvas.centerObjectH(title);
-
-            const sub = new fabric.IText('THIS IS TO CERTIFY THAT', { fontSize: 12, top: 150, fill: '#64748b', charSpacing: 200 });
-            fabricCanvas.add(sub);
-            fabricCanvas.centerObjectH(sub);
-
-            const name = new fabric.IText('{{Name Here}}', { fontSize: 52, top: 220, fill: '#2563eb', fontWeight: 'bold' });
-            fabricCanvas.add(name);
-            fabricCanvas.centerObjectH(name);
-
-            const body = new fabric.IText('has successfully completed the required course of study.', { fontSize: 16, top: 320, fill: '#475569', width: 400, textAlign: 'center' });
+            const body = new fabric.IText('for outstanding contributions & dedication', {
+                fontSize: 14,
+                top: 330,
+                fill: '#64748b'
+            });
             fabricCanvas.add(body);
             fabricCanvas.centerObjectH(body);
 
-            const date = new fabric.IText('Date: ' + new Date().toLocaleDateString(), { fontSize: 14, left: 150, top: 450, fill: '#64748b' });
-            fabricCanvas.add(date);
+        } else if (templateName === 'modern2') {
+            const title = new fabric.IText('GLOBAL INNOVATION AWARD', {
+                fontSize: 36,
+                top: 85,
+                fill: '#0f172a',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 'bold'
+            });
+            fabricCanvas.add(title);
+            fabricCanvas.centerObjectH(title);
+
+            const name = new fabric.IText('{{Recipient Name}}', {
+                fontSize: 46,
+                top: 220,
+                fill: '#2563eb',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 'bold'
+            });
+            fabricCanvas.add(name);
+            fabricCanvas.centerObjectH(name);
         }
         fabricCanvas.requestRenderAll();
     };
@@ -601,7 +692,7 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-xl">
+        <div className="flex flex-col rounded-2xl overflow-hidden border border-[var(--border-muted)] bg-[var(--bg-card)] shadow-xl">
             {/* Top Toolbar - Properties */}
             <div className="bg-white border-b border-slate-200 p-2 flex items-center gap-4 h-14 px-6 z-10 overflow-x-auto whitespace-nowrap custom-scrollbar">
                 <div className="font-bold text-slate-700 mr-4 flex items-center gap-2 flex-shrink-0">
@@ -768,28 +859,28 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
                     <div className="w-16 h-px bg-slate-200 my-2"></div>
                     <div className="w-full px-2 mb-2"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Templates</span></div>
 
-                    <button onClick={() => loadTemplate('modern')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg w-20 transition-all group">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                    <button onClick={() => loadTemplate('corporate')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg w-20 transition-all group">
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-amber-500" />
                         <span className="text-[10px] font-medium">Modern</span>
                     </button>
-                    <button onClick={() => loadTemplate('elegant')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg w-20 transition-all group">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                    <button onClick={() => loadTemplate('academic')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg w-20 transition-all group">
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-violet-500" />
                         <span className="text-[10px] font-medium">Elegant</span>
                     </button>
-                    <button onClick={() => loadTemplate('luxury')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg w-20 transition-all group">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                    <button onClick={() => loadTemplate('premium')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg w-20 transition-all group">
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-yellow-500" />
                         <span className="text-[10px] font-medium">Luxury</span>
                     </button>
                     <button onClick={() => loadTemplate('tech')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg w-20 transition-all group" title="Tech - Cyber Dark">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-cyan-500" />
                         <span className="text-[10px] font-medium">Tech</span>
                     </button>
                     <button onClick={() => loadTemplate('minimalist')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg w-20 transition-all group" title="Minimalist - Clean & Elegant">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-slate-600" />
                         <span className="text-[10px] font-medium">Minimal</span>
                     </button>
                     <button onClick={() => loadTemplate('modern2')} className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg w-20 transition-all group" title="Modern II - Geometric Bold">
-                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform" />
+                        <LayoutTemplate size={20} className="group-hover:scale-110 transition-transform text-rose-500" />
                         <span className="text-[10px] font-medium">Modern II</span>
                     </button>
 
@@ -825,7 +916,7 @@ const CertificateDesigner = ({ onSave, onCancel }) => {
                 </div>
 
                 {/* Main Canvas Workspace */}
-                <div className="flex-1 bg-slate-100 flex items-center justify-center relative overflow-auto p-8">
+                <div className="flex-1 bg-slate-950/20 flex items-center justify-center relative overflow-auto p-3 sm:p-4">
                     {/* Checkered pattern background for canvas area */}
                     <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(#64748b 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 
