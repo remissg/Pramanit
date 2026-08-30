@@ -1115,19 +1115,62 @@ const requestRecipientOtp = async (req, res) => {
         });
 
         const otpHtml = `
-<div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); text-align: center;">
-    <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; margin: 0 0 16px 0;">Pramanit</h1>
-    <h2 style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 8px;">Vault Verification PIN</h2>
-    <p style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 24px;">
-        Use the 6-digit PIN below to unlock your Credential Vault on Pramanit:
-    </p>
-    <div style="background-color: #f1f5f9; padding: 20px; border-radius: 16px; font-size: 36px; font-weight: 900; letter-spacing: 0.3em; color: #6366f1; margin-bottom: 24px;">
-        ${otpCode}
-    </div>
-    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-        This PIN is valid for 10 minutes. If you did not request this code, you can safely ignore this email.
-    </p>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Credential Vault Verification PIN</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f8fafc; padding: 40px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+                    <!-- Brand Header -->
+                    <tr>
+                        <td style="padding: 36px 40px 24px 40px; text-align: center; background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%); border-b: 1px solid #f1f5f9;">
+                            <div style="font-size: 26px; font-weight: 900; color: #d97706; letter-spacing: -0.5px; line-height: 1;">🔑 Pramanit</div>
+                            <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 2px;">Credential Vault Verification</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px 40px; text-align: center;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Vault Access Verification</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569; font-weight: 500;">
+                                Use the 6-digit security PIN below to unlock your accredited certificate vault and view your verifiable credentials:
+                            </p>
+
+                            <!-- Copy-Friendly PIN Display Box -->
+                            <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 20px; padding: 24px 16px; margin-bottom: 24px;">
+                                <div style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 900; color: #b45309; letter-spacing: 12px; margin-left: 12px;">
+                                    ${otpCode}
+                                </div>
+                            </div>
+
+                            <p style="margin: 0; font-size: 12px; color: #64748b; font-weight: 500;">
+                                Enter this code into your portal verification screen to unlock your vault.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Expiration Footer -->
+                    <tr>
+                        <td style="padding: 20px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600;">
+                                ⏳ This PIN is valid for <strong style="color: #b45309;">10 minutes</strong>.<br>
+                                If you did not request access to your credential vault, please ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
 `;
 
         // Email OTP code to recipient

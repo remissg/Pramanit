@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         return res.data.user;
     };
 
-    const signup = async (email, password, orgName, fullName, designation, issuerType, institutionIdNumber, officialIdDoc) => {
+    const signup = async (email, password, orgName, fullName, designation, issuerType, institutionIdNumber, officialIdDoc, institutionName = '', institutionWebsite = '', facultyEmail = '') => {
         let res;
         if (officialIdDoc) {
             const formData = new FormData();
@@ -48,11 +48,17 @@ export const AuthProvider = ({ children }) => {
             formData.append('fullName', fullName);
             formData.append('designation', designation);
             formData.append('issuerType', issuerType || 'institution');
+            formData.append('verificationCategory', issuerType || 'institution');
+            formData.append('institutionName', institutionName);
+            formData.append('institutionWebsite', institutionWebsite);
+            formData.append('facultyEmail', facultyEmail);
             formData.append('institutionIdNumber', institutionIdNumber || '');
             formData.append('officialIdDoc', officialIdDoc);
             res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, formData);
         } else {
-            res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password, orgName, fullName, designation, issuerType, institutionIdNumber });
+            res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, {
+                email, password, orgName, fullName, designation, issuerType, verificationCategory: issuerType, institutionIdNumber, institutionName, institutionWebsite, facultyEmail
+            });
         }
         localStorage.setItem('token', res.data.token);
         setToken(res.data.token);

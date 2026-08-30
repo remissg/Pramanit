@@ -317,6 +317,7 @@ const LandingPageWrapper = ({ theme, setTheme }) => {
 };
 
 function MainApp({ theme, setTheme }) {
+  const navigate = useNavigate();
   const { user, token } = useAuth();
   const location = useLocation();
   const [showApp, setShowApp] = useState(false);
@@ -507,14 +508,15 @@ function MainApp({ theme, setTheme }) {
   const handleRestoreDraft = () => {
     const savedDraft = localStorage.getItem('pramanit_cert_draft');
     if (savedDraft) {
-      const parsed = JSON.parse(savedDraft);
-      if (parsed.fields) setFields(parsed.fields);
-      if (parsed.qrConfig) setQrConfig(parsed.qrConfig);
-      if (parsed.emailConfig) setEmailConfig(parsed.emailConfig);
-      setShowApp(true);
-      setStep(2);
-      setHasRestoredDraft(false);
-      alert('Restored your previous canvas draft layout successfully!');
+      try {
+        const parsed = JSON.parse(savedDraft);
+        navigate('/dashboard/designs', { state: { createScratch: true, draftJson: parsed } });
+        setHasRestoredDraft(false);
+      } catch (e) {
+        console.error('Failed to restore draft:', e);
+        navigate('/dashboard/designs', { state: { createScratch: true } });
+        setHasRestoredDraft(false);
+      }
     }
   };
 
@@ -1075,12 +1077,14 @@ function MainApp({ theme, setTheme }) {
           </div>
         )}
 
+
+
         <div className={`flex justify-between items-center relative px-12 max-w-3xl mx-auto ${step === 2 ? 'mb-8 md:mb-16' : 'mb-6 md:mb-16'}`}>
           <div className="absolute top-1/2 left-0 w-full h-1 bg-[var(--glass)] -z-0 transform -translate-y-1/2 rounded-full border border-[var(--glass-border)]"></div>
-          <div className={`absolute top-1/2 left-0 h-1 bg-violet-600 -z-0 transform -translate-y-1/2 rounded-full transition-all duration-700 shadow-[0_0_15px_rgba(124,58,237,0.5)]`} style={{ width: `${((step - 1) / 3) * 100}%` }}></div>
+          <div className={`absolute top-1/2 left-0 h-1 bg-gradient-to-r from-violet-600 via-rose-500 to-indigo-600 -z-0 transform -translate-y-1/2 rounded-full transition-all duration-700 shadow-[0_0_15px_rgba(124,58,237,0.5)]`} style={{ width: `${((step - 1) / 3) * 100}%` }}></div>
 
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center font-black transition-all duration-500 ${step >= i ? 'bg-violet-600 text-white shadow-2xl shadow-violet-500/40 scale-110' : 'bg-[var(--stepper-inactive)] text-[var(--text-muted)] border-2 border-[var(--border-muted)]'}`}>
+            <div key={i} className={`relative z-10 w-12 h-12 rounded-2xl flex items-center justify-center font-black transition-all duration-500 ${step >= i ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-2xl shadow-violet-500/40 scale-110' : 'bg-[var(--stepper-inactive)] text-[var(--text-muted)] border-2 border-[var(--border-muted)]'}`}>
               {step > i ? <CheckCircle size={24} /> : i}
             </div>
           ))}

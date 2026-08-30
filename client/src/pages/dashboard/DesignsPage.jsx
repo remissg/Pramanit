@@ -29,6 +29,9 @@ const DesignsPage = () => {
         if (location.state?.templateImage) {
             setInitialTemplate(location.state.templateImage);
             setIsDesigning(true);
+        } else if (location.state?.createScratch || location.state?.draftJson) {
+            setInitialTemplate(location.state?.draftJson || null);
+            setIsDesigning(true);
         }
     }, [location.state]);
 
@@ -61,7 +64,18 @@ const DesignsPage = () => {
         setIsDesigning(true);
     };
 
-    const handleSaveDesign = (designData) => {
+    const handleSaveDesign = async (designData) => {
+        if (designData && designData.name) {
+            try {
+                await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/designs`, {
+                    name: designData.name,
+                    designJson: designData.json,
+                    previewUrl: designData.previewUrl
+                });
+            } catch (err) {
+                console.error("Failed to save design template to database:", err);
+            }
+        }
         setIsDesigning(false);
         setInitialTemplate(null);
         refetch();

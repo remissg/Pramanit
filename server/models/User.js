@@ -31,7 +31,11 @@ const UserSchema = new mongoose.Schema({
     gmail_access_token: { type: String, select: false },
     gmail_email: { type: String },
     // Institutional Identity & Verification Fields
-    issuer_type: { type: String, enum: ['institution', 'student_council', 'club'], default: 'institution' },
+    issuer_type: { type: String, enum: ['institution', 'student_council', 'club', 'faculty'], default: 'institution' },
+    verification_category: { type: String, default: 'Official Institution' },
+    institution_name: { type: String, default: '' },
+    institution_website: { type: String, default: '' },
+    faculty_email: { type: String, default: '' },
     verification_status: { type: String, enum: ['unverified', 'pending', 'approved', 'rejected'], default: 'unverified' },
     official_id_url: { type: String, default: '' },
     institution_id_number: { type: String, default: '' },

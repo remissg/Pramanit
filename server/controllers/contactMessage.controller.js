@@ -155,32 +155,65 @@ const respondToMessage = async (req, res) => {
 
         // Send response email to recipient
         const responseHtml = `
-            <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-                <div style="text-align: center; margin-bottom: 32px;">
-                    <h1 style="font-size: 32px; font-weight: 900; color: #1e1b4b; letter-spacing: -0.025em; margin: 0;">Pramanit</h1>
-                </div>
-                
-                <div style="text-align: center; margin-bottom: 32px;">
-                    <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 12px;">Response to Your Inquiry</h2>
-                    <p style="color: #64748b; font-size: 16px; line-height: 1.6; font-weight: 500;">
-                        The certificate issuer has responded to your message.
-                    </p>
-                </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Response to Your Inquiry - Pramanit</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f8fafc; padding: 40px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+                    <!-- Brand Header -->
+                    <tr>
+                        <td style="padding: 36px 40px 24px 40px; text-align: center; background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%); border-b: 1px solid #f1f5f9;">
+                            <div style="font-size: 26px; font-weight: 900; color: #059669; letter-spacing: -0.5px; line-height: 1;">💬 Pramanit Support</div>
+                            <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 2px;">Issuer Direct Response</p>
+                        </td>
+                    </tr>
 
-                <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 32px;">
-                    <h3 style="color: #1e293b; font-size: 18px; margin-bottom: 16px;">Issuer Response:</h3>
-                    <div style="background-color: #ffffff; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981;">
-                        ${response}
-                    </div>
-                </div>
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px 40px;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 900; color: #0f172a; text-align: center; letter-spacing: -0.5px;">Response to Your Inquiry</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569; text-align: center; font-weight: 500;">
+                                The credential issuing authority has reviewed your message regarding Certificate ID <strong style="color: #6d28d9; font-family: monospace;">${message.certificate_id}</strong>.
+                            </p>
 
-                <div style="text-align: center; margin-bottom: 32px;">
-                    <p style="color: #64748b; font-size: 14px;">
-                        Certificate ID: ${message.certificate_id}
-                    </p>
-                </div>
-            </div>
-        `;
+                            <!-- Original Inquiry Box -->
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px;">
+                                <p style="margin: 0 0 4px 0; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Original Inquiry</p>
+                                <p style="margin: 0; font-size: 13px; color: #334155; font-weight: 600;">"${message.subject}"</p>
+                            </div>
+
+                            <!-- Issuer Official Response Card -->
+                            <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; border-top: 1px solid #d1fae5; border-right: 1px solid #d1fae5; border-bottom: 1px solid #d1fae5; border-radius: 0 16px 16px 0; padding: 20px; margin-bottom: 24px;">
+                                <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 900; color: #047857; text-transform: uppercase; letter-spacing: 1.5px;">Official Response from Issuer</p>
+                                <div style="font-size: 14px; line-height: 1.7; color: #064e3b; font-weight: 500;">
+                                    ${response}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 20px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600;">
+                                Verified Credential Dispatch Node &bull; Pramanit Identity Network
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
 
         try {
             await sendEmail(

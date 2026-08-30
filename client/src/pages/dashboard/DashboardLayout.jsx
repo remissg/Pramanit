@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
     LayoutDashboard, LayoutTemplate, Mail, History, Edit3,
     MessageSquare, Settings, Globe, LogOut, ChevronLeft, ChevronRight,
-    Menu, X, Sparkles, Zap, Shield, Award, Moon, Sun, Monitor, UserCheck, CreditCard
+    Menu, X, Sparkles, Zap, Shield, Award, Moon, Sun, Monitor, UserCheck, CreditCard,
+    MoreHorizontal
 } from 'lucide-react';
 import axios from 'axios';
 import logo from '../../assets/Pramanit logo.png';
@@ -15,6 +16,7 @@ const DashboardLayout = ({ theme, setTheme }) => {
     const { user, logout, token } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
     // Shared State across Dashboard pages
     const [designs, setDesigns] = useState([]);
@@ -137,29 +139,34 @@ const DashboardLayout = ({ theme, setTheme }) => {
 
     return (
         <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex font-sans selection:bg-violet-500/30">
-            {/* Desktop Sidebar */}
-            <aside className={`hidden md:flex flex-col h-screen sticky top-0 border-r border-[var(--border-muted)] bg-[var(--bg-card)] transition-all duration-300 z-30 shrink-0 ${collapsed ? 'w-20' : 'w-64'}`}>
+            {/* Desktop Sidebar (Ultra Premium Glassmorphism) */}
+            <aside className={`hidden md:flex flex-col h-screen sticky top-0 border-r border-[var(--border-muted)] bg-[var(--bg-card)] backdrop-blur-2xl transition-all duration-300 z-30 shrink-0 ${collapsed ? 'w-20' : 'w-64'}`}>
+                {/* Ambient Radial Background Glow */}
+                <div className="absolute top-0 left-0 w-full h-48 bg-gradient-to-b from-violet-600/10 via-rose-500/5 to-transparent pointer-events-none" />
+
                 {/* Sidebar Header */}
-                <div className="p-6 flex items-center justify-between border-b border-[var(--border-muted)]">
+                <div className="p-5 flex items-center justify-between border-b border-[var(--border-muted)] relative z-10">
                     {!collapsed && (
-                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-violet-500/10 transform -rotate-3">
+                        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/dashboard')}>
+                            <div className="w-10 h-10 bg-white/95 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-all transform -rotate-3">
                                 <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                             </div>
                             <div>
-                                <span className="text-xl font-black tracking-tight text-[var(--text-heading)]">Pramanit</span>
-                                <span className="block text-[9px] font-black text-violet-400 uppercase tracking-widest">Issuer Control</span>
+                                <span className="text-xl font-black tracking-tight text-[var(--text-heading)] block leading-none">Pramanit</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[8px] font-black uppercase tracking-widest mt-1 shadow-sm">
+                                    <Sparkles size={10} className="text-emerald-400 animate-pulse" /> v2.0 Enterprise
+                                </span>
                             </div>
                         </div>
                     )}
                     {collapsed && (
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg mx-auto cursor-pointer" onClick={() => navigate('/dashboard')}>
+                        <div className="w-10 h-10 bg-white/95 rounded-xl flex items-center justify-center p-1.5 shadow-lg mx-auto cursor-pointer hover:scale-105 transition-all" onClick={() => navigate('/dashboard')}>
                             <img src={logo} alt="Pramanit Logo" className="w-full h-full object-contain" />
                         </div>
                     )}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        className="p-2 hover:bg-white/5 text-[var(--text-muted)] hover:text-white rounded-xl transition-colors hidden md:block"
+                        className="p-2 hover:bg-white/10 text-[var(--text-muted)] hover:text-white rounded-xl transition-colors hidden md:block"
                         title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
                     >
                         {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -167,15 +174,15 @@ const DashboardLayout = ({ theme, setTheme }) => {
                 </div>
 
                 {/* Sidebar Navigation */}
-                <div className="flex-1 py-6 px-3 overflow-y-auto space-y-6 custom-scrollbar">
+                <div className="flex-1 py-6 px-3 overflow-y-auto space-y-6 custom-scrollbar relative z-10">
                     {navSections.map((sec, idx) => (
                         <div key={idx}>
                             {!collapsed && (
-                                <p className="px-3 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
+                                <p className="px-3 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2.5 opacity-70">
                                     {sec.title}
                                 </p>
                             )}
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                                 {sec.items.map((item) => {
                                     const Icon = item.icon;
                                     return (
@@ -184,17 +191,17 @@ const DashboardLayout = ({ theme, setTheme }) => {
                                             to={item.path}
                                             end={item.exact}
                                             className={({ isActive }) =>
-                                                `flex items-center gap-3 px-3 py-3 rounded-2xl text-xs font-bold transition-all group ${
+                                                `flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all group relative ${
                                                     isActive
-                                                        ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
-                                                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-white/5'
+                                                        ? 'bg-gradient-to-r from-rose-600 via-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/30 font-black'
+                                                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-white/5 border border-transparent hover:border-white/10'
                                                 }`
                                             }
                                         >
                                             <Icon size={18} className="shrink-0 group-hover:scale-110 transition-transform" />
                                             {!collapsed && <span className="truncate">{item.label}</span>}
                                             {!collapsed && item.badge && (
-                                                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black text-white ${item.badgeColor || 'bg-violet-600'}`}>
+                                                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black text-white shadow-sm ${item.badgeColor || 'bg-violet-600'}`}>
                                                     {item.badge}
                                                 </span>
                                             )}
@@ -206,19 +213,17 @@ const DashboardLayout = ({ theme, setTheme }) => {
                     ))}
                 </div>
 
-                {/* Sidebar User Footer */}
-                <div className="p-4 border-t border-[var(--border-muted)]">
+                {/* Sidebar User Sentinel Footer */}
+                <div className="p-4 border-t border-[var(--border-muted)] relative z-10">
                     {!collapsed ? (
-                        <div className="p-3 bg-[var(--bg-input)] border border-[var(--border-muted)] rounded-2xl flex items-center justify-between">
+                        <div className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] rounded-2xl flex items-center justify-between shadow-lg">
                             <div className="max-w-[130px]">
-                                <p className="text-xs font-black text-[var(--text-heading)] truncate">{user?.orgName || user?.fullName || 'Issuer Account'}</p>
-                                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Verified
-                                </p>
+                                <p className="text-xs font-black text-[var(--text-heading)] truncate">{user?.fullName || 'Issuer'}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] truncate">{user?.orgName || 'Organization'}</p>
                             </div>
                             <button
                                 onClick={logout}
-                                className="p-2 hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 rounded-xl transition-colors"
+                                className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors"
                                 title="Sign Out"
                             >
                                 <LogOut size={16} />
@@ -227,7 +232,7 @@ const DashboardLayout = ({ theme, setTheme }) => {
                     ) : (
                         <button
                             onClick={logout}
-                            className="w-10 h-10 mx-auto flex items-center justify-center text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors"
+                            className="p-3 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors mx-auto block"
                             title="Sign Out"
                         >
                             <LogOut size={18} />
@@ -295,15 +300,20 @@ const DashboardLayout = ({ theme, setTheme }) => {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Dashboard Top Header */}
-                <header className="h-20 border-b border-[var(--border-muted)] bg-[var(--bg-card)]/80 backdrop-blur-xl px-4 md:px-8 flex items-center justify-between sticky top-0 z-20">
+                <header className="h-20 pt-safe border-b border-[var(--border-muted)] bg-[var(--bg-card)]/80 backdrop-blur-xl px-4 md:px-8 flex items-center justify-between sticky top-0 z-20">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 text-[var(--text-muted)] hover:text-white rounded-xl">
                             <Menu size={22} />
                         </button>
                         <div>
-                            <h1 className="text-lg md:text-xl font-black text-[var(--text-heading)] tracking-tight">
-                                Issuer Control Dashboard
-                            </h1>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-lg md:text-xl font-black text-[var(--text-heading)] tracking-tight">
+                                    Issuer Control Dashboard
+                                </h1>
+                                <span className="px-2.5 py-0.5 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
+                                    <Sparkles size={11} className="text-emerald-400 animate-pulse" /> v2.0 Production Grade
+                                </span>
+                            </div>
                             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider hidden sm:block">
                                 Verifiable Credential Operations & Email Studio
                             </p>
@@ -348,9 +358,204 @@ const DashboardLayout = ({ theme, setTheme }) => {
                 </header>
 
                 {/* Sub-page Outlet */}
-                <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+                <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-safe-content md:!pb-8">
                     <Outlet context={contextValue} />
                 </main>
+            </div>
+
+            {/* Mobile Bottom Navigation Sheet overlay */}
+            {mobileMoreOpen && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+                    onClick={() => setMobileMoreOpen(false)}
+                >
+                    <div
+                        className="fixed bottom-0 left-0 right-0 bg-[var(--bg-card)] border-t border-[var(--border-muted)] rounded-t-[2.5rem] p-6 space-y-5 animate-in slide-in-from-bottom duration-300 shadow-2xl max-h-[85vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-12 h-1.5 bg-[var(--border-muted)] rounded-full mx-auto" />
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--border-muted)]">
+                            <h3 className="text-base font-black text-[var(--text-heading)] tracking-tight">
+                                Workspace & Studio Menu
+                            </h3>
+                            <button
+                                onClick={() => setMobileMoreOpen(false)}
+                                className="p-1.5 text-[var(--text-muted)] hover:text-white rounded-xl bg-white/5"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                            <button
+                                onClick={() => { navigate('/dashboard/email-templates'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95"
+                            >
+                                <div className="p-2 bg-violet-600/15 rounded-xl text-violet-400">
+                                    <Mail size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Email Templates</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Manage SMTP Layouts</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => { navigate('/dashboard/corrections'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95 relative"
+                            >
+                                {corrections.filter(c => c.status === 'pending').length > 0 && (
+                                    <span className="absolute top-3 right-3 px-2 py-0.5 bg-amber-500 text-slate-950 font-black rounded-full text-[9px]">
+                                        {corrections.filter(c => c.status === 'pending').length}
+                                    </span>
+                                )}
+                                <div className="p-2 bg-amber-500/15 rounded-xl text-amber-400">
+                                    <Edit3 size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Name Corrections</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Pending Requests</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => { navigate('/dashboard/inquiries'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95 relative"
+                            >
+                                {contactMessages.filter(m => m.status === 'pending').length > 0 && (
+                                    <span className="absolute top-3 right-3 px-2 py-0.5 bg-rose-500 text-white font-black rounded-full text-[9px]">
+                                        {contactMessages.filter(m => m.status === 'pending').length}
+                                    </span>
+                                )}
+                                <div className="p-2 bg-rose-500/15 rounded-xl text-rose-400">
+                                    <MessageSquare size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Support Inquiries</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Recipient Support</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => { navigate('/dashboard/settings'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95"
+                            >
+                                <div className="p-2 bg-indigo-500/15 rounded-xl text-indigo-400">
+                                    <Settings size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Issuer Settings</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">SMTP & Branding</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => { navigate('/dashboard/developer'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95"
+                            >
+                                <div className="p-2 bg-cyan-500/15 rounded-xl text-cyan-400">
+                                    <Globe size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Developer API</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Keys & Webhooks</p>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => { navigate('/dashboard/subscription'); setMobileMoreOpen(false); }}
+                                className="p-3.5 bg-[var(--bg-input)] border border-[var(--border-muted)] hover:border-violet-500/30 rounded-2xl flex flex-col items-start gap-2 transition-all active:scale-95"
+                            >
+                                <div className="p-2 bg-emerald-500/15 rounded-xl text-emerald-400">
+                                    <CreditCard size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-[var(--text-heading)]">Subscription</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Tier & Usage</p>
+                                </div>
+                            </button>
+                        </div>
+
+                        {user?.role === 'admin' && (
+                            <button
+                                onClick={() => { navigate('/admin'); setMobileMoreOpen(false); }}
+                                className="w-full p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95"
+                            >
+                                <Shield size={16} /> Admin Control Center
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => { logout(); setMobileMoreOpen(false); }}
+                            className="w-full p-3.5 bg-white/5 border border-white/10 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                        >
+                            <LogOut size={16} /> Sign Out Account
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile Bottom Navigation Bar (Fixed Native iOS/Android Safe Area Style) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-card)] backdrop-blur-xl border-t border-[var(--border-muted)] px-3 pt-1.5 pb-safe-nav flex items-center justify-around shadow-md">
+                <NavLink
+                    to="/dashboard"
+                    end
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${
+                            isActive ? 'text-violet-400 scale-105' : 'text-[var(--text-muted)] hover:text-white'
+                        }`
+                    }
+                >
+                    <LayoutDashboard size={20} />
+                    <span>Overview</span>
+                </NavLink>
+
+                <NavLink
+                    to="/dashboard/designs"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${
+                            isActive ? 'text-violet-400 scale-105' : 'text-[var(--text-muted)] hover:text-white'
+                        }`
+                    }
+                >
+                    <LayoutTemplate size={20} />
+                    <span>Designs</span>
+                </NavLink>
+
+                {/* Featured Glowing Action Button (Generate) */}
+                <button
+                    onClick={() => navigate('/dashboard/generate')}
+                    className={`flex flex-col items-center justify-center -mt-5 w-13 h-13 rounded-full bg-gradient-to-r from-rose-600 via-violet-600 to-indigo-600 text-white shadow-xl shadow-violet-600/50 border-2 border-[var(--bg-main)] transform active:scale-95 transition-all ${
+                        location.pathname === '/dashboard/generate' ? 'ring-4 ring-violet-500/40 scale-110' : ''
+                    }`}
+                    title="Bulk Certificate Issuance Wizard"
+                >
+                    <Zap size={22} className="fill-white" />
+                </button>
+
+                <NavLink
+                    to="/dashboard/history"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${
+                            isActive ? 'text-violet-400 scale-105' : 'text-[var(--text-muted)] hover:text-white'
+                        }`
+                    }
+                >
+                    <History size={20} />
+                    <span>History</span>
+                </NavLink>
+
+                <NavLink
+                    to="/dashboard/settings"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all relative ${
+                            isActive ? 'text-violet-400 scale-105' : 'text-[var(--text-muted)] hover:text-white'
+                        }`
+                    }
+                >
+                    <Settings size={20} />
+                    <span>Settings</span>
+                </NavLink>
             </div>
         </div>
     );

@@ -64,26 +64,42 @@ const InquiriesPage = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-card)] rounded-[2.5rem] p-8 border border-[var(--glass-border)] shadow-xl">
-                <div>
-                    <span className="text-xs font-black uppercase tracking-widest text-violet-400 flex items-center gap-2 mb-2">
-                        <Sparkles size={16} /> Recipient Communication Inbox
-                    </span>
-                    <h2 className="text-3xl font-black text-[var(--text-heading)] tracking-tight">
-                        Inquiries & Messages ({contactMessages.length})
-                    </h2>
-                    <p className="text-sm font-bold text-[var(--text-muted)] mt-1">
-                        Read inquiries sent by recipients from their portal and respond directly via email.
-                    </p>
+            {/* Ultra Premium Header Banner */}
+            <div
+                className="relative rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 md:p-10 border overflow-hidden shadow-2xl transition-all duration-300"
+                style={{ background: 'var(--banner-bg)', borderColor: 'var(--banner-border)' }}
+            >
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div>
+                        <div
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3 border max-w-full leading-normal shadow-sm"
+                            style={{
+                                background: 'var(--banner-badge-bg)',
+                                borderColor: 'var(--banner-badge-border)',
+                                color: 'var(--banner-badge-text)'
+                            }}
+                        >
+                            <Sparkles size={14} className="shrink-0 text-amber-400" />
+                            <span className="truncate">Recipient Dispatch Support</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
+                            Inquiries & Support ({contactMessages.length})
+                        </h2>
+                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Review questions and support inquiries submitted by recipients and reply directly via encrypted SMTP email.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleExportCSV}
+                        disabled={contactMessages.length === 0}
+                        className="px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+                    >
+                        <Download size={16} /> Export CSV
+                    </button>
                 </div>
-                <button
-                    onClick={handleExportCSV}
-                    disabled={contactMessages.length === 0}
-                    className="px-6 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95 shrink-0"
-                >
-                    <Download size={16} /> Export CSV
-                </button>
             </div>
 
             {/* Messages Table Container */}

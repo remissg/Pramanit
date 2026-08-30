@@ -87,8 +87,8 @@ const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], cu
             </a>
         </div>
         
-        <p style="color: #78350f; font-size: 14px; font-style: italic; margin: 0;">
-            <strong>Do not reply to this email</strong> - it will not reach the certificate issuer.
+        <p style="color: #78350f; font-size: 13px; font-weight: 600; margin: 0;">
+            ✉️ <strong>Direct Issuer Communication:</strong> Hitting "Reply" in your email inbox will send your message directly to ${issuerInfo.name || issuerInfo.orgName || 'the certificate issuer'} (${issuerInfo.email || 'Issuer'}).
         </p>
     </div>
 
@@ -100,7 +100,8 @@ const sendCertificateEmail = async (to, certId, issuerInfo, attachments = [], cu
 </div>
 `;
 
-    return sendEmail(to, emailSubject, html, attachments);
+    const replyToEmail = issuerInfo.email || issuerInfo.userEmail || null;
+    return sendEmail(to, emailSubject, html, attachments, null, replyToEmail);
 };
 
 module.exports = { sendCertificateEmail };

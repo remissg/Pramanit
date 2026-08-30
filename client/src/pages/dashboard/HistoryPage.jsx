@@ -71,26 +71,41 @@ const HistoryPage = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-card)] rounded-[2.5rem] p-8 border border-[var(--glass-border)] shadow-xl">
-                <div>
-                    <span className="text-xs font-black uppercase tracking-widest text-violet-400 flex items-center gap-2 mb-2">
-                        <Sparkles size={16} /> Credential Distribution History
-                    </span>
-                    <h2 className="text-3xl font-black text-[var(--text-heading)] tracking-tight">
-                        Issuance History ({history.length} Batches)
-                    </h2>
-                    <p className="text-sm font-bold text-[var(--text-muted)] mt-1">
-                        View past bulk certificate issuances, recipient logs, and export reports.
-                    </p>
+            {/* Ultra Premium Header Banner */}
+            <div
+                className="relative rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 md:p-10 border overflow-hidden shadow-2xl transition-all duration-300"
+                style={{ background: 'var(--banner-bg)', borderColor: 'var(--banner-border)' }}
+            >
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div>
+                        <div
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3 border max-w-full leading-normal shadow-sm"
+                            style={{
+                                background: 'var(--banner-badge-bg)',
+                                borderColor: 'var(--banner-badge-border)',
+                                color: 'var(--banner-badge-text)'
+                            }}
+                        >
+                            <Sparkles size={14} className="shrink-0 text-amber-400" />
+                            <span className="truncate">Cryptographic Issuance Audit Log</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
+                            Issuance History ({history.length} Batches)
+                        </h2>
+                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Audit past credential batches, inspect delivery success, track recipient interactions, and view cryptographically signed certificates.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleExportCSV}
+                        className="px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+                    >
+                        <Download size={16} /> Export Audit CSV
+                    </button>
                 </div>
-                <button
-                    onClick={handleExportCSV}
-                    disabled={history.length === 0}
-                    className="px-6 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95 shrink-0"
-                >
-                    <Download size={16} /> Export CSV Report
-                </button>
             </div>
 
             {/* Table Container */}
@@ -590,7 +605,7 @@ const HistoryPage = () => {
                         )}
 
                         {/* Certificate Image Canvas Container */}
-                        <div className="p-6 overflow-auto flex-1 flex flex-col items-center justify-center bg-slate-900/50 min-h-[440px] max-h-[70vh] custom-scrollbar relative">
+                        <div className="p-3 sm:p-6 overflow-auto flex-1 flex flex-col items-center justify-center bg-slate-900/50 min-h-[220px] sm:min-h-[440px] max-h-[70vh] custom-scrollbar relative">
                             {certImageLoading && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-20 space-y-4 animate-in fade-in duration-300">
                                     <div className="relative">
@@ -605,11 +620,11 @@ const HistoryPage = () => {
                                     </div>
                                 </div>
                             )}
-                            <div className={`relative w-full rounded-2xl overflow-auto border border-white/10 shadow-2xl bg-black/40 group p-2 transition-opacity duration-500 ${certImageLoading ? 'opacity-0' : 'opacity-100'}`}>
+                            <div className={`relative w-full rounded-2xl overflow-auto border border-white/10 shadow-2xl bg-black/40 group p-1 sm:p-2 transition-opacity duration-500 ${certImageLoading ? 'opacity-0' : 'opacity-100'}`}>
                                 <img
                                     src={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
                                     alt={`Certificate for ${previewCertRecord.recipient_name}`}
-                                    className="w-full h-auto object-contain min-w-[650px] rounded-xl"
+                                    className="w-full max-w-full h-auto object-contain rounded-xl mx-auto"
                                     onLoad={() => setCertImageLoading(false)}
                                     onError={(e) => {
                                         e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`;
@@ -620,23 +635,27 @@ const HistoryPage = () => {
                         </div>
 
                         {/* Action Toolbar Footer */}
-                        <div className="p-6 border-t border-[var(--border-muted)] bg-[var(--bg-input)]/60 flex flex-wrap items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
+                        <div className="p-3 sm:p-6 border-t border-[var(--border-muted)] bg-[var(--bg-input)]/60 flex flex-wrap items-center justify-between gap-2 sm:gap-4 overflow-x-auto shrink-0">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                 <a
                                     href={`${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${previewCertRecord.cert_id}`}
                                     download
-                                    className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                                    className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-violet-600/30 transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
                                 >
-                                    <Download size={14} /> Download PDF
+                                    <Download size={14} />
+                                    <span className="hidden sm:inline">Download PDF</span>
+                                    <span className="sm:hidden">PDF</span>
                                 </a>
                                 <a
                                     href={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
                                     download={`certificate-${previewCertRecord.cert_id}.png`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-2"
+                                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-1.5 shrink-0"
                                 >
-                                    <Eye size={14} /> Download Image (PNG)
+                                    <Eye size={14} />
+                                    <span className="hidden sm:inline">Download Image (PNG)</span>
+                                    <span className="sm:hidden">PNG</span>
                                 </a>
                                 <a
                                     href={(() => {
@@ -650,13 +669,15 @@ const HistoryPage = () => {
                                     })()}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-4 py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white font-bold text-xs transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95"
+                                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-blue-600/20 active:scale-95 shrink-0"
                                 >
-                                    <Share2 size={14} /> Add to LinkedIn
+                                    <Share2 size={14} />
+                                    <span className="hidden sm:inline">Add to LinkedIn</span>
+                                    <span className="sm:hidden">LinkedIn</span>
                                 </a>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                 <button
                                     onClick={() => {
                                         const verifyUrl = `${window.location.origin}/verify/${previewCertRecord.cert_id}`;
@@ -664,15 +685,17 @@ const HistoryPage = () => {
                                         setCopiedLinkCertId(previewCertRecord.cert_id);
                                         setTimeout(() => setCopiedLinkCertId(null), 2000);
                                     }}
-                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-2"
+                                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--text-main)] border border-white/10 font-bold text-xs transition-all flex items-center gap-1.5 shrink-0"
                                 >
                                     {copiedLinkCertId === previewCertRecord.cert_id ? (
                                         <>
-                                            <Check size={14} className="text-emerald-400" /> <span className="text-emerald-400">Link Copied!</span>
+                                            <Check size={14} className="text-emerald-400" /> <span className="text-emerald-400">Copied!</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Copy size={14} /> Copy Verify Link
+                                            <Copy size={14} />
+                                            <span className="hidden sm:inline">Copy Verify Link</span>
+                                            <span className="sm:hidden">Link</span>
                                         </>
                                     )}
                                 </button>
@@ -680,9 +703,11 @@ const HistoryPage = () => {
                                     href={`/verify/${previewCertRecord.cert_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs transition-all flex items-center gap-2"
+                                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs transition-all flex items-center gap-1.5 shrink-0"
                                 >
-                                    <ExternalLink size={14} /> Public Portal
+                                    <ExternalLink size={14} />
+                                    <span className="hidden sm:inline">Public Portal</span>
+                                    <span className="sm:hidden">Portal</span>
                                 </a>
                                 <button
                                     onClick={() => {
@@ -693,9 +718,11 @@ const HistoryPage = () => {
                                         });
                                         setIsEditingCert(!isEditingCert);
                                     }}
-                                    className="px-4 py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-400 border border-violet-500/30 font-bold text-xs transition-all flex items-center gap-2 active:scale-95"
+                                    className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-400 border border-violet-500/30 font-bold text-xs transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
                                 >
-                                    <Edit size={14} /> {isEditingCert ? 'Close Editor' : 'Edit / Correct Fields'}
+                                    <Edit size={14} />
+                                    <span className="hidden sm:inline">{isEditingCert ? 'Close Editor' : 'Edit / Correct Fields'}</span>
+                                    <span className="sm:hidden">Edit</span>
                                 </button>
                                 {previewCertRecord.status === 'revoked' ? (
                                     <span className="px-4 py-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">

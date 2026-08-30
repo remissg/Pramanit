@@ -14,10 +14,23 @@ const SettingsPage = () => {
 
     // Verification Resubmission Form
     const [issuerTypeInput, setIssuerTypeInput] = useState(user?.issuer_type || 'institution');
+    const [institutionNameInput, setInstitutionNameInput] = useState(user?.institution_name || settings.orgName || '');
+    const [institutionWebsiteInput, setInstitutionWebsiteInput] = useState(user?.institution_website || '');
+    const [facultyEmailInput, setFacultyEmailInput] = useState(user?.faculty_email || user?.email || '');
     const [regIdInput, setRegIdInput] = useState(user?.institution_id_number || '');
     const [idDocFile, setIdDocFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [submittingVerification, setSubmittingVerification] = useState(false);
+
+    // Calculate 100% Profile Completion Percentage
+    const isOrgName = !!(settings.orgName && settings.orgName.trim());
+    const isLogo = !!(settings.orgLogoUrl || user?.org_logo_url);
+    const isSignerName = !!(settings.fullName && settings.fullName.trim());
+    const isDesignation = !!(settings.designation && settings.designation.trim());
+    const isIdDoc = !!(idDocFile || user?.official_id_url);
+
+    const completionCount = [isOrgName, isLogo, isSignerName, isDesignation, isIdDoc].filter(Boolean).length;
+    const completionPercent = completionCount * 20;
 
     useEffect(() => {
         if (!idDocFile) {
@@ -50,6 +63,10 @@ const SettingsPage = () => {
         try {
             const formData = new FormData();
             formData.append('issuerType', issuerTypeInput);
+            formData.append('verificationCategory', issuerTypeInput);
+            formData.append('institutionName', institutionNameInput);
+            formData.append('institutionWebsite', institutionWebsiteInput);
+            formData.append('facultyEmail', facultyEmailInput);
             formData.append('institutionIdNumber', regIdInput);
             if (idDocFile) formData.append('officialIdDoc', idDocFile);
 
@@ -74,6 +91,7 @@ const SettingsPage = () => {
                 orgName: settings.orgName,
                 fullName: settings.fullName,
                 designation: settings.designation,
+                orgLogoUrl: settings.orgLogoUrl,
                 certPrefix: settings.certPrefix,
                 smtpHost: settings.smtpHost,
                 smtpPort: Number(settings.smtpPort),
@@ -164,6 +182,24 @@ const SettingsPage = () => {
                             }
                         </p>
 
+                        {/* 100% Profile Completion Progress Widget */}
+                        <div className="mt-4 p-3 bg-white/80 dark:bg-black/30 rounded-2xl border border-violet-200 dark:border-violet-500/20 shadow-sm space-y-2">
+                            <div className="flex items-center justify-between text-xs font-black">
+                                <span className="text-[var(--text-heading)] uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles size={14} className="text-violet-500" /> Organization Profile Completion
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider ${completionPercent === 100 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                    {completionPercent}% {completionPercent === 100 ? 'Complete' : 'Incomplete'}
+                                </span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div className="bg-gradient-to-r from-rose-500 via-violet-600 to-emerald-400 h-full transition-all duration-500" style={{ width: `${completionPercent}%` }} />
+                            </div>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)]">
+                                {completionPercent === 100 ? '✨ Your profile is 100% complete and ready for admin approval!' : 'Complete all fields below (Org Name, Logo, Signer Name, Designation, and ID Document Upload) to unlock admin approval.'}
+                            </p>
+                        </div>
+
                         {(user?.official_id_url || (isPending || isVerified)) && (
                             <div className="mt-4 inline-flex items-center gap-3 p-2.5 bg-white/70 dark:bg-black/20 rounded-xl border border-violet-200 dark:border-violet-500/20 shadow-sm">
                                 <FileText size={16} className="text-violet-600 dark:text-violet-400" />
@@ -188,40 +224,81 @@ const SettingsPage = () => {
                     {!isVerified && !isPending && (
                         <form
                             onSubmit={handleResubmitVerification}
-                            className="space-y-2.5 shrink-0 p-4 rounded-2xl border w-full lg:w-72 shadow-lg mt-4 lg:mt-0"
+                            className="space-y-2.5 shrink-0 p-4 rounded-2xl border w-full lg:w-80 shadow-lg mt-4 lg:mt-0"
                             style={{
                                 background: 'var(--banner-btn-sec-bg)',
                                 borderColor: 'var(--banner-btn-sec-border)'
                             }}
                         >
                             <div className="space-y-1">
-                                <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Category</label>
+                                <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Issuer Category</label>
                                 <select
                                     value={issuerTypeInput}
                                     onChange={(e) => setIssuerTypeInput(e.target.value)}
                                     className="w-full bg-[var(--bg-card)] border border-[var(--border-interactive)] rounded-lg py-1.5 px-2.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500"
                                 >
-                                    <option value="institution">🏛️ Official Institution</option>
-                                    <option value="student_council">🎓 Student Council</option>
+                                    <option value="institution">🏛️ Official University / Institution</option>
+                                    <option value="faculty">👨‍🏫 Faculty Member / Academic Dept</option>
+                                    <option value="student_council">🎓 Student Council / Club Lead</option>
+                                    <option value="corporate">🏢 Corporate Enterprise</option>
+                                    <option value="independent">📚 Independent Educator</option>
                                 </select>
                             </div>
 
+                            {(issuerTypeInput === 'student_council' || issuerTypeInput === 'faculty') && (
+                                <>
+                                    <div className="space-y-1">
+                                        <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Parent College / University Name</label>
+                                        <input
+                                            type="text"
+                                            value={institutionNameInput}
+                                            onChange={(e) => setInstitutionNameInput(e.target.value)}
+                                            placeholder="e.g. Camellia Institute of Technology"
+                                            required
+                                            className="w-full bg-[var(--bg-card)] border border-[var(--border-interactive)] rounded-lg py-1.5 px-2.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Institution Official Website</label>
+                                        <input
+                                            type="url"
+                                            value={institutionWebsiteInput}
+                                            onChange={(e) => setInstitutionWebsiteInput(e.target.value)}
+                                            placeholder="https://camelliait.ac.in"
+                                            className="w-full bg-[var(--bg-card)] border border-[var(--border-interactive)] rounded-lg py-1.5 px-2.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Faculty / Advisor Contact Email</label>
+                                        <input
+                                            type="email"
+                                            value={facultyEmailInput}
+                                            onChange={(e) => setFacultyEmailInput(e.target.value)}
+                                            placeholder="advisor@camelliait.ac.in"
+                                            className="w-full bg-[var(--bg-card)] border border-[var(--border-interactive)] rounded-lg py-1.5 px-2.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             <div className="space-y-1">
                                 <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">
-                                    {issuerTypeInput === 'student_council' ? 'Roll / Reg No.' : 'Govt / Tax Reg No.'}
+                                    {issuerTypeInput === 'student_council' ? 'Student Roll / Reg No.' : issuerTypeInput === 'faculty' ? 'Faculty Employee ID' : 'Govt / Tax Reg No.'}
                                 </label>
                                 <input
                                     type="text"
                                     value={regIdInput}
                                     onChange={(e) => setRegIdInput(e.target.value)}
-                                    placeholder="Enter Reg No."
+                                    placeholder="Enter Reg / Employee No."
                                     required
                                     className="w-full bg-[var(--bg-card)] border border-[var(--border-interactive)] rounded-lg py-1.5 px-2.5 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 placeholder:text-slate-400"
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">Official ID Document</label>
+                                <label className="block text-[9px] font-black uppercase text-[var(--text-muted)] tracking-wider">
+                                    {issuerTypeInput === 'student_council' ? 'Upload Student ID Card / Letter' : issuerTypeInput === 'faculty' ? 'Upload Faculty ID Card' : 'Official ID Document'}
+                                </label>
                                 <div className="relative">
                                     <input
                                         type="file"

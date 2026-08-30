@@ -53,111 +53,113 @@ const OverviewPage = () => {
 
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            {/* Executive Banner */}
+            {/* Executive Glowing Ambient Banner */}
             <div
-                className="relative rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 md:p-10 border overflow-hidden shadow-xl"
+                className="relative rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 md:p-10 border overflow-hidden shadow-2xl transition-all duration-300"
                 style={{ background: 'var(--banner-bg)', borderColor: 'var(--banner-border)' }}
             >
-                <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div>
                         <div
-                            className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest mb-3 border max-w-full leading-normal"
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest mb-3 border max-w-full leading-normal shadow-sm"
                             style={{
                                 background: 'var(--banner-badge-bg)',
                                 borderColor: 'var(--banner-badge-border)',
                                 color: 'var(--banner-badge-text)'
                             }}
                         >
-                            <Sparkles size={14} className="shrink-0" />
-                            <span className="truncate">Issuer Operations Control Center</span>
+                            <Sparkles size={14} className="shrink-0 text-emerald-400 animate-pulse" />
+                            <span className="truncate">Pramanit v2.0 &bull; Production Grade Platform</span>
                         </div>
                         <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
                             Welcome back, {user?.orgName || user?.fullName || 'Certified Issuer'} 👋
                         </h2>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
-                            Manage design templates, issue verifiable bulk certificates, track delivery analytics, and respond to recipient inquiries in real-time.
+                            Manage design blueprints, issue verifiable bulk credentials, track delivery analytics, and manage recipient inquiries in real-time.
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto mt-2 lg:mt-0">
                         <button
                             onClick={() => navigate('/dashboard/generate')}
-                            className="w-full sm:w-auto justify-center px-6 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
+                            className="w-full sm:w-auto justify-center px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-2 active:scale-95"
                         >
                             <Zap size={16} /> Bulk Issue Certificates
                         </button>
                         <button
-                            onClick={() => navigate('/dashboard/generate')}
-                            className="w-full sm:w-auto justify-center px-5 py-3.5 font-bold text-xs rounded-2xl transition-all flex items-center gap-2 shadow-sm border"
+                            onClick={() => navigate('/dashboard/designs')}
+                            className="w-full sm:w-auto justify-center px-5 py-3.5 font-black text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center gap-2 shadow-sm border active:scale-95"
                             style={{
                                 background: 'var(--banner-btn-sec-bg)',
                                 borderColor: 'var(--banner-btn-sec-border)',
                                 color: 'var(--banner-btn-sec-text)'
                             }}
                         >
-                            <Plus size={16} /> New Design
+                            <Plus size={16} /> Design Studio
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* 4 Executive Metric Cards */}
+            {/* 4 Executive Metric Cards with Glassmorphism & Hover Scaling */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl hover:border-emerald-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Issued Credentials</p>
                         <p className="text-3xl font-black text-[var(--text-heading)]">{totalSent}</p>
-                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
-                            <CheckCircle size={10} /> Cryptographically Verified
+                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mt-1.5 inline-flex items-center gap-1">
+                            <CheckCircle size={10} /> SHA-256 Node Verified
                         </span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
                         <Award size={24} />
                     </div>
                 </div>
 
-                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl hover:border-violet-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Active Design Templates</p>
                         <p className="text-3xl font-black text-[var(--text-heading)]">{designs.length}</p>
-                        <span className="text-[10px] font-black text-violet-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
-                            <LayoutTemplate size={10} /> Design Studio Ready
+                        <span className="text-[10px] font-black text-violet-400 uppercase tracking-wider mt-1.5 inline-flex items-center gap-1">
+                            <LayoutTemplate size={10} /> Studio Ready
                         </span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-violet-600/10 text-violet-400 flex items-center justify-center border border-violet-500/20">
+                    <div className="w-12 h-12 rounded-2xl bg-violet-600/10 text-violet-400 flex items-center justify-center border border-violet-500/20 group-hover:scale-110 transition-transform">
                         <LayoutTemplate size={24} />
                     </div>
                 </div>
 
-                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl hover:border-amber-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Pending Inquiries & Fixes</p>
                         <p className="text-3xl font-black text-[var(--text-heading)]">{contactMessages.length + corrections.length}</p>
-                        <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
+                        <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider mt-1.5 inline-flex items-center gap-1">
                             <AlertCircle size={10} /> Action Required
                         </span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20 group-hover:scale-110 transition-transform">
                         <MessageSquare size={24} />
                     </div>
                 </div>
 
-                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl flex items-center justify-between">
+                <div className="p-6 bg-[var(--bg-card)] rounded-[2rem] border border-[var(--border-muted)] shadow-xl hover:border-blue-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Delivery Success Rate</p>
                         <p className="text-3xl font-black text-[var(--text-heading)]">99.4%</p>
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider mt-1 inline-flex items-center gap-1">
-                            <ShieldCheck size={10} /> SMTP Operational
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider mt-1.5 inline-flex items-center gap-1">
+                            <ShieldCheck size={10} /> Operational Node
                         </span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
                         <Mail size={24} />
                     </div>
                 </div>
             </div>
 
             {/* LIVE ANALYTICS & ISSUANCE VELOCITY CHART */}
-            <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-8 shadow-xl space-y-6">
+            <div className="bg-[var(--bg-card)] rounded-[2.5rem] border border-[var(--border-muted)] p-5 sm:p-8 shadow-xl space-y-6 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <span className="text-xs font-black uppercase tracking-widest text-violet-400 flex items-center gap-2 mb-1">
@@ -165,7 +167,7 @@ const OverviewPage = () => {
                         </span>
                         <h3 className="text-2xl font-black text-[var(--text-heading)]">Credential Issuance Trend</h3>
                     </div>
-                    <div className="flex items-center gap-1 bg-[var(--bg-input)] p-1.5 rounded-xl border border-[var(--border-muted)] text-xs font-bold">
+                    <div className="flex items-center gap-1 bg-[var(--bg-input)] p-1.5 rounded-xl border border-[var(--border-muted)] text-xs font-bold self-start sm:self-auto">
                         <button
                             type="button"
                             onClick={() => setTimeframe('6m')}
@@ -191,29 +193,31 @@ const OverviewPage = () => {
                     </div>
                 </div>
 
-                {/* SVG Visual Bar & Area Chart */}
-                <div className="h-48 w-full flex items-end justify-between gap-3 pt-6 px-4 pb-2 border-b border-[var(--border-muted)]">
-                    {monthlyTrendData.map((item, idx) => {
-                        const heightPct = item.count === 0 ? 4 : Math.max(12, Math.min(100, (item.count / maxCount) * 100));
-                        return (
-                            <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-                                <div className="text-[10px] font-black text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {item.count} Issued
+                {/* SVG Visual Bar & Area Chart (Responsive Scroll & Fit) */}
+                <div className="w-full overflow-x-auto custom-scrollbar pb-2">
+                    <div className="h-48 min-w-[500px] sm:min-w-full w-full flex items-end justify-between gap-1.5 sm:gap-3 pt-6 px-1 sm:px-4 pb-2 border-b border-[var(--border-muted)]">
+                        {monthlyTrendData.map((item, idx) => {
+                            const heightPct = item.count === 0 ? 4 : Math.max(12, Math.min(100, (item.count / maxCount) * 100));
+                            return (
+                                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 group cursor-pointer">
+                                    <div className="text-[9px] sm:text-[10px] font-black text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                        {item.count} Issued
+                                    </div>
+                                    <div className="w-full bg-violet-500/10 dark:bg-violet-950/40 rounded-2xl overflow-hidden h-36 flex items-end p-0.5 sm:p-1 border border-violet-500/20 dark:border-violet-500/10 group-hover:border-violet-500/40 transition-all">
+                                        <div
+                                            style={{ height: `${heightPct}%` }}
+                                            className={`w-full rounded-xl transition-all duration-700 shadow-lg shadow-violet-600/30 ${
+                                                item.count > 0
+                                                    ? 'bg-gradient-to-t from-violet-600 to-indigo-400 group-hover:from-violet-500 group-hover:to-indigo-300'
+                                                    : 'bg-violet-500/15 dark:bg-white/5'
+                                            }`}
+                                        />
+                                    </div>
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{item.month}</span>
                                 </div>
-                                <div className="w-full bg-violet-500/10 dark:bg-violet-950/40 rounded-2xl overflow-hidden h-36 flex items-end p-1 border border-violet-500/20 dark:border-violet-500/10 group-hover:border-violet-500/40 transition-all">
-                                    <div
-                                        style={{ height: `${heightPct}%` }}
-                                        className={`w-full rounded-xl transition-all duration-700 shadow-lg shadow-violet-600/30 ${
-                                            item.count > 0
-                                                ? 'bg-gradient-to-t from-violet-600 to-indigo-400 group-hover:from-violet-500 group-hover:to-indigo-300'
-                                                : 'bg-violet-500/15 dark:bg-white/5'
-                                        }`}
-                                    />
-                                </div>
-                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{item.month}</span>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 

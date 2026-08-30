@@ -24,7 +24,7 @@ const generateToken = (user) => {
 };
 
 const signup = async (req, res) => {
-    const { email, password, orgName, fullName, designation, issuerType, institutionIdNumber } = req.body;
+    const { email, password, orgName, fullName, designation, issuerType, verificationCategory, institutionName, institutionWebsite, facultyEmail, institutionIdNumber } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required' });
@@ -62,6 +62,10 @@ const signup = async (req, res) => {
             verification_token: verificationToken,
             role: 'user',
             issuer_type: issuerType || 'institution',
+            verification_category: verificationCategory || issuerType || 'Official Institution',
+            institution_name: institutionName || '',
+            institution_website: institutionWebsite || '',
+            faculty_email: facultyEmail || '',
             institution_id_number: institutionIdNumber || '',
             official_id_url: officialIdUrl,
             verification_status: (officialIdUrl || institutionIdNumber) ? 'pending' : 'unverified'
@@ -75,6 +79,10 @@ const signup = async (req, res) => {
         emailService.sendVerificationEmail(newUser.email, verificationToken)
             .then(() => console.log(`Verification email sent to ${newUser.email}`))
             .catch(err => console.error(`Failed to send verification email to ${newUser.email}:`, err));
+
+        if (newUser.verification_status === 'pending') {
+            emailService.sendAdminVerificationAlert(newUser).catch(err => console.error('Admin signup verification alert note:', err));
+        }
 
         res.status(201).json({
             user: {
@@ -222,6 +230,7 @@ const updateProfile = async (req, res) => {
         if (orgName !== undefined && currentUser?.verification_status !== 'approved') updateData.org_name = orgName;
         if (fullName !== undefined) updateData.full_name = fullName;
         if (designation !== undefined) updateData.designation = designation;
+        if (orgLogoUrl !== undefined) updateData.org_logo_url = orgLogoUrl;
         if (signatureUrl !== undefined) updateData.signature_url = signatureUrl;
         if (officialSealUrl !== undefined) updateData.official_seal_url = officialSealUrl;
         if (certPrefix !== undefined) updateData.cert_prefix = certPrefix.trim().toUpperCase() || 'CERT';
@@ -267,7 +276,7 @@ const updateProfile = async (req, res) => {
 const submitVerification = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { issuerType, institutionIdNumber } = req.body;
+        const { issuerType, institutionIdNumber, verificationCategory, institutionName, institutionWebsite, facultyEmail } = req.body;
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -283,11 +292,18 @@ const submitVerification = async (req, res) => {
         }
 
         user.issuer_type = issuerType || user.issuer_type || 'institution';
+        user.verification_category = verificationCategory || user.verification_category || 'Official Institution';
+        user.institution_name = institutionName || user.institution_name || '';
+        user.institution_website = institutionWebsite || user.institution_website || '';
+        user.faculty_email = facultyEmail || user.faculty_email || '';
         user.institution_id_number = institutionIdNumber || user.institution_id_number || '';
         if (docUrl) user.official_id_url = docUrl;
         user.verification_status = 'pending';
         user.rejection_reason = '';
         await user.save();
+
+        // Trigger Admin Alert Email
+        emailService.sendAdminVerificationAlert(user).catch(err => console.error('Admin email alert note:', err));
 
         res.json({ message: 'Verification details submitted successfully for admin review.', user });
     } catch (err) {
@@ -319,11 +335,33 @@ const adminVerifyUser = async (req, res) => {
         if (!user) return res.status(404).json({ message: 'Target user not found.' });
 
         if (action === 'approve') {
+            // Strict 100% Profile Completion Validation before Admin Approval
+            const isOrgName = !!(user.org_name && user.org_name.trim());
+            const isLogo = !!(user.org_logo_url && user.org_logo_url.trim());
+            const isSignerName = !!(user.full_name && user.full_name.trim());
+            const isDesignation = !!(user.designation && user.designation.trim());
+            const isIdDoc = !!(user.official_id_url && user.official_id_url.trim());
+
+            if (!isOrgName || !isLogo || !isSignerName || !isDesignation || !isIdDoc) {
+                const missing = [];
+                if (!isOrgName) missing.push('Organization Name');
+                if (!isLogo) missing.push('Organization Logo');
+                if (!isSignerName) missing.push('Authorized Signer Name');
+                if (!isDesignation) missing.push('Signer Designation');
+                if (!isIdDoc) missing.push('Uploaded Official ID Document');
+
+                return res.status(400).json({
+                    message: `Cannot approve account. Issuer profile is incomplete (Missing: ${missing.join(', ')}). 100% completion is required for approval.`
+                });
+            }
+
             user.verification_status = 'approved';
+            user.is_verified = true;
             user.verified_at = new Date();
             user.rejection_reason = '';
         } else if (action === 'reject') {
             user.verification_status = 'rejected';
+            user.is_verified = false;
             user.rejection_reason = rejectionReason || 'Provided ID / document failed administrative verification.';
         }
         await user.save();
@@ -427,9 +465,19 @@ const getAllUsers = async (req, res) => {
             email: u.email,
             orgName: u.org_name,
             fullName: u.full_name,
+            designation: u.designation,
+            orgLogoUrl: u.org_logo_url,
             role: u.role,
             planType: u.plan_type,
             isVerified: u.is_verified,
+            verificationStatus: u.verification_status || (u.is_verified ? 'approved' : 'unverified'),
+            verificationCategory: u.verification_category || 'Official Institution',
+            institutionName: u.institution_name || '',
+            institutionWebsite: u.institution_website || '',
+            facultyEmail: u.faculty_email || '',
+            officialIdUrl: u.official_id_url || '',
+            institutionIdNumber: u.institution_id_number || '',
+            rejectionReason: u.rejection_reason || '',
             createdAt: u.created_at
         })));
     } catch (err) {

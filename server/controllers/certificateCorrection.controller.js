@@ -159,10 +159,54 @@ const processCorrection = async (req, res) => {
 
             // Notify recipient
             const recipientEmail = decrypt(originalCert.recipient_email);
+            const rejectHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correction Request Update - Pramanit</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f8fafc; padding: 40px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+                    <!-- Brand Header -->
+                    <tr>
+                        <td style="padding: 36px 40px 24px 40px; text-align: center; background: linear-gradient(180deg, #fef2f2 0%, #ffffff 100%); border-b: 1px solid #f1f5f9;">
+                            <div style="font-size: 26px; font-weight: 900; color: #dc2626; letter-spacing: -0.5px; line-height: 1;">📝 Pramanit</div>
+                            <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: 2px;">Name Correction Update</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="padding: 32px 40px; text-align: center;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Correction Request Declined</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569; font-weight: 500;">
+                                Your name correction request for Certificate ID <strong style="color: #6d28d9; font-family: monospace;">${certificate_id}</strong> was reviewed by the issuer and could not be approved at this time.
+                            </p>
+
+                            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 20px; text-align: left; margin-bottom: 24px;">
+                                <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase;">Status Notice</p>
+                                <p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: 500; line-height: 1.5;">
+                                    Your existing certificate remains 100% valid under its original issued record.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
             await sendEmail(
                 recipientEmail,
-                'Certificate Correction Request - Rejected',
-                `<p>Your correction request for certificate ${certificate_id} has been rejected.</p>`
+                'Certificate Correction Request Update - Pramanit',
+                rejectHtml
             );
 
             return res.json({ message: 'Correction request rejected', action: 'rejected' });

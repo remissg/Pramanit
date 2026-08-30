@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Search, Zap, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const AdminUsersPage = () => {
-    const { users, loading, handleTogglePlan } = useOutletContext();
+    const { users, loading, handleTogglePlan, handleVerifyAction } = useOutletContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -39,7 +39,7 @@ const AdminUsersPage = () => {
                 <div>
                     <h2 className="text-2xl font-black text-[var(--text-heading)] tracking-tight">Issuer User Directory</h2>
                     <p className="text-xs font-semibold text-[var(--text-muted)] mt-0.5">
-                        Manage registered issuer accounts, view verification states, and adjust subscription plans.
+                        Manage registered issuer accounts, inspect uploaded identity documents, and enforce 100% profile completion approval.
                     </p>
                 </div>
 
@@ -61,55 +61,109 @@ const AdminUsersPage = () => {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-white/5 text-[var(--text-muted)] text-[10px] uppercase font-black tracking-widest border-b border-[var(--border-muted)]">
-                                <th className="px-6 py-4">Account Info</th>
-                                <th className="px-6 py-4">Current Plan</th>
-                                <th className="px-6 py-4">Verification Status</th>
-                                <th className="px-6 py-4">Joined On</th>
-                                <th className="px-6 py-4 text-right">Subscription Actions</th>
+                                <th className="px-6 py-4">Account & Category</th>
+                                <th className="px-6 py-4">Profile Completion</th>
+                                <th className="px-6 py-4">Identity Document</th>
+                                <th className="px-6 py-4">Verification State</th>
+                                <th className="px-6 py-4 text-right">Admin Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-muted)]">
-                            {currentRecords.map((u) => (
-                                <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 ${u.planType === 'pro' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-500/10 text-slate-400'} rounded-xl flex items-center justify-center font-black text-sm border border-[var(--border-muted)] shrink-0`}>
-                                                {u.email[0].toUpperCase()}
+                            {currentRecords.map((u) => {
+                                const isOrgName = !!(u.orgName && u.orgName.trim());
+                                const isLogo = !!(u.orgLogoUrl && u.orgLogoUrl.trim());
+                                const isSignerName = !!(u.fullName && u.fullName.trim());
+                                const isDesignation = !!(u.designation && u.designation.trim());
+                                const isIdDoc = !!(u.officialIdUrl && u.officialIdUrl.trim());
+
+                                const completionCount = [isOrgName, isLogo, isSignerName, isDesignation, isIdDoc].filter(Boolean).length;
+                                const completionPercent = completionCount * 20;
+                                const isVerified = u.isVerified || u.verificationStatus === 'approved';
+
+                                return (
+                                    <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 ${u.planType === 'pro' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-500/10 text-slate-400'} rounded-xl flex items-center justify-center font-black text-sm border border-[var(--border-muted)] shrink-0`}>
+                                                    {u.email[0].toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-xs text-[var(--text-heading)]">{u.email}</p>
+                                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                            {u.verificationCategory || u.issuer_type || 'Institution'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-[var(--text-muted)] font-medium mt-0.5">
+                                                        {u.orgName || 'No Organization Set'} {u.institutionName ? `(${u.institutionName})` : ''} • Signer: {u.fullName || 'N/A'} ({u.designation || 'N/A'})
+                                                    </p>
+                                                    {u.institutionIdNumber && (
+                                                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                                            Reg / Roll ID: <code className="text-violet-400 font-mono">{u.institutionIdNumber}</code> {u.facultyEmail ? `• Email: ${u.facultyEmail}` : ''}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-xs text-[var(--text-heading)]">{u.email}</p>
-                                                <p className="text-[11px] text-[var(--text-muted)] font-medium">{u.orgName || 'No Organization Set'}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${completionPercent === 100 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                                        {completionPercent}% Complete
+                                                    </span>
+                                                </div>
+                                                <div className="w-24 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                                    <div className="bg-gradient-to-r from-rose-500 via-violet-600 to-emerald-400 h-full" style={{ width: `${completionPercent}%` }} />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${u.planType === 'pro' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-[var(--bg-input)] text-[var(--text-muted)] border border-[var(--border-muted)]'}`}>
-                                            {u.planType === 'pro' ? <Zap size={10} /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
-                                            {u.planType}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1.5 text-xs font-bold">
-                                            {u.verification_status === 'approved' ? (
-                                                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle size={14} /> Verified</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {u.officialIdUrl ? (
+                                                <a
+                                                    href={u.officialIdUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 font-bold text-xs rounded-lg border border-violet-500/30 transition-all"
+                                                >
+                                                    🔍 View Uploaded ID Proof
+                                                </a>
                                             ) : (
-                                                <span className="text-amber-400 flex items-center gap-1"><Clock size={14} /> Pending</span>
+                                                <span className="text-[11px] font-semibold text-rose-400/80">No ID Document Uploaded</span>
                                             )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-xs font-medium text-[var(--text-muted)]">
-                                        {new Date(u.createdAt || Date.now()).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleTogglePlan(u.id, u.planType)}
-                                            className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95 ${u.planType === 'free' ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm' : 'bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20'}`}
-                                        >
-                                            {u.planType === 'free' ? 'Upgrade PRO' : 'Downgrade Account'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-xs font-bold">
+                                                {isVerified ? (
+                                                    <span className="text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20"><CheckCircle size={14} /> Verified Issuer</span>
+                                                ) : u.verificationStatus === 'pending' ? (
+                                                    <span className="text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20"><Clock size={14} /> Pending Approval</span>
+                                                ) : (
+                                                    <span className="text-slate-400 flex items-center gap-1 bg-slate-500/10 px-2.5 py-1 rounded-full border border-slate-500/20">Unverified</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right space-x-2">
+                                            {!isVerified ? (
+                                                <button
+                                                    onClick={() => handleVerifyAction(u.id, 'approve')}
+                                                    disabled={completionPercent < 100 || !isIdDoc}
+                                                    title={completionPercent < 100 ? 'Cannot approve. Issuer profile must be 100% complete.' : 'Approve Issuer'}
+                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed"
+                                                >
+                                                    Approve & Verify
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleVerifyAction(u.id, 'reject', 'Admin revoked verification status.')}
+                                                    className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-500/30 transition-all active:scale-95"
+                                                >
+                                                    Revoke
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

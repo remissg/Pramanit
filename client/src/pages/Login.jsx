@@ -14,7 +14,10 @@ const Login = () => {
     const [orgName, setOrgName] = useState('');
     const [fullName, setFullName] = useState('');
     const [designation, setDesignation] = useState('');
-    const [issuerType, setIssuerType] = useState('institution'); // 'institution' | 'student_council'
+    const [issuerType, setIssuerType] = useState('institution'); // 'institution' | 'faculty' | 'student_council' | 'corporate' | 'independent'
+    const [institutionName, setInstitutionName] = useState('');
+    const [institutionWebsite, setInstitutionWebsite] = useState('');
+    const [facultyEmail, setFacultyEmail] = useState('');
     const [institutionIdNumber, setInstitutionIdNumber] = useState('');
     const [officialIdFile, setOfficialIdFile] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
@@ -46,7 +49,7 @@ const Login = () => {
             if (isLogin) {
                 await login(email, password);
             } else {
-                await signup(email, password, orgName, fullName, designation, issuerType, institutionIdNumber, officialIdFile);
+                await signup(email, password, orgName, fullName, designation, issuerType, institutionIdNumber, officialIdFile, institutionName, institutionWebsite, facultyEmail);
             }
             navigate(from.pathname, { state: from.state, replace: true });
         } catch (err) {
@@ -180,101 +183,135 @@ const Login = () => {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Account Category</label>
-                                        <div className="grid grid-cols-2 gap-2 p-1 bg-[var(--bg-input)] rounded-2xl border border-[var(--border-interactive)]">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIssuerType('institution')}
-                                                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${issuerType === 'institution' ? 'bg-violet-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'}`}
-                                            >
-                                                🏛️ Institution
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIssuerType('student_council')}
-                                                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${issuerType === 'student_council' ? 'bg-violet-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'}`}
-                                            >
-                                                🎓 Student Council
-                                            </button>
-                                        </div>
-                                    </div>
 
-                                    <div className="space-y-1.5 group">
-                                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
-                                            {issuerType === 'student_council' ? 'Club / Council Name' : 'Organization / University'}
-                                        </label>
-                                        <div className="relative">
-                                            <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
-                                            <input
-                                                type="text"
-                                                value={orgName}
-                                                onChange={(e) => setOrgName(e.target.value)}
-                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)] opacity-80"
-                                                placeholder={issuerType === 'student_council' ? 'e.g. Student Council Body' : 'e.g. Oxford University'}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                     <div className="space-y-1.5">
+                                         <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Account Category</label>
+                                         <select
+                                             value={issuerType}
+                                             onChange={(e) => setIssuerType(e.target.value)}
+                                             className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3 px-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all"
+                                         >
+                                             <option value="institution">🏛️ Official University / Institution</option>
+                                             <option value="faculty">👨‍🏫 Faculty Member / Academic Dept</option>
+                                             <option value="student_council">🎓 Student Council / College Club Lead</option>
+                                             <option value="corporate">🏢 Corporate Enterprise</option>
+                                             <option value="independent">📚 Independent Educator</option>
+                                         </select>
+                                     </div>
 
-                                    <div className="space-y-1.5 group">
-                                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
-                                            {issuerType === 'student_council' ? 'Student Roll / Registration No.' : 'Govt / Tax / Accreditation Reg No.'}
-                                        </label>
-                                        <div className="relative">
-                                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
-                                            <input
-                                                type="text"
-                                                value={institutionIdNumber}
-                                                onChange={(e) => setInstitutionIdNumber(e.target.value)}
-                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)] opacity-80"
-                                                placeholder={issuerType === 'student_council' ? 'e.g. Roll #21BCE045' : 'e.g. Reg ID #US-98765'}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                     {(issuerType === 'student_council' || issuerType === 'faculty') && (
+                                         <>
+                                             <div className="space-y-1.5 group">
+                                                 <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
+                                                     Parent College / University Name
+                                                 </label>
+                                                 <div className="relative">
+                                                     <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
+                                                     <input
+                                                         type="text"
+                                                         value={institutionName}
+                                                         onChange={(e) => setInstitutionName(e.target.value)}
+                                                         className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)]"
+                                                         placeholder="e.g. Camellia Institute of Technology"
+                                                         required
+                                                     />
+                                                 </div>
+                                             </div>
 
-                                    <div className="space-y-1.5 group">
-                                        <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
-                                            {issuerType === 'student_council' ? 'Official Student ID / Authorization Letter' : 'Accreditation Document / ID'}
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type="file"
-                                                id="signup-official-file"
-                                                accept="image/*,application/pdf"
-                                                onChange={(e) => setOfficialIdFile(e.target.files[0] || null)}
-                                                required
-                                                className="hidden"
-                                            />
-                                            <label
-                                                htmlFor="signup-official-file"
-                                                className="flex items-center justify-between w-full bg-[var(--bg-input)] border border-dashed border-violet-400/40 hover:border-violet-500 rounded-2xl py-3 px-4 text-xs font-bold text-[var(--text-muted)] cursor-pointer transition-all"
-                                            >
-                                                <span className="flex items-center gap-2 truncate">
-                                                    <Upload size={16} className="text-violet-500 shrink-0" />
-                                                    <span className="truncate">{officialIdFile ? officialIdFile.name : 'Choose ID Document (Image or PDF)'}</span>
-                                                </span>
-                                                <span className="px-2.5 py-1 bg-violet-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ml-2">
-                                                    Browse
-                                                </span>
-                                            </label>
-                                        </div>
+                                             <div className="space-y-1.5 group">
+                                                 <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
+                                                     Faculty Advisor / Institutional Email
+                                                 </label>
+                                                 <div className="relative">
+                                                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
+                                                     <input
+                                                         type="email"
+                                                         value={facultyEmail}
+                                                         onChange={(e) => setFacultyEmail(e.target.value)}
+                                                         className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)]"
+                                                         placeholder="e.g. advisor@camelliait.ac.in"
+                                                         required
+                                                     />
+                                                 </div>
+                                             </div>
+                                         </>
+                                     )}
 
-                                        {filePreview && (
-                                            <div className="p-2 bg-violet-500/10 rounded-xl border border-violet-500/20 flex items-center justify-between text-xs font-bold text-[var(--text-main)]">
-                                                <div className="flex items-center gap-2 truncate">
-                                                    {filePreview.type === 'image' ? (
-                                                        <img src={filePreview.url} alt="Preview" className="w-8 h-8 rounded-lg object-cover" />
-                                                    ) : (
-                                                        <FileText size={18} className="text-violet-500" />
-                                                    )}
-                                                    <span className="truncate text-[11px]">{filePreview.name}</span>
-                                                </div>
-                                                <span className="text-[10px] text-emerald-400 uppercase font-black tracking-widest shrink-0">Attached</span>
-                                            </div>
-                                        )}
-                                    </div>
+                                     <div className="space-y-1.5 group">
+                                         <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
+                                             {issuerType === 'student_council' ? 'Club / Council Name' : issuerType === 'faculty' ? 'Department / Cell Name' : 'Organization / University'}
+                                         </label>
+                                         <div className="relative">
+                                             <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
+                                             <input
+                                                 type="text"
+                                                 value={orgName}
+                                                 onChange={(e) => setOrgName(e.target.value)}
+                                                 className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)] opacity-80"
+                                                 placeholder={issuerType === 'student_council' ? 'e.g. Tech Club Council' : 'e.g. Computer Science Dept'}
+                                                 required
+                                             />
+                                         </div>
+                                     </div>
+
+                                     <div className="space-y-1.5 group">
+                                         <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
+                                             {issuerType === 'student_council' ? 'Student Roll / Registration No.' : issuerType === 'faculty' ? 'Faculty Employee ID' : 'Govt / Tax / Accreditation Reg No.'}
+                                         </label>
+                                         <div className="relative">
+                                             <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-violet-500 transition-colors" size={16} />
+                                             <input
+                                                 type="text"
+                                                 value={institutionIdNumber}
+                                                 onChange={(e) => setInstitutionIdNumber(e.target.value)}
+                                                 className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl py-3.5 pl-11 pr-4 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all placeholder:text-[var(--text-muted)] opacity-80"
+                                                 placeholder={issuerType === 'student_council' ? 'e.g. Roll #21BCE045' : issuerType === 'faculty' ? 'e.g. EMP #7842' : 'e.g. Reg ID #US-98765'}
+                                                 required
+                                             />
+                                         </div>
+                                     </div>
+
+                                     <div className="space-y-1.5 group">
+                                         <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">
+                                             {issuerType === 'student_council' ? 'Official Student ID / Authorization Letter' : 'Accreditation Document / ID'}
+                                         </label>
+                                         <div className="relative">
+                                             <input
+                                                 type="file"
+                                                 id="signup-official-file"
+                                                 accept="image/*,application/pdf"
+                                                 onChange={(e) => setOfficialIdFile(e.target.files[0] || null)}
+                                                 required
+                                                 className="hidden"
+                                             />
+                                             <label
+                                                 htmlFor="signup-official-file"
+                                                 className="flex items-center justify-between w-full bg-[var(--bg-input)] border border-dashed border-violet-400/40 hover:border-violet-500 rounded-2xl py-3 px-4 text-xs font-bold text-[var(--text-muted)] cursor-pointer transition-all"
+                                             >
+                                                 <span className="flex items-center gap-2 truncate">
+                                                     <Upload size={16} className="text-violet-500 shrink-0" />
+                                                     <span className="truncate">{officialIdFile ? officialIdFile.name : 'Choose ID Document (Image or PDF)'}</span>
+                                                 </span>
+                                                 <span className="px-2.5 py-1 bg-violet-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ml-2">
+                                                     Browse
+                                                 </span>
+                                             </label>
+                                         </div>
+
+                                         {filePreview && (
+                                             <div className="p-2 bg-violet-500/10 rounded-xl border border-violet-500/20 flex items-center justify-between text-xs font-bold text-[var(--text-main)]">
+                                                 <div className="flex items-center gap-2 truncate">
+                                                     {filePreview.type === 'image' ? (
+                                                         <img src={filePreview.url} alt="Preview" className="w-8 h-8 rounded-lg object-cover" />
+                                                     ) : (
+                                                         <FileText size={18} className="text-violet-500" />
+                                                     )}
+                                                     <span className="truncate text-[11px]">{filePreview.name}</span>
+                                                 </div>
+                                                 <span className="text-[10px] text-emerald-400 uppercase font-black tracking-widest shrink-0">Attached</span>
+                                             </div>
+                                         )}
+                                     </div>
                                 </>
                             )}
 

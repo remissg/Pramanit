@@ -1,11 +1,53 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileSpreadsheet, Image as ImageIcon, X, PenTool } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, FileSpreadsheet, Image as ImageIcon, X, PenTool, LayoutTemplate, Sparkles, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import CertificateDesigner from './CertificateDesigner';
 
 const FileUpload = ({ onFilesSelected, files, onlyTemplate = false }) => {
+    const navigate = useNavigate();
     const [isDesigning, setIsDesigning] = useState(false);
+    const [savedDesigns, setSavedDesigns] = useState([]);
+    const [isLoadingDesigns, setIsLoadingDesigns] = useState(false);
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            setIsLoadingDesigns(true);
+            axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/designs`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(res => {
+                setSavedDesigns(res.data || []);
+                setIsLoadingDesigns(false);
+            })
+            .catch(err => {
+                console.error("Failed to load saved design templates:", err);
+                setIsLoadingDesigns(false);
+            });
+        }
+    }, []);
+
+    const selectSavedDesign = async (design) => {
+        try {
+            let file;
+            if (design.preview_url && design.preview_url.startsWith('http')) {
+                const res = await fetch(design.preview_url);
+                const blob = await res.blob();
+                file = new File([blob], `${design.name || 'Saved_Design'}.png`, { type: 'image/png' });
+            } else {
+                file = new File(["saved_template"], `${design.name || 'Saved_Design'}.png`, { type: 'image/png' });
+            }
+            const newFiles = { ...files, template: file, designId: design.id, designJson: design.design_json };
+            onFilesSelected(newFiles);
+        } catch (err) {
+            console.error("Failed to select saved design:", err);
+            const fallbackFile = new File(["saved_template"], `${design.name || 'Saved_Design'}.png`, { type: 'image/png' });
+            onFilesSelected({ ...files, template: fallbackFile, designId: design.id, designJson: design.design_json });
+        }
+    };
 
     const onDrop = useCallback((acceptedFiles) => {
         // Separate files based on type
@@ -60,16 +102,47 @@ const FileUpload = ({ onFilesSelected, files, onlyTemplate = false }) => {
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-6">
-            {/* Mode Toggle / Action Chips */}
-            {!files.template && (
-                <div className="flex justify-center gap-4 mb-4">
-                    <button
-                        onClick={() => setIsDesigning(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-violet-200 text-violet-700 rounded-full shadow-sm hover:bg-violet-50 hover:border-violet-300 transition-all font-medium"
-                    >
-                        <PenTool size={16} />
-                        Create from Scratch
-                    </button>
+            {/* Saved Design Templates Picker */}
+            {!files.template && savedDesigns.length > 0 && (
+                <div className="space-y-3 bg-[var(--bg-card)] p-5 rounded-2xl border border-[var(--border-muted)] shadow-md animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[var(--text-heading)] font-black text-xs uppercase tracking-wider">
+                            <LayoutTemplate size={16} className="text-violet-500" />
+                            <span>Select Saved Certificate Template</span>
+                        </div>
+                        <button
+                            onClick={() => navigate('/dashboard/designs')}
+                            className="text-[10px] font-bold text-violet-400 hover:underline"
+                        >
+                            View Library ({savedDesigns.length})
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {savedDesigns.slice(0, 6).map((design) => (
+                            <div
+                                key={design.id}
+                                onClick={() => selectSavedDesign(design)}
+                                className="group relative border border-[var(--border-muted)] rounded-xl overflow-hidden cursor-pointer hover:border-violet-500 transition-all bg-[var(--bg-input)] hover:shadow-lg hover:shadow-violet-500/10 p-2 space-y-2"
+                            >
+                                <div className="aspect-[4/3] bg-slate-900/50 rounded-lg overflow-hidden flex items-center justify-center relative">
+                                    {design.preview_url ? (
+                                        <img src={design.preview_url} alt={design.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    ) : (
+                                        <div className="text-slate-400 font-bold text-xs flex items-center gap-1">
+                                            <ImageIcon size={24} />
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-violet-600/0 group-hover:bg-violet-600/30 transition-colors flex items-center justify-center">
+                                        <span className="opacity-0 group-hover:opacity-100 bg-violet-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full shadow-md transition-opacity flex items-center gap-1">
+                                            <Check size={12} /> Select
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="text-xs font-bold text-[var(--text-main)] truncate text-center">{design.name || 'Untitled Design'}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
