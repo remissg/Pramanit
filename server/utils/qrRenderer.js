@@ -113,9 +113,6 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
             ctx.strokeStyle = darkColor;
             ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
             ctx.stroke();
-        } else if (lightColor && lightColor !== 'transparent') {
-            ctx.fillStyle = lightColor;
-            ctx.fillRect(qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
         }
 
         // Finder Eye bounds check
@@ -128,8 +125,8 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
 
         // Center logo cutout bounds check
         const showLogo = (qrConfig.showLogo ?? true) && logoUrl;
-        const centerStart = Math.floor(count * 0.36);
-        const centerEnd = Math.ceil(count * 0.64);
+        const centerStart = Math.floor(count * 0.40);
+        const centerEnd = Math.ceil(count * 0.60);
 
         const isCenterLogoArea = (r, c) => {
             return showLogo && (r >= centerStart && r <= centerEnd && c >= centerStart && c <= centerEnd);
@@ -193,18 +190,21 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
         if (showLogo) {
             try {
                 const logoImg = await loadImage(logoUrl);
-                const logoSize = qrSize * 0.28;
+                const logoSize = qrSize * 0.22;
                 const lx = qrX - logoSize / 2;
                 const ly = qrY - logoSize / 2;
 
-                ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(lx - 3, ly - 3, logoSize + 6, logoSize + 6, 6);
-                } else {
-                    ctx.rect(lx - 3, ly - 3, logoSize + 6, logoSize + 6);
+                // Draw solid background box ONLY if logoBg is explicitly set to true
+                if (qrConfig.logoBg) {
+                    ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(lx - 3, ly - 3, logoSize + 6, logoSize + 6, 6);
+                    } else {
+                        ctx.rect(lx - 3, ly - 3, logoSize + 6, logoSize + 6);
+                    }
+                    ctx.fill();
                 }
-                ctx.fill();
 
                 ctx.drawImage(logoImg, lx, ly, logoSize, logoSize);
             } catch (err) {

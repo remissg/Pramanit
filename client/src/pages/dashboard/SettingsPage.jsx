@@ -61,6 +61,62 @@ const SettingsPage = () => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [logoInputMode, setLogoInputMode] = useState('upload');
 
+    const cleanWhiteBackground = (dataUrl) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                // Check if image ALREADY has transparent pixels
+                let hasTransparentPixels = false;
+                for (let i = 3; i < data.length; i += 4) {
+                    if (data[i] < 200) {
+                        hasTransparentPixels = true;
+                        break;
+                    }
+                }
+
+                // If image already has alpha transparency, keep original pristine user file untouched!
+                if (hasTransparentPixels || bgA < 50) {
+                    return resolve(dataUrl);
+                }
+
+                const tolerance = 45;
+
+                // Strip background pixels (matching corner background OR off-white/light gray r,g,b > 210)
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+
+                    const diffR = Math.abs(r - bgR);
+                    const diffG = Math.abs(g - bgG);
+                    const diffB = Math.abs(b - bgB);
+
+                    const isCornerMatch = diffR < tolerance && diffG < tolerance && diffB < tolerance;
+                    const isOffWhite = r > 210 && g > 210 && b > 210;
+
+                    if (isCornerMatch || isOffWhite) {
+                        data[i + 3] = 0; // Set Alpha to 0 (100% Transparent)
+                    }
+                }
+
+                ctx.putImageData(imgData, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        });
+    };
+
     const handleLogoFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -68,9 +124,33 @@ const SettingsPage = () => {
             toast.error('Logo image file must be smaller than 5MB.');
             return;
         }
+
+        const toastId = toast.loading('Uploading logo to Cloudinary storage...');
+
         const reader = new FileReader();
-        reader.onload = (event) => {
-            setSettings(prev => ({ ...prev, orgLogoUrl: event.target.result }));
+        reader.onload = async (event) => {
+            try {
+                const rawDataUrl = event.target.result;
+                const cleanedUrl = await cleanWhiteBackground(rawDataUrl);
+
+                // Instantly upload cleaned transparent logo to Cloudinary CDN
+                const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/upload-logo`, {
+                    logoData: cleanedUrl
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data?.url) {
+                    setSettings(prev => ({ ...prev, orgLogoUrl: res.data.url }));
+                    toast.success('Logo uploaded to Cloudinary CDN!', { id: toastId });
+                } else {
+                    setSettings(prev => ({ ...prev, orgLogoUrl: cleanedUrl }));
+                    toast.success('Logo processed & transparentized!', { id: toastId });
+                }
+            } catch (err) {
+                console.error('Logo Cloudinary upload note:', err);
+                toast.error('Logo processed & background transparentized!', { id: toastId });
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -143,11 +223,15 @@ const SettingsPage = () => {
                 profilePayload.smtpPass = settings.smtpPass;
             }
 
-            await axios.post(
+            const profileRes = await axios.post(
                 `${import.meta.env.VITE_API_BASE_URL}/api/auth/update-profile`,
                 profilePayload,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+
+            if (profileRes.data?.user?.org_logo_url) {
+                setSettings(prev => ({ ...prev, orgLogoUrl: profileRes.data.user.org_logo_url }));
+            }
 
             // Save verification identity fields (only if not already approved)
             if (!isVerified) {
@@ -559,15 +643,47 @@ const SettingsPage = () => {
                                     </p>
                                     <p className="text-[10px] font-medium text-slate-400 truncate font-mono">{settings.orgLogoUrl.slice(0, 50)}...</p>
                                 </div>
-                                {!isVerified && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSettings({ ...settings, orgLogoUrl: '' })}
-                                        className="text-xs font-bold text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-xl hover:bg-rose-500/10 transition-colors shrink-0"
-                                    >
-                                        Remove
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {!isVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const toastId = toast.loading('Stripping background & syncing with Cloudinary...');
+                                                try {
+                                                    const cleaned = await cleanWhiteBackground(settings.orgLogoUrl);
+                                                    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/upload-logo`, {
+                                                        logoData: cleaned
+                                                    }, {
+                                                        headers: { Authorization: `Bearer ${token}` }
+                                                    });
+
+                                                    if (res.data?.url) {
+                                                        setSettings(prev => ({ ...prev, orgLogoUrl: res.data.url }));
+                                                        toast.success('Background stripped & synced with Cloudinary!', { id: toastId });
+                                                    } else {
+                                                        setSettings(prev => ({ ...prev, orgLogoUrl: cleaned }));
+                                                        toast.success('Background stripped successfully!', { id: toastId });
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Cloudinary sync note:', err);
+                                                    toast.error('Failed to sync stripped logo.', { id: toastId });
+                                                }
+                                            }}
+                                            className="text-[10px] font-bold text-violet-300 hover:text-white px-2.5 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/40 border border-violet-500/30 transition-all flex items-center gap-1"
+                                        >
+                                            <Sparkles size={11} /> Auto-Remove White BG
+                                        </button>
+                                    )}
+                                    {!isVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSettings({ ...settings, orgLogoUrl: '' })}
+                                            className="text-xs font-bold text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-xl hover:bg-rose-500/10 transition-colors shrink-0"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         )}
 

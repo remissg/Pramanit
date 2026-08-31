@@ -289,7 +289,17 @@ const updateProfile = async (req, res) => {
                 console.error('Cloudinary upload failed:', uploadError);
             }
         } else if (orgLogoUrl !== undefined) {
-            updateData.org_logo_url = orgLogoUrl;
+            if (typeof orgLogoUrl === 'string' && orgLogoUrl.startsWith('data:image/')) {
+                try {
+                    const cdnResult = await uploadToCDN(orgLogoUrl, 'pramanit/logos');
+                    updateData.org_logo_url = cdnResult.secure_url;
+                } catch (uploadErr) {
+                    console.error('Cloudinary base64 logo upload note:', uploadErr.message);
+                    updateData.org_logo_url = orgLogoUrl;
+                }
+            } else {
+                updateData.org_logo_url = orgLogoUrl;
+            }
         }
 
         const user = await User.findByIdAndUpdate(userId, updateData, { returnDocument: 'after' }).select('-password_hash -verification_token');
@@ -882,8 +892,33 @@ const getPublicSettings = async (req, res) => {
             enforce_tier_limits: false,
             pro_monthly_price: 1499,
             pro_annual_price: 14990,
-            currency_symbol: '₹'
         });
+    }
+};
+
+const uploadLogoCDN = async (req, res) => {
+    try {
+        let logoSource = null;
+        if (req.file) {
+            logoSource = req.file.path;
+        } else if (req.body.logoData) {
+            logoSource = req.body.logoData;
+        }
+
+        if (!logoSource) {
+            return res.status(400).json({ message: 'No logo file or image data provided' });
+        }
+
+        const cdnResult = await uploadToCDN(logoSource, 'pramanit/logos');
+
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+
+        return res.json({ url: cdnResult.secure_url });
+    } catch (err) {
+        console.error('Failed to upload logo to Cloudinary:', err);
+        return res.status(500).json({ message: 'Cloudinary upload failed', error: err.message });
     }
 };
 
@@ -893,6 +928,7 @@ module.exports = {
     getProfile,
     verifyEmail,
     updateProfile,
+    uploadLogoCDN,
     submitVerification,
     getPendingVerifications,
     adminVerifyUser,

@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Type, ShieldCheck, ChevronDown, Check, LayoutTemplate, Tag } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { useAuth } from '../context/AuthContext';
 
 const EmailForm = ({ config, onChange, templates = [] }) => {
+    const { user } = useAuth();
     const [showTemplates, setShowTemplates] = useState(false);
     const [showMergeTags, setShowMergeTags] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
     const quillRef = React.useRef(null);
+
+    useEffect(() => {
+        if (user && !config.issuerName) {
+            const defaultIssuer = user.orgName || user.fullName || user.org_name || user.full_name || '';
+            if (defaultIssuer) {
+                onChange({ ...config, issuerName: defaultIssuer });
+            }
+        }
+    }, [user, config.issuerName]);
 
     const SAMPLE_DATA = {
         '{{name}}': 'Joydip Maiti',
@@ -201,7 +212,7 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                         name="issuerName"
                         value={config.issuerName || ''}
                         onChange={handleChange}
-                        placeholder="e.g. Pramanit Academy"
+                        placeholder={user?.orgName || user?.fullName || 'e.g. Pramanit Academy'}
                         className="block w-full pl-12 pr-4 py-4 bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-2xl text-[var(--text-main)] font-bold focus:ring-2 focus:ring-violet-500/50 outline-none transition-all placeholder-[var(--text-muted)] opacity-80 focus:opacity-100"
                     />
                 </div>

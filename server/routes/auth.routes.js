@@ -37,6 +37,7 @@ router.post('/signup', upload.single('officialIdDoc'), authController.signup);
 router.post('/login', authController.login);
 router.get('/profile', authenticateToken, authController.getProfile);
 router.post('/update-profile', authenticateToken, upload.single('orgLogo'), authController.updateProfile);
+router.post('/upload-logo', authenticateToken, upload.single('logo'), authController.uploadLogoCDN);
 router.post('/submit-verification', authenticateToken, upload.single('officialIdDoc'), authController.submitVerification);
 router.get('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authenticateToken, authController.resendVerification);

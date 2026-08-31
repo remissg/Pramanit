@@ -20,17 +20,30 @@ const uploadToCDN = (file, folder = 'pramanit') => {
     return new Promise((resolve, reject) => {
         const uploadOptions = {
             folder,
-            resource_type: 'auto',
+            resource_type: 'image',
+            format: 'png',
             unique_filename: true
         };
 
-        if (Buffer.isBuffer(file)) {
+        let targetFile = file;
+
+        // If base64 data URL string, convert to Buffer
+        if (typeof file === 'string' && file.startsWith('data:image/')) {
+            try {
+                const base64Data = file.split(';base64,').pop();
+                targetFile = Buffer.from(base64Data, 'base64');
+            } catch (err) {
+                console.error('Base64 buffer conversion error:', err);
+            }
+        }
+
+        if (Buffer.isBuffer(targetFile)) {
             cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
-            }).end(file);
+            }).end(targetFile);
         } else {
-            cloudinary.uploader.upload(file, uploadOptions, (error, result) => {
+            cloudinary.uploader.upload(targetFile, uploadOptions, (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
             });

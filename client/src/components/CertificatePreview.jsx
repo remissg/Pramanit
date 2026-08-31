@@ -38,7 +38,7 @@ const CertificatePreview = ({
     const imageRef = useRef(null);
     const containerRef = useRef(null);
     const [imageSize, setImageSize] = useState({ width: 1000, height: 1000 });
-    const [guidelines, setGuidelines] = useState({ h: false, v: false });
+    const [guidelines, setGuidelines] = useState({ h: false, v: false, hY: 0, vX: 0, labelH: '', labelV: '' });
     const [zoom, setZoom] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
     const [customizerOpen, setCustomizerOpen] = useState(false);
@@ -107,11 +107,81 @@ const CertificatePreview = ({
         const containerCenterX = visualDimensions.width / 2;
         const containerCenterY = visualDimensions.height / 2;
 
-        const threshold = visualDimensions.width * 0.015;
-        const isNearCenterX = Math.abs(clampedX - containerCenterX) < threshold;
-        const isNearCenterY = Math.abs(clampedY - containerCenterY) < threshold;
+        const thresholdY = visualDimensions.height * 0.015; // 1.5% Y-snap threshold
+        const thresholdX = visualDimensions.width * 0.015;  // 1.5% X-snap threshold
 
-        setGuidelines({ h: isNearCenterY, v: isNearCenterX });
+        let snapH = false;
+        let snapV = false;
+        let guideHY = 0;
+        let guideVX = 0;
+        let textH = '';
+        let textV = '';
+
+        // Collect all other alignment targets (other fields + QR code)
+        const otherTargets = [];
+
+        fields.forEach(f => {
+            if (f.isVisible && f.id !== id) {
+                otherTargets.push({
+                    x: f.x * visualDimensions.width,
+                    y: f.y * visualDimensions.height,
+                    label: f.label || f.id
+                });
+            }
+        });
+
+        if (qrConfig.isVisible && !isQr) {
+            otherTargets.push({
+                x: qrConfig.x * visualDimensions.width,
+                y: qrConfig.y * visualDimensions.height,
+                label: 'QR Code'
+            });
+        }
+
+        // 1. Check Horizontal Level Snapping (Level Liners)
+        for (const target of otherTargets) {
+            if (Math.abs(clampedY - target.y) < thresholdY) {
+                clampedY = target.y; // Snap Y!
+                snapH = true;
+                guideHY = target.y;
+                textH = `Level Aligned (${target.label})`;
+                break;
+            }
+        }
+
+        // Fallback: Check canvas vertical center if no field level match
+        if (!snapH && Math.abs(clampedY - containerCenterY) < thresholdY) {
+            snapH = true;
+            guideHY = containerCenterY;
+            textH = 'Center Y';
+        }
+
+        // 2. Check Vertical Alignment & Canvas Center Snapping
+        if (Math.abs(clampedX - containerCenterX) < thresholdX) {
+            clampedX = containerCenterX; // Snap X Center!
+            snapV = true;
+            guideVX = containerCenterX;
+            textV = 'Canvas Center';
+        } else {
+            for (const target of otherTargets) {
+                if (Math.abs(clampedX - target.x) < thresholdX) {
+                    clampedX = target.x; // Snap X!
+                    snapV = true;
+                    guideVX = target.x;
+                    textV = `Vertically Aligned (${target.label})`;
+                    break;
+                }
+            }
+        }
+
+        setGuidelines({
+            h: snapH,
+            v: snapV,
+            hY: guideHY,
+            vX: guideVX,
+            labelH: textH,
+            labelV: textV
+        });
 
         if (isQr) {
             onQrConfigChange({
@@ -128,7 +198,7 @@ const CertificatePreview = ({
     };
 
     const handleDragStop = () => {
-        setGuidelines({ h: false, v: false });
+        setGuidelines({ h: false, v: false, hY: 0, vX: 0, labelH: '', labelV: '' });
         setIsDragging(false);
     };
 
@@ -516,9 +586,27 @@ const CertificatePreview = ({
                                     draggable={false}
                                 />
 
-                                {/* Guidelines */}
-                                {guidelines.v && <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-violet-400 shadow-[0_0_15px_rgba(167,139,250,1)] z-0 pointer-events-none transition-opacity"></div>}
-                                {guidelines.h && <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-violet-400 shadow-[0_0_15px_rgba(167,139,250,1)] z-0 pointer-events-none transition-opacity"></div>}
+                                {/* Smart Level Liners & Alignment Guidelines */}
+                                {guidelines.h && (
+                                    <div
+                                        className="absolute left-0 right-0 h-[2px] bg-violet-400 shadow-[0_0_15px_rgba(167,139,250,1)] z-20 pointer-events-none flex items-center justify-end pr-4 transition-all"
+                                        style={{ top: `${guidelines.hY}px` }}
+                                    >
+                                        <span className="bg-violet-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg border border-violet-300/30 flex items-center gap-1">
+                                            <Sparkles size={10} className="text-amber-300 animate-pulse" /> {guidelines.labelH || 'Level Aligned'}
+                                        </span>
+                                    </div>
+                                )}
+                                {guidelines.v && (
+                                    <div
+                                        className="absolute top-0 bottom-0 w-[2px] bg-violet-400 shadow-[0_0_15px_rgba(167,139,250,1)] z-20 pointer-events-none flex flex-col items-center justify-start pt-4 transition-all"
+                                        style={{ left: `${guidelines.vX}px` }}
+                                    >
+                                        <span className="bg-violet-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-lg border border-violet-300/30 flex items-center gap-1">
+                                            <Sparkles size={10} className="text-amber-300 animate-pulse" /> {guidelines.labelV || 'Center Aligned'}
+                                        </span>
+                                    </div>
+                                )}
 
                                 {fields.filter(f => f.isVisible).map(field => (
                                     <DraggableField
@@ -620,27 +708,28 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale, o
             ctx.save();
 
             // Background Card / Frame
-            if (frameStyle === 'card' || frameStyle === 'bordered') {
+            if (frameStyle === 'card') {
+                ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8, 10);
+                else ctx.rect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8);
+                ctx.fill();
+            } else if (frameStyle === 'bordered') {
                 ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
                 ctx.beginPath();
                 if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8, 10);
                 else ctx.rect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8);
                 ctx.fill();
 
-                if (frameStyle === 'bordered') {
-                    ctx.strokeStyle = darkColor;
-                    ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
-                    ctx.stroke();
-                }
-            } else if (lightColor && lightColor !== 'transparent') {
-                ctx.fillStyle = lightColor;
-                ctx.fillRect(qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
+                ctx.strokeStyle = darkColor;
+                ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
+                ctx.stroke();
             }
 
             const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= count - 7) || (r >= count - 7 && c < 7);
             const showLogo = (config.showLogo ?? true) && logoUrl;
-            const centerStart = Math.floor(count * 0.36);
-            const centerEnd = Math.ceil(count * 0.64);
+            const centerStart = Math.floor(count * 0.40);
+            const centerEnd = Math.ceil(count * 0.60);
             const isCenterLogo = (r, c) => showLogo && (r >= centerStart && r <= centerEnd && c >= centerStart && c <= centerEnd);
 
             // Draw Body Modules
@@ -740,14 +829,18 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale, o
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.onload = () => {
-                    const logoSize = qrSize * 0.28;
+                    const logoSize = qrSize * 0.22;
                     const lx = qrX - logoSize / 2;
                     const ly = qrY - logoSize / 2;
-                    ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
-                    ctx.beginPath();
-                    if (ctx.roundRect) ctx.roundRect(lx - 3, ly - 3, logoSize + 6, logoSize + 6, 6);
-                    else ctx.rect(lx - 3, ly - 3, logoSize + 6, logoSize + 6);
-                    ctx.fill();
+
+                    if (config.logoBg) {
+                        ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                        ctx.beginPath();
+                        if (ctx.roundRect) ctx.roundRect(lx - 3, ly - 3, logoSize + 6, logoSize + 6, 6);
+                        else ctx.rect(lx - 3, ly - 3, logoSize + 6, logoSize + 6);
+                        ctx.fill();
+                    }
+
                     ctx.drawImage(img, lx, ly, logoSize, logoSize);
                 };
                 img.src = logoUrl;

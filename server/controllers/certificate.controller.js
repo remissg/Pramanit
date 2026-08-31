@@ -866,7 +866,7 @@ const previewBatch = async (req, res) => {
 
             ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvasWidth, canvasHeight);
 
-            const scaleFactor = canvasWidth / 800;
+            const scaleFactor = canvasWidth / 1000;
 
             if (fields && Array.isArray(fields)) {
                 fields.forEach(field => {

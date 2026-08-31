@@ -450,6 +450,16 @@ function MainApp({ theme, setTheme }) {
     }
   }, [rawRows, columnMapping]);
   const [emailConfig, setEmailConfig] = useState({ subject: '', body: '', issuerName: '' });
+
+  // Auto-prefill issuer name from profile if not set
+  useEffect(() => {
+    if (user && !emailConfig.issuerName) {
+      const defaultName = user.orgName || user.fullName || user.org_name || user.full_name || '';
+      if (defaultName) {
+        setEmailConfig(prev => ({ ...prev, issuerName: defaultName }));
+      }
+    }
+  }, [user]);
   const [status, setStatus] = useState('idle'); // idle, uploading, success, error, previewing
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState(null);
