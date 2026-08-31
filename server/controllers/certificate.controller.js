@@ -97,12 +97,8 @@ const saveVerification = async (record) => {
 };
 
 const drawWatermark = (ctx, canvasWidth, canvasHeight) => {
-    const fontSize = Math.max(12, canvasWidth * 0.015);
-    ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
-    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('Verified by Pramanit', canvasWidth / 2, canvasHeight - (canvasHeight * 0.03));
+    // Watermark disabled for all users
+    return;
 };
 
 const generateHash = (data) => {
@@ -855,7 +851,7 @@ const previewBatch = async (req, res) => {
             'Monospace': 'monospace'
         };
 
-        const MAX_WIDTH = 800;
+        const MAX_WIDTH = 2400;
         const resizeScale = Math.min(1, MAX_WIDTH / image.width);
         const canvasWidth = image.width * resizeScale;
         const canvasHeight = image.height * resizeScale;

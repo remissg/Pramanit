@@ -24,6 +24,7 @@ try {
     const Verification = require('../models/Verification');
     const mongoose = require('mongoose');
     const crypto = require('crypto');
+    const { PDFDocument } = require('pdf-lib');
     const dotenv = require('dotenv');
 
     dotenv.config();
@@ -102,11 +103,13 @@ try {
                     const recipientToken = crypto.randomBytes(32).toString('hex');
 
                     // Render Custom QR Code if enabled
+                    const clientUrl = process.env.FRONTEND_URL ? (process.env.FRONTEND_URL.startsWith('http') ? process.env.FRONTEND_URL : `https://${process.env.FRONTEND_URL}`) : 'http://localhost:5173';
+                    const verifyUrl = `${clientUrl.replace(/\/+$/, '')}/verify/${certId}`;
+
                     if (qrConfig && qrConfig.isVisible) {
                         const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
                         const qrX = parseFloat(qrConfig.x) * templateImage.width;
                         const qrY = parseFloat(qrConfig.y) * templateImage.height;
-                        const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${certId}`;
                         const logoUrl = (qrConfig.showLogo ?? true) ? (qrConfig.logoUrl || branding?.org_logo_url) : null;
 
                         await drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logoUrl, certId);
@@ -129,7 +132,6 @@ try {
                         issue_date: new Date(),
                         data_hash: crypto.createHash('sha256').update(`${certId}-${recipient.name}`).digest('hex'),
                         recipient_token: recipientToken,
-                        recipient_token: recipientToken,
                         certificate_title: designConfig.title || 'Professional Certificate',
                         design_id: designConfig.designId // Link to Design model
                     });
@@ -137,33 +139,64 @@ try {
                     await newVerification.save();
 
                     // 4. Send Email (using Centralized EmailService)
-                    // We normalized keys, so 'email' should exist if 'Email' was present
                     const recipientEmail = recipient.email || recipient.data?.email;
 
                     if (recipientEmail) {
                         logFunc(`Sending email to ${recipientEmail}...`);
                         try {
                             let personalizedBody = emailBody || '';
-                            const clientUrl = process.env.FRONTEND_URL ? `https://${process.env.FRONTEND_URL}` : 'http://localhost:5173';
                             const mergeData = {
                                 ...recipient,
                                 cert_id: certId,
-                                certificate_link: `${clientUrl}/verify/${certId}`
+                                certificate_link: verifyUrl,
+                                recipient_name: recipient.name || 'Valued Recipient',
+                                issuer_name: branding.full_name || branding.org_name || 'Pramanit Issuer'
                             };
 
                             Object.keys(mergeData).forEach(key => {
                                 const regex = new RegExp(`{{${key}}}`, 'gi');
-                                personalizedBody = personalizedBody.replace(regex, mergeData[key]);
+                                personalizedBody = personalizedBody.replace(regex, mergeData[key] || '');
                             });
+
+                            // Always append an explicit "View & Verify Official Certificate Online" button if not present
+                            if (!personalizedBody.includes('/verify/')) {
+                                personalizedBody += `
+                                <div style="margin-top: 24px; padding: 20px; background-color: #0f172a; border-radius: 14px; text-align: center; font-family: sans-serif; color: #ffffff;">
+                                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #818cf8;">Official Digital Credential</p>
+                                    <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 700; color: #ffffff;">Your Digital Certificate is Verified</p>
+                                    <a href="${verifyUrl}" target="_blank" style="display: inline-block; background-color: #6366f1; color: #ffffff; font-weight: 800; font-size: 13px; padding: 12px 24px; border-radius: 10px; text-decoration: none;">
+                                        🎓 View & Verify Official Certificate Online
+                                    </a>
+                                    <p style="margin: 14px 0 0 0; font-size: 11px; color: #94a3b8; font-family: monospace;">Certificate ID: ${certId}</p>
+                                </div>`;
+                            }
+
+                            // Generate Ultra HD PDF document
+                            const pdfDoc = await PDFDocument.create();
+                            const pdfImage = await pdfDoc.embedPng(buffer);
+                            const pdfPage = pdfDoc.addPage([pdfImage.width, pdfImage.height]);
+                            pdfPage.drawImage(pdfImage, { x: 0, y: 0, width: pdfImage.width, height: pdfImage.height });
+                            pdfDoc.setTitle('Verified Certificate');
+                            pdfDoc.setAuthor(branding.full_name || branding.org_name || 'Pramanit');
+                            pdfDoc.setSubject(`Credential for ${recipient.name || 'Recipient'}`);
+                            const pdfBuffer = Buffer.from(await pdfDoc.save());
 
                             await sendEmail(
                                 recipientEmail,
                                 subject || 'Your Certificate',
                                 personalizedBody,
-                                [{
-                                    filename: `certificate-${certId.slice(0, 8)}.png`,
-                                    content: buffer
-                                }]
+                                [
+                                    {
+                                        filename: `certificate-${certId.slice(0, 8)}.pdf`,
+                                        content: pdfBuffer,
+                                        contentType: 'application/pdf'
+                                    },
+                                    {
+                                        filename: `certificate-${certId.slice(0, 8)}.png`,
+                                        content: buffer,
+                                        contentType: 'image/png'
+                                    }
+                                ]
                             );
                             logFunc(`Email sent to ${recipientEmail}`);
                         } catch (emailErr) {

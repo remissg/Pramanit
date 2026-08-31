@@ -7,6 +7,7 @@ const { uploadToCDN } = require('../utils/cloudinaryService');
 const Verification = require('../models/Verification');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const { PDFDocument } = require('pdf-lib');
 const dotenv = require('dotenv');
 
 const QRCode = require('qrcode');
@@ -100,12 +101,14 @@ const processBatch = async () => {
                     const certId = crypto.randomUUID();
                     const recipientToken = crypto.randomBytes(32).toString('hex');
 
+                    const clientUrl = process.env.FRONTEND_URL ? (process.env.FRONTEND_URL.startsWith('http') ? process.env.FRONTEND_URL : `https://${process.env.FRONTEND_URL}`) : 'http://localhost:5173';
+                    const verifyUrl = `${clientUrl.replace(/\/+$/, '')}/verify/${certId}`;
+
                     // Render Custom QR Code if enabled
                     if (qrConfig && qrConfig.isVisible) {
                         const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
                         const qrX = parseFloat(qrConfig.x) * templateImage.width;
                         const qrY = parseFloat(qrConfig.y) * templateImage.height;
-                        const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${certId}`;
                         const logoUrl = (qrConfig.showLogo ?? true) ? (qrConfig.logoUrl || branding?.org_logo_url) : null;
 
                         await drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logoUrl, certId);
@@ -136,7 +139,6 @@ const processBatch = async () => {
                     // Prepare email with enhanced template
                     const recipientEmail = recipient.email || recipient.data?.email;
                     if (recipientEmail) {
-                        // Use enhanced email template with issuer contact information
                         const issuerInfo = {
                             name: branding.full_name || 'Certificate Issuer',
                             orgName: branding.org_name || '',
@@ -144,14 +146,32 @@ const processBatch = async () => {
                             designation: branding.designation || ''
                         };
 
+                        // Generate Ultra HD PDF document
+                        const pdfDoc = await PDFDocument.create();
+                        const pdfImage = await pdfDoc.embedPng(buffer);
+                        const pdfPage = pdfDoc.addPage([pdfImage.width, pdfImage.height]);
+                        pdfPage.drawImage(pdfImage, { x: 0, y: 0, width: pdfImage.width, height: pdfImage.height });
+                        pdfDoc.setTitle('Verified Certificate');
+                        pdfDoc.setAuthor(branding.full_name || branding.org_name || 'Pramanit');
+                        pdfDoc.setSubject(`Credential for ${recipient.name || 'Recipient'}`);
+                        const pdfBuffer = Buffer.from(await pdfDoc.save());
+
                         await sendCertificateEmail(
                             recipientEmail,
                             certId,
                             issuerInfo,
-                            [{
-                                filename: `certificate-${certId.slice(0, 8)}.png`,
-                                content: buffer
-                            }],
+                            [
+                                {
+                                    filename: `certificate-${certId.slice(0, 8)}.pdf`,
+                                    content: pdfBuffer,
+                                    contentType: 'application/pdf'
+                                },
+                                {
+                                    filename: `certificate-${certId.slice(0, 8)}.png`,
+                                    content: buffer,
+                                    contentType: 'image/png'
+                                }
+                            ],
                             subject, // Issuer's custom subject
                             emailBody // Issuer's custom email body
                         );
