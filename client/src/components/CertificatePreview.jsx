@@ -701,28 +701,30 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale, o
         const qrSize = width * 0.9;
 
         try {
-            const qr = QRCode.create('https://pramanit.io/verify/sample', { errorCorrectionLevel: config.scannability || 'H' });
+            const qr = QRCode.create('https://pramanit.io/verify/sample', { errorCorrectionLevel: config.scannability || 'Q' });
             const count = qr.modules.size;
             const cellSize = qrSize / count;
 
             ctx.save();
+            ctx.imageSmoothingEnabled = false;
 
             // Background Card / Frame
+            const pad = Math.max(5, qrSize * 0.04);
             if (frameStyle === 'card') {
                 ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
                 ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8, 10);
-                else ctx.rect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8);
+                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2, 10);
+                else ctx.rect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2);
                 ctx.fill();
             } else if (frameStyle === 'bordered') {
                 ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
                 ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8, 10);
-                else ctx.rect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8);
+                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2, 10);
+                else ctx.rect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2);
                 ctx.fill();
 
                 ctx.strokeStyle = darkColor;
-                ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
+                ctx.lineWidth = Math.max(1.5, qrSize * 0.015);
                 ctx.stroke();
             }
 
@@ -744,21 +746,21 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale, o
 
                     ctx.beginPath();
                     if (dotStyle === 'dots') {
-                        ctx.arc(mx + cellSize / 2, my + cellSize / 2, cellSize * 0.42, 0, Math.PI * 2);
+                        ctx.arc(mx + cellSize / 2, my + cellSize / 2, cellSize * 0.46, 0, Math.PI * 2);
                     } else if (dotStyle === 'rounded') {
-                        if (ctx.roundRect) ctx.roundRect(mx, my, cellSize, cellSize, cellSize * 0.38);
-                        else ctx.rect(mx, my, cellSize, cellSize);
+                        if (ctx.roundRect) ctx.roundRect(mx, my, cellSize * 0.96, cellSize * 0.96, cellSize * 0.3);
+                        else ctx.rect(mx, my, cellSize * 0.96, cellSize * 0.96);
                     } else if (dotStyle === 'diamond') {
                         const cx = mx + cellSize / 2;
                         const cy = my + cellSize / 2;
-                        const h = cellSize / 2;
+                        const h = cellSize * 0.48;
                         ctx.moveTo(cx, cy - h);
                         ctx.lineTo(cx + h, cy);
                         ctx.lineTo(cx, cy + h);
                         ctx.lineTo(cx - h, cy);
                         ctx.closePath();
                     } else {
-                        ctx.rect(mx, my, cellSize + 0.3, cellSize + 0.3);
+                        ctx.rect(mx - 0.1, my - 0.1, cellSize + 0.35, cellSize + 0.35);
                     }
                     ctx.fill();
                 }

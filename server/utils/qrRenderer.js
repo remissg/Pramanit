@@ -82,7 +82,7 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
     const externalEye = qrConfig.externalEye || 'square'; // 'square', 'rounded', 'circle', 'leaf'
     const internalEye = qrConfig.internalEye || 'square'; // 'square', 'rounded', 'circle', 'diamond'
     const frameStyle = qrConfig.frameStyle || 'card'; // 'card', 'transparent', 'bordered'
-    const ecLevel = qrConfig.scannability || 'H'; // 'L', 'M', 'Q', 'H'
+    const ecLevel = qrConfig.scannability || 'Q'; // Default 'Q' for bold, large, clean modules
 
     try {
         const qr = QRCode.create(verifyUrl, { errorCorrectionLevel: ecLevel });
@@ -90,28 +90,30 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
         const cellSize = qrSize / count;
 
         ctx.save();
+        ctx.imageSmoothingEnabled = false;
 
-        // 1. Draw Frame / Background Card
+        // 1. Draw Frame / Background Card with Crisp Pure White Fill & Border
+        const pad = Math.max(6, qrSize * 0.04);
         if (frameStyle === 'card') {
             ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
             ctx.beginPath();
             if (ctx.roundRect) {
-                ctx.roundRect(qrX - qrSize / 2 - 6, qrY - qrSize / 2 - 6, qrSize + 12, qrSize + 12, 10);
+                ctx.roundRect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2, 10);
             } else {
-                ctx.rect(qrX - qrSize / 2 - 6, qrY - qrSize / 2 - 6, qrSize + 12, qrSize + 12);
+                ctx.rect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2);
             }
             ctx.fill();
         } else if (frameStyle === 'bordered') {
             ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
             ctx.beginPath();
             if (ctx.roundRect) {
-                ctx.roundRect(qrX - qrSize / 2 - 6, qrY - qrSize / 2 - 6, qrSize + 12, qrSize + 12, 10);
+                ctx.roundRect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2, 10);
             } else {
-                ctx.rect(qrX - qrSize / 2 - 6, qrY - qrSize / 2 - 6, qrSize + 12, qrSize + 12);
+                ctx.rect(qrX - qrSize / 2 - pad, qrY - qrSize / 2 - pad, qrSize + pad * 2, qrSize + pad * 2);
             }
             ctx.fill();
             ctx.strokeStyle = darkColor;
-            ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
+            ctx.lineWidth = Math.max(1.5, qrSize * 0.015);
             ctx.stroke();
         }
 
@@ -132,7 +134,7 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
             return showLogo && (r >= centerStart && r <= centerEnd && c >= centerStart && c <= centerEnd);
         };
 
-        // 2. Draw Body Modules
+        // 2. Draw Body Modules with High-Contrast Solid Fill
         ctx.fillStyle = darkColor;
 
         for (let r = 0; r < count; r++) {
@@ -147,21 +149,21 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
 
                 if (dotStyle === 'dots') {
                     ctx.beginPath();
-                    ctx.arc(mx + cellSize / 2, my + cellSize / 2, cellSize * 0.42, 0, Math.PI * 2);
+                    ctx.arc(mx + cellSize / 2, my + cellSize / 2, cellSize * 0.46, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (dotStyle === 'rounded') {
                     ctx.beginPath();
                     if (ctx.roundRect) {
-                        ctx.roundRect(mx, my, cellSize, cellSize, cellSize * 0.38);
+                        ctx.roundRect(mx, my, cellSize * 0.96, cellSize * 0.96, cellSize * 0.3);
                     } else {
-                        ctx.rect(mx, my, cellSize, cellSize);
+                        ctx.rect(mx, my, cellSize * 0.96, cellSize * 0.96);
                     }
                     ctx.fill();
                 } else if (dotStyle === 'diamond') {
                     ctx.beginPath();
                     const cx = mx + cellSize / 2;
                     const cy = my + cellSize / 2;
-                    const h = cellSize / 2;
+                    const h = cellSize * 0.48;
                     ctx.moveTo(cx, cy - h);
                     ctx.lineTo(cx + h, cy);
                     ctx.lineTo(cx, cy + h);
@@ -169,7 +171,7 @@ async function drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logo
                     ctx.closePath();
                     ctx.fill();
                 } else {
-                    ctx.fillRect(mx, my, cellSize + 0.3, cellSize + 0.3);
+                    ctx.fillRect(mx - 0.1, my - 0.1, cellSize + 0.35, cellSize + 0.35);
                 }
             }
         }
