@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import {
     ShieldCheck, Users, ShieldAlert, LayoutDashboard, Sun, Moon, Monitor,
     LogOut, Menu, X, ChevronRight, Zap, CheckCircle2, FileText, Activity, Settings
@@ -73,11 +74,11 @@ const AdminLayout = ({ theme, setTheme }) => {
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert(`User verification ${action}d successfully.`);
+            toast.success(`User verification ${action}d successfully.`);
             fetchAllAdminData();
         } catch (err) {
             console.error('Failed to verify user', err);
-            alert('Action failed.');
+            toast.error('Action failed.');
         }
     };
 
@@ -90,9 +91,10 @@ const AdminLayout = ({ theme, setTheme }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, planType: newPlan } : u));
+            toast.success(`User plan updated to ${newPlan.toUpperCase()}`);
         } catch (err) {
             console.error('Failed to toggle plan', err);
-            alert('Failed to update plan.');
+            toast.error('Failed to update plan.');
         }
     };
 
@@ -301,6 +303,7 @@ const AdminLayout = ({ theme, setTheme }) => {
                     }} />
                 </div>
             </main>
+            <Toaster position="top-right" toastOptions={{ style: { background: '#0f172a', color: '#fff', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '1rem', fontWeight: 700 } }} />
         </div>
     );
 };

@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
 import { Type, Move, Palette, Minus, Plus, Eye, Sparkles, CaseSensitive, Italic, Underline, Bold, Search, ChevronDown, Check, QrCode, Wand2, Loader, Save } from 'lucide-react';
 import axios from 'axios';
+import QRCode from 'qrcode';
 import CustomSelect from './CustomSelect';
+import QRCustomizerModal from './QRCustomizerModal';
 
 const FONTS = [
     { name: 'Inter', value: 'Inter' },
@@ -28,7 +30,8 @@ const CertificatePreview = ({
     qrConfig,
     onQrConfigChange,
     onSave, // New Prop
-    isSaving // New Prop
+    isSaving, // New Prop
+    orgLogoUrl
 }) => {
     const [imageUrl, setImageUrl] = useState(null);
     const [scale, setScale] = useState(1);
@@ -38,6 +41,7 @@ const CertificatePreview = ({
     const [guidelines, setGuidelines] = useState({ h: false, v: false });
     const [zoom, setZoom] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
+    const [customizerOpen, setCustomizerOpen] = useState(false);
 
     useEffect(() => {
         if (templateFile) {
@@ -103,12 +107,9 @@ const CertificatePreview = ({
         const containerCenterX = visualDimensions.width / 2;
         const containerCenterY = visualDimensions.height / 2;
 
-        const threshold = visualDimensions.width * 0.02;
+        const threshold = visualDimensions.width * 0.015;
         const isNearCenterX = Math.abs(clampedX - containerCenterX) < threshold;
         const isNearCenterY = Math.abs(clampedY - containerCenterY) < threshold;
-
-        if (isNearCenterX) clampedX = containerCenterX;
-        if (isNearCenterY) clampedY = containerCenterY;
 
         setGuidelines({ h: isNearCenterY, v: isNearCenterX });
 
@@ -339,11 +340,13 @@ const CertificatePreview = ({
                             ) : <div className="flex-grow"></div>}
 
                             {qrConfig.isVisible && (
-                                <div className="flex flex-wrap items-center gap-3 bg-violet-600/5 border border-violet-500/20 rounded-2xl px-3 py-1.5 animate-in zoom-in-95 duration-300">
+                                <div className="flex flex-wrap items-center gap-3 bg-violet-600/5 border border-violet-500/20 rounded-2xl px-3.5 py-2 animate-in zoom-in-95 duration-300">
+                                    {/* QR Size Stepper */}
                                     <div className="flex items-center gap-2 pr-3 border-r border-violet-500/10">
                                         <QrCode size={14} className="text-violet-500" />
                                         <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">Size</span>
                                         <button
+                                            type="button"
                                             onClick={() => onQrConfigChange({ ...qrConfig, size: Math.max(40, qrConfig.size - 10) })}
                                             className="p-1 hover:bg-violet-600/10 rounded-lg text-violet-500 transition-colors"
                                         >
@@ -351,6 +354,7 @@ const CertificatePreview = ({
                                         </button>
                                         <span className="text-[10px] font-black text-violet-600 min-w-[30px] text-center">{qrConfig.size}px</span>
                                         <button
+                                            type="button"
                                             onClick={() => onQrConfigChange({ ...qrConfig, size: Math.min(300, qrConfig.size + 10) })}
                                             className="p-1 hover:bg-violet-600/10 rounded-lg text-violet-500 transition-colors"
                                         >
@@ -358,36 +362,121 @@ const CertificatePreview = ({
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center gap-2 pr-3 border-r border-violet-500/10">
-                                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">QR Color</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <label className="flex items-center gap-1 cursor-pointer" title="QR Code Module Color (Dark)">
-                                                <input
-                                                    type="color"
-                                                    value={qrConfig.darkColor || '#000000'}
-                                                    onChange={(e) => onQrConfigChange({ ...qrConfig, darkColor: e.target.value })}
-                                                    className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
-                                                />
-                                                <span className="text-[9px] font-mono text-slate-400">Dark</span>
-                                            </label>
-                                            <label className="flex items-center gap-1 cursor-pointer" title="QR Background Color (Light)">
-                                                <input
-                                                    type="color"
-                                                    value={qrConfig.lightColor || '#ffffff'}
-                                                    onChange={(e) => onQrConfigChange({ ...qrConfig, lightColor: e.target.value })}
-                                                    className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
-                                                />
-                                                <span className="text-[9px] font-mono text-slate-400">BG</span>
-                                            </label>
-                                        </div>
+                                    {/* QR Studio & Shapes Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setCustomizerOpen(true)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black rounded-xl text-[9px] uppercase tracking-widest shadow-md shadow-violet-600/30 transition-all active:scale-95 mr-2"
+                                    >
+                                        <Wand2 size={12} />
+                                        Shapes & Studio
+                                    </button>
+
+                                    {/* Color Theme Presets */}
+                                    <div className="flex items-center gap-1.5 pr-3 border-r border-violet-500/10">
+                                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mr-1">Presets</span>
+                                        {[
+                                            { name: 'Onyx', dark: '#000000', light: '#ffffff' },
+                                            { name: 'Violet', dark: '#4f46e5', light: '#f5f3ff' },
+                                            { name: 'Emerald', dark: '#047857', light: '#ecfdf5' },
+                                            { name: 'Rose', dark: '#be123c', light: '#fff1f2' },
+                                            { name: 'Amber', dark: '#b45309', light: '#fffbeb' },
+                                            { name: 'Cyber', dark: '#06b6d4', light: '#0f172a' },
+                                        ].map(preset => (
+                                            <button
+                                                key={preset.name}
+                                                type="button"
+                                                title={`${preset.name} Theme`}
+                                                onClick={() => onQrConfigChange({ ...qrConfig, darkColor: preset.dark, lightColor: preset.light })}
+                                                className="w-5 h-5 rounded-full border border-violet-500/30 flex items-center justify-center p-0.5 hover:scale-110 transition-transform shadow-sm"
+                                                style={{ backgroundColor: preset.light }}
+                                            >
+                                                <div className="w-full h-full rounded-full" style={{ backgroundColor: preset.dark }} />
+                                            </button>
+                                        ))}
                                     </div>
 
+                                    {/* Pattern Style Picker */}
+                                    <div className="flex items-center gap-1.5 pr-3 border-r border-violet-500/10">
+                                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mr-1">Pattern</span>
+                                        {[
+                                            { id: 'square', label: '🔳 Square' },
+                                            { id: 'dots', label: '🟣 Dots' },
+                                            { id: 'rounded', label: '⏹️ Rounded' },
+                                        ].map(style => (
+                                            <button
+                                                key={style.id}
+                                                type="button"
+                                                onClick={() => onQrConfigChange({ ...qrConfig, dotStyle: style.id })}
+                                                className={`px-2 py-0.5 text-[9px] font-black rounded-lg transition-all ${ (qrConfig.dotStyle || 'square') === style.id ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                                            >
+                                                {style.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Frame Style Picker */}
+                                    <div className="flex items-center gap-1.5 pr-3 border-r border-violet-500/10">
+                                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mr-1">Frame</span>
+                                        {[
+                                            { id: 'card', label: '🎴 Card' },
+                                            { id: 'bordered', label: '🖼️ Border' },
+                                            { id: 'transparent', label: '✨ Glass' },
+                                        ].map(frame => (
+                                            <button
+                                                key={frame.id}
+                                                type="button"
+                                                onClick={() => onQrConfigChange({ ...qrConfig, frameStyle: frame.id })}
+                                                className={`px-2 py-0.5 text-[9px] font-black rounded-lg transition-all ${ (qrConfig.frameStyle || 'card') === frame.id ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                                            >
+                                                {frame.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Custom Color Pickers */}
+                                    <div className="flex items-center gap-2 pr-3 border-r border-violet-500/10">
+                                        <label className="flex items-center gap-1 cursor-pointer" title="QR Code Dark Module Color">
+                                            <input
+                                                type="color"
+                                                value={qrConfig.darkColor || '#000000'}
+                                                onChange={(e) => onQrConfigChange({ ...qrConfig, darkColor: e.target.value })}
+                                                className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
+                                            />
+                                            <span className="text-[9px] font-mono text-slate-400">Dark</span>
+                                        </label>
+                                        <label className="flex items-center gap-1 cursor-pointer" title="QR Code Background Color">
+                                            <input
+                                                type="color"
+                                                value={qrConfig.lightColor || '#ffffff'}
+                                                onChange={(e) => onQrConfigChange({ ...qrConfig, lightColor: e.target.value })}
+                                                className="w-5 h-5 rounded-lg border border-violet-500/30 cursor-pointer bg-transparent"
+                                            />
+                                            <span className="text-[9px] font-mono text-slate-400">BG</span>
+                                        </label>
+                                    </div>
+
+                                    {/* Center Logo Toggle */}
                                     <button
+                                        type="button"
+                                        onClick={() => onQrConfigChange({ ...qrConfig, showLogo: !(qrConfig.showLogo ?? true) })}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all ${qrConfig.showLogo ?? true
+                                            ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/20'
+                                            : 'bg-white/5 border-white/10 text-slate-400 hover:border-violet-500/30'
+                                        }`}
+                                    >
+                                        <Sparkles size={12} />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">Org Badge</span>
+                                    </button>
+
+                                    {/* Serial ID Toggle */}
+                                    <button
+                                        type="button"
                                         onClick={() => onQrConfigChange({ ...qrConfig, showManualId: !qrConfig.showManualId })}
                                         className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${qrConfig.showManualId
                                             ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/20'
                                             : 'bg-white/5 border-white/10 text-slate-400 hover:border-violet-500/30'
-                                            }`}
+                                        }`}
                                     >
                                         <div className={`w-1.5 h-1.5 rounded-full ${qrConfig.showManualId ? 'bg-white' : 'bg-slate-500'} transition-colors`}></div>
                                         <span className="text-[9px] font-black uppercase tracking-widest">Show Serial</span>
@@ -454,6 +543,7 @@ const CertificatePreview = ({
                                         onDrag={(data, boxSize) => handleDrag(null, data, boxSize, true)}
                                         onStop={handleDragStop}
                                         zoomScale={scale * zoom * 0.92}
+                                        orgLogoUrl={orgLogoUrl}
                                     />
                                 )}
                             </div>
@@ -479,18 +569,195 @@ const CertificatePreview = ({
                     </span>
                 </div>
             </div>
+            <QRCustomizerModal
+                isOpen={customizerOpen}
+                onClose={() => setCustomizerOpen(false)}
+                qrConfig={qrConfig}
+                onQrConfigChange={onQrConfigChange}
+            />
         </div>
     );
 };
 
-const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale }) => {
+const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale, orgLogoUrl }) => {
     const nodeRef = useRef(null);
-    const boxSize = { width: config.size, height: config.size };
+    const canvasRef = useRef(null);
+    const boxSize = { width: config.size || 80, height: config.size || 80 };
+    const darkColor = config.darkColor || config.color || '#000000';
+    const lightColor = config.lightColor || config.bgColor || '#ffffff';
+    const dotStyle = config.dotStyle || 'square';
+    const externalEye = config.externalEye || 'square';
+    const internalEye = config.internalEye || 'square';
+    const frameStyle = config.frameStyle || 'card';
+    const logoUrl = config.logoUrl || orgLogoUrl;
 
     const pixelPos = {
         x: (config.x * visualSize.width) - (boxSize.width / 2),
         y: (config.y * visualSize.height) - (boxSize.height / 2)
     };
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = 2; // HiDPI canvas for crisp preview
+        const width = boxSize.width * dpr;
+        const height = boxSize.height * dpr;
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.clearRect(0, 0, width, height);
+
+        const qrX = width / 2;
+        const qrY = height / 2;
+        const qrSize = width * 0.9;
+
+        try {
+            const qr = QRCode.create('https://pramanit.io/verify/sample', { errorCorrectionLevel: config.scannability || 'H' });
+            const count = qr.modules.size;
+            const cellSize = qrSize / count;
+
+            ctx.save();
+
+            // Background Card / Frame
+            if (frameStyle === 'card' || frameStyle === 'bordered') {
+                ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8, 10);
+                else ctx.rect(qrX - qrSize / 2 - 4, qrY - qrSize / 2 - 4, qrSize + 8, qrSize + 8);
+                ctx.fill();
+
+                if (frameStyle === 'bordered') {
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = Math.max(1.5, qrSize * 0.02);
+                    ctx.stroke();
+                }
+            } else if (lightColor && lightColor !== 'transparent') {
+                ctx.fillStyle = lightColor;
+                ctx.fillRect(qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
+            }
+
+            const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= count - 7) || (r >= count - 7 && c < 7);
+            const showLogo = (config.showLogo ?? true) && logoUrl;
+            const centerStart = Math.floor(count * 0.36);
+            const centerEnd = Math.ceil(count * 0.64);
+            const isCenterLogo = (r, c) => showLogo && (r >= centerStart && r <= centerEnd && c >= centerStart && c <= centerEnd);
+
+            // Draw Body Modules
+            ctx.fillStyle = darkColor;
+            for (let r = 0; r < count; r++) {
+                for (let c = 0; c < count; c++) {
+                    if (isFinder(r, c) || isCenterLogo(r, c)) continue;
+                    if (!qr.modules.get(r, c)) continue;
+
+                    const mx = (qrX - qrSize / 2) + (c * cellSize);
+                    const my = (qrY - qrSize / 2) + (r * cellSize);
+
+                    ctx.beginPath();
+                    if (dotStyle === 'dots') {
+                        ctx.arc(mx + cellSize / 2, my + cellSize / 2, cellSize * 0.42, 0, Math.PI * 2);
+                    } else if (dotStyle === 'rounded') {
+                        if (ctx.roundRect) ctx.roundRect(mx, my, cellSize, cellSize, cellSize * 0.38);
+                        else ctx.rect(mx, my, cellSize, cellSize);
+                    } else if (dotStyle === 'diamond') {
+                        const cx = mx + cellSize / 2;
+                        const cy = my + cellSize / 2;
+                        const h = cellSize / 2;
+                        ctx.moveTo(cx, cy - h);
+                        ctx.lineTo(cx + h, cy);
+                        ctx.lineTo(cx, cy + h);
+                        ctx.lineTo(cx - h, cy);
+                        ctx.closePath();
+                    } else {
+                        ctx.rect(mx, my, cellSize + 0.3, cellSize + 0.3);
+                    }
+                    ctx.fill();
+                }
+            }
+
+            // Draw 3 Finder Eyes
+            const drawEye = (ex, ey) => {
+                const eyeSize = cellSize * 7;
+                const borderSize = eyeSize * (1 / 7);
+                const holeSize = eyeSize * (5 / 7);
+                const innerSize = eyeSize * (3 / 7);
+
+                // Outer Frame
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                if (externalEye === 'circle') ctx.arc(ex + eyeSize / 2, ey + eyeSize / 2, eyeSize / 2, 0, Math.PI * 2);
+                else if (externalEye === 'rounded') {
+                    if (ctx.roundRect) ctx.roundRect(ex, ey, eyeSize, eyeSize, eyeSize * 0.3);
+                    else ctx.rect(ex, ey, eyeSize, eyeSize);
+                } else if (externalEye === 'leaf') {
+                    if (ctx.roundRect) ctx.roundRect(ex, ey, eyeSize, eyeSize, [eyeSize * 0.4, 0, eyeSize * 0.4, 0]);
+                    else ctx.rect(ex, ey, eyeSize, eyeSize);
+                } else ctx.rect(ex, ey, eyeSize, eyeSize);
+                ctx.fill();
+
+                // Cutout Hole
+                ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                const holeX = ex + borderSize;
+                const holeY = ey + borderSize;
+                ctx.beginPath();
+                if (externalEye === 'circle') ctx.arc(ex + eyeSize / 2, ey + eyeSize / 2, holeSize / 2, 0, Math.PI * 2);
+                else if (externalEye === 'rounded' || externalEye === 'leaf') {
+                    if (ctx.roundRect) ctx.roundRect(holeX, holeY, holeSize, holeSize, holeSize * 0.25);
+                    else ctx.rect(holeX, holeY, holeSize, holeSize);
+                } else ctx.rect(holeX, holeY, holeSize, holeSize);
+                ctx.fill();
+
+                // Inner Dot
+                ctx.fillStyle = darkColor;
+                const dotX = ex + borderSize * 2;
+                const dotY = ey + borderSize * 2;
+                ctx.beginPath();
+                if (internalEye === 'circle') ctx.arc(ex + eyeSize / 2, ey + eyeSize / 2, innerSize / 2, 0, Math.PI * 2);
+                else if (internalEye === 'rounded') {
+                    if (ctx.roundRect) ctx.roundRect(dotX, dotY, innerSize, innerSize, innerSize * 0.35);
+                    else ctx.rect(dotX, dotY, innerSize, innerSize);
+                } else if (internalEye === 'diamond') {
+                    const cx = ex + eyeSize / 2;
+                    const cy = ey + eyeSize / 2;
+                    const r = innerSize / 2;
+                    ctx.moveTo(cx, cy - r);
+                    ctx.lineTo(cx + r, cy);
+                    ctx.lineTo(cx, cy + r);
+                    ctx.lineTo(cx - r, cy);
+                    ctx.closePath();
+                } else ctx.rect(dotX, dotY, innerSize, innerSize);
+                ctx.fill();
+            };
+
+            const originX = qrX - qrSize / 2;
+            const originY = qrY - qrSize / 2;
+            drawEye(originX, originY);
+            drawEye(originX + (count - 7) * cellSize, originY);
+            drawEye(originX, originY + (count - 7) * cellSize);
+
+            // Draw Center Logo Overlay
+            if (showLogo) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const logoSize = qrSize * 0.28;
+                    const lx = qrX - logoSize / 2;
+                    const ly = qrY - logoSize / 2;
+                    ctx.fillStyle = lightColor === 'transparent' ? '#ffffff' : lightColor;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(lx - 3, ly - 3, logoSize + 6, logoSize + 6, 6);
+                    else ctx.rect(lx - 3, ly - 3, logoSize + 6, logoSize + 6);
+                    ctx.fill();
+                    ctx.drawImage(img, lx, ly, logoSize, logoSize);
+                };
+                img.src = logoUrl;
+            }
+
+            ctx.restore();
+        } catch (e) {
+            console.error('Client QR Render Error:', e);
+        }
+    }, [config, logoUrl, boxSize.width, boxSize.height, darkColor, lightColor, dotStyle, externalEye, internalEye, frameStyle]);
 
     return (
         <Draggable
@@ -511,19 +778,22 @@ const DraggableQR = ({ config, visualSize, onStart, onDrag, onStop, zoomScale })
                 className="absolute top-0 left-0 cursor-move z-[60] group"
             >
                 <div
-                    className="border-2 border-violet-500 p-2 rounded-xl shadow-2xl flex flex-col items-center justify-center group-hover:scale-105 transition-all overflow-hidden"
+                    className="flex flex-col items-center justify-center group-hover:scale-105 transition-all relative"
                     style={{
-                        width: config.size,
-                        height: config.size,
-                        backgroundColor: config.lightColor || '#ffffff'
+                        width: `${boxSize.width}px`,
+                        height: `${boxSize.height}px`,
                     }}
                 >
-                    <QrCode size={config.size * 0.6} color={config.darkColor || '#000000'} />
+                    <canvas
+                        ref={canvasRef}
+                        className="w-full h-full object-contain pointer-events-none drop-shadow-md rounded-xl"
+                    />
+
                     {config.showManualId && (
-                        <div className="absolute top-[110%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
+                        <div className="absolute top-[105%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none">
                             <p className="text-[6px] font-black text-slate-500 uppercase tracking-[.2em] whitespace-nowrap">Security Serial</p>
                             <p className="text-[7px] font-mono font-black text-violet-600 bg-white border border-violet-200 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">
-                                123E4567-E89B-12D3-A456-426614174000
+                                CERT-XXXX-XXXX
                             </p>
                         </div>
                     )}

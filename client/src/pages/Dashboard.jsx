@@ -573,7 +573,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                         <span className="truncate">Issuer Operations Control Center</span>
                                     </div>
                                     <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
-                                        Welcome back, {user?.orgName || user?.fullName || 'Certified Issuer'} 👋
+                                        Welcome back, {user?.fullName || user?.name || user?.email?.split('@')[0] || 'Certified Issuer'} 👋
                                     </h2>
                                     <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
                                         Manage design templates, issue verifiable bulk certificates, track delivery analytics, and respond to recipient inquiries in real-time.

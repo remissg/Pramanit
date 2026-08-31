@@ -183,6 +183,19 @@ const RecipientTable = ({
                         )}
                     </div>
 
+                    {selectedIndices.length > 0 && onDeleteRow && (
+                        <button
+                            onClick={() => {
+                                const indices = [...selectedIndices].sort((a, b) => b - a);
+                                indices.forEach(i => onDeleteRow(i));
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-rose-600/20 text-rose-300 hover:text-white border border-rose-500/30 hover:bg-rose-600 transition-all active:scale-95"
+                        >
+                            <Trash2 size={14} />
+                            Delete ({selectedIndices.length}) Selected
+                        </button>
+                    )}
+
                     <button
                         onClick={handleToggleAll}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black border transition-all ${isAllSelected ? 'bg-violet-600/20 text-violet-400 border-violet-500/40' : 'bg-[var(--bg-input)] border-[var(--border-interactive)] text-[var(--text-main)] hover:border-violet-500/50'}`}
@@ -215,13 +228,13 @@ const RecipientTable = ({
                                     {h}
                                 </th>
                             ))}
-                            {onDeleteRow && <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider text-right">Actions</th>}
+                            <th className="p-3 font-black text-[var(--text-muted)] uppercase tracking-wider text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--glass-border)]">
                         {filteredRows.length === 0 ? (
                             <tr>
-                                <td colSpan={5 + extraHeaders.length + (onDeleteRow ? 1 : 0)} className="p-8 text-center text-[var(--text-muted)] font-bold">
+                                <td colSpan={6 + extraHeaders.length} className="p-8 text-center text-[var(--text-muted)] font-bold">
                                     No recipients match the current filter or search criteria.
                                 </td>
                             </tr>
@@ -259,17 +272,16 @@ const RecipientTable = ({
                                             {String(item.data[h] ?? '')}
                                         </td>
                                     ))}
-                                    {onDeleteRow && (
-                                        <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                                onClick={() => onDeleteRow(item.originalIndex)}
-                                                className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                                                title="Remove recipient"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </td>
-                                    )}
+                                    <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            type="button"
+                                            onClick={() => onDeleteRow && onDeleteRow(item.originalIndex)}
+                                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                                            title="Delete recipient from list"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         )}

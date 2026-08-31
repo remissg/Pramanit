@@ -4,7 +4,14 @@ import axios from 'axios';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        try {
+            const savedUser = localStorage.getItem('user');
+            return savedUser ? JSON.parse(savedUser) : null;
+        } catch {
+            return null;
+        }
+    });
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
@@ -22,9 +29,14 @@ export const AuthProvider = ({ children }) => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/profile`);
             setUser(res.data);
+            localStorage.setItem('user', JSON.stringify(res.data));
         } catch (err) {
-            console.error('Failed to fetch profile', err);
-            logout();
+            console.error('Failed to fetch profile:', err);
+            // Only log out if explicitly unauthorized or forbidden (401/403).
+            // Do NOT log out on network errors or server 500s.
+            if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                logout();
+            }
         } finally {
             setLoading(false);
         }
@@ -33,6 +45,7 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, { email, password });
         localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
         setToken(res.data.token);
         setUser(res.data.user);
         return res.data.user;
@@ -61,6 +74,7 @@ export const AuthProvider = ({ children }) => {
             });
         }
         localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
         setToken(res.data.token);
         setUser(res.data.user);
         return res.data.user;
@@ -68,6 +82,7 @@ export const AuthProvider = ({ children }) => {
 
     const updateSession = (userData, userToken) => {
         localStorage.setItem('token', userToken);
+        localStorage.setItem('user', JSON.stringify(userData));
         setToken(userToken);
         setUser(userData);
         axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`;
@@ -75,6 +90,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setToken(null);
         setUser(null);
         delete axios.defaults.headers.common['Authorization'];

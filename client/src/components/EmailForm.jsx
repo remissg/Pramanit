@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Type, ShieldCheck, ChevronDown, Check, LayoutTemplate, Tag } from 'lucide-react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -300,7 +301,7 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                     <button
                         onClick={async () => {
                             const email = document.getElementById('test-email-input').value;
-                            if (!email) return alert('Please enter an email address');
+                            if (!email) return toast.error('Please enter an email address');
 
                             try {
                                 const btn = document.getElementById('test-btn');
@@ -314,11 +315,11 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                                     subject: config.subject,
                                     body: config.body
                                 });
-                                alert('Test email sent! Check your inbox.');
+                                toast.success('Test email sent! Check your inbox.');
                                 btn.innerText = originalText;
                                 btn.disabled = false;
                             } catch (e) {
-                                alert('Failed to send test email.');
+                                toast.error('Failed to send test email.');
                                 console.error(e);
                             }
                         }}

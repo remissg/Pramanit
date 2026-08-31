@@ -9,10 +9,13 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const dotenv = require('dotenv');
 
+const QRCode = require('qrcode');
+
 dotenv.config();
 
 const { sendEmail } = require('../utils/emailService');
 const { sendCertificateEmail } = require('../utils/enhancedEmailService');
+const { drawCustomQRCode } = require('../utils/qrRenderer');
 const { createBatchReport } = require('../controllers/batchReport.controller');
 
 // Rate limiting helper
@@ -96,6 +99,18 @@ const processBatch = async () => {
                     // Generate certificate data
                     const certId = crypto.randomUUID();
                     const recipientToken = crypto.randomBytes(32).toString('hex');
+
+                    // Render Custom QR Code if enabled
+                    if (qrConfig && qrConfig.isVisible) {
+                        const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
+                        const qrX = parseFloat(qrConfig.x) * templateImage.width;
+                        const qrY = parseFloat(qrConfig.y) * templateImage.height;
+                        const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${certId}`;
+                        const logoUrl = (qrConfig.showLogo ?? true) ? (qrConfig.logoUrl || branding?.org_logo_url) : null;
+
+                        await drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logoUrl, certId);
+                    }
+
                     const buffer = canvas.toBuffer('image/png');
 
                     // Create verification record

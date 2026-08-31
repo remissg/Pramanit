@@ -19,7 +19,7 @@ const generateToken = (user) => {
     return jwt.sign(
         { id: user._id, email: user.email, role: user.role }, // Use _id for MongoDB
         JWT_SECRET,
-        { expiresIn: '24h' }
+        { expiresIn: '30d' }
     );
 };
 
@@ -152,15 +152,38 @@ const getProfile = async (req, res) => {
         res.json({
             id: user._id,
             email: user.email,
+            org_name: user.org_name,
             orgName: user.org_name,
+            full_name: user.full_name,
             fullName: user.full_name,
             designation: user.designation,
             role: user.role,
+            org_logo_url: user.org_logo_url,
             orgLogo: user.org_logo_url,
+            plan_type: user.plan_type,
             planType: user.plan_type,
+            is_verified: user.is_verified,
             isVerified: user.is_verified,
-            smtpUrl: user.smtp_host, // Do not send pass
-            gmailEmail: user.gmail_email, // Return connected Gmail address
+            verification_status: user.verification_status,
+            rejection_reason: user.rejection_reason || '',
+            verified_at: user.verified_at,
+            // Certificate settings
+            cert_prefix: user.cert_prefix || 'CERT',
+            // SMTP (never send the password)
+            smtp_host: user.smtp_host || '',
+            smtp_port: user.smtp_port || 587,
+            smtp_user: user.smtp_user || '',
+            gmail_email: user.gmail_email || '',
+            // Verification identity fields
+            issuer_type: user.issuer_type || 'institution',
+            verification_category: user.verification_category || '',
+            institution_name: user.institution_name || '',
+            institution_website: user.institution_website || '',
+            institution_id_number: user.institution_id_number || '',
+            faculty_email: user.faculty_email || '',
+            official_id_url: user.official_id_url || '',
+            profile_completed: user.profile_completed || false,
+            // Social settings
             social_settings: user.social_settings
         });
     } catch (err) {
@@ -218,11 +241,20 @@ const updateProfile = async (req, res) => {
         // Securely encrypt the SMTP password if provided
         const encryptedPass = smtpPass ? cryptoUtils.encrypt(smtpPass) : undefined;
 
-        // Lock Org Name if user is approved
+        // Lock core branding & identity fields if user is already approved
         const currentUser = await User.findById(userId);
         if (currentUser && currentUser.verification_status === 'approved') {
             if (orgName !== undefined && orgName !== currentUser.org_name) {
-                return res.status(400).json({ message: 'Organization name is locked after institutional verification.' });
+                return res.status(400).json({ message: 'Organization Name is locked after administrative verification.' });
+            }
+            if (orgLogoUrl !== undefined && orgLogoUrl !== currentUser.org_logo_url) {
+                return res.status(400).json({ message: 'Organization Logo is locked after administrative verification.' });
+            }
+            if (fullName !== undefined && fullName !== currentUser.full_name) {
+                return res.status(400).json({ message: 'Authorized Signer Name is locked after administrative verification.' });
+            }
+            if (designation !== undefined && designation !== currentUser.designation) {
+                return res.status(400).json({ message: 'Signer Designation is locked after administrative verification.' });
             }
         }
 
@@ -280,6 +312,11 @@ const submitVerification = async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
+        if (user.verification_status === 'approved') {
+            return res.status(400).json({ message: 'Institutional identity details are locked after administrative approval.' });
+        }
+
+        // Upload ID document if provided
         let docUrl = user.official_id_url || '';
         if (req.file) {
             try {
@@ -291,6 +328,7 @@ const submitVerification = async (req, res) => {
             }
         }
 
+        // Save all identity fields
         user.issuer_type = issuerType || user.issuer_type || 'institution';
         user.verification_category = verificationCategory || user.verification_category || 'Official Institution';
         user.institution_name = institutionName || user.institution_name || '';
@@ -298,14 +336,37 @@ const submitVerification = async (req, res) => {
         user.faculty_email = facultyEmail || user.faculty_email || '';
         user.institution_id_number = institutionIdNumber || user.institution_id_number || '';
         if (docUrl) user.official_id_url = docUrl;
-        user.verification_status = 'pending';
-        user.rejection_reason = '';
+
+        // Only escalate to 'pending' (and alert admin) when profile is 100% complete
+        const isProfileComplete = !!(
+            user.org_name?.trim() &&
+            user.org_logo_url?.trim() &&
+            user.full_name?.trim() &&
+            user.designation?.trim() &&
+            user.official_id_url?.trim()
+        );
+
+        const wasAlreadyPending = user.verification_status === 'pending';
+
+        if (isProfileComplete) {
+            user.verification_status = 'pending';
+            user.rejection_reason = '';
+        }
+        // If not complete, keep existing status (don't regress an already-pending or approved account)
+
         await user.save();
 
-        // Trigger Admin Alert Email
-        emailService.sendAdminVerificationAlert(user).catch(err => console.error('Admin email alert note:', err));
+        // Send admin alert email whenever profile is complete and pending review
+        if (isProfileComplete && user.verification_status === 'pending') {
+            emailService.sendAdminVerificationAlert(user).catch(err => console.error('Admin email alert note:', err));
+        }
 
-        res.json({ message: 'Verification details submitted successfully for admin review.', user });
+        res.json({
+            message: isProfileComplete
+                ? 'Verification details submitted successfully for admin review.'
+                : 'Settings saved. Complete your profile to 100% to submit for admin approval.',
+            user
+        });
     } catch (err) {
         console.error('Submit verification error:', err);
         res.status(500).json({ message: 'Failed to submit verification details.' });
@@ -470,7 +531,7 @@ const getAllUsers = async (req, res) => {
             role: u.role,
             planType: u.plan_type,
             isVerified: u.is_verified,
-            verificationStatus: u.verification_status || (u.is_verified ? 'approved' : 'unverified'),
+            verificationStatus: u.verification_status || 'unverified',
             verificationCategory: u.verification_category || 'Official Institution',
             institutionName: u.institution_name || '',
             institutionWebsite: u.institution_website || '',

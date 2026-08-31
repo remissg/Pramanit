@@ -332,9 +332,33 @@ const sendPasswordResetEmail = async (to, token) => {
 
 const sendAdminVerificationAlert = async (userData) => {
     try {
-        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'joydipmaiti.dev@gmail.com';
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        let recipientEmails = [];
+        if (process.env.ADMIN_EMAIL) {
+            recipientEmails.push(process.env.ADMIN_EMAIL);
+        }
 
+        try {
+            const User = require('../models/User');
+            const adminUsers = await User.find({ role: 'admin' }).select('email');
+            adminUsers.forEach(admin => {
+                if (admin.email && !recipientEmails.includes(admin.email)) {
+                    recipientEmails.push(admin.email);
+                }
+            });
+        } catch (dbErr) {
+            console.error('Admin user email lookup note:', dbErr.message);
+        }
+
+        if (recipientEmails.length === 0 && (process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER)) {
+            recipientEmails.push(process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER);
+        }
+
+        if (recipientEmails.length === 0) {
+            console.log('No admin emails found to send verification alert.');
+            return;
+        }
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const subject = `🚨 Action Required: New Issuer Verification Submitted (${userData.org_name || userData.email})`;
         const html = `
 <!DOCTYPE html>
@@ -401,8 +425,10 @@ const sendAdminVerificationAlert = async (userData) => {
 </html>
 `;
 
-        await sendEmail(adminEmail, subject, html);
-        console.log(`Admin verification notification email sent for user: ${userData.email}`);
+        for (const adminEmail of recipientEmails) {
+            await sendEmail(adminEmail, subject, html);
+            console.log(`Admin verification notification email sent to admin: ${adminEmail}`);
+        }
     } catch (err) {
         console.error('Failed to send admin verification notification email:', err);
     }

@@ -34,8 +34,19 @@ const DashboardLayout = ({ theme, setTheme }) => {
         smtpHost: '',
         smtpPort: 587,
         smtpUser: '',
+        smtpPass: '',
         defaultHashtags: '#Pramanit #Certified #Professional',
-        allowSharing: true
+        allowSharing: true,
+        // Verification identity fields (loaded from profile)
+        issuerType: 'institution',
+        institutionName: '',
+        institutionWebsite: '',
+        facultyEmail: '',
+        institutionIdNumber: '',
+        officialIdUrl: '',
+        verificationStatus: user?.verification_status || '',
+        rejectionReason: '',
+        verifiedAt: null,
     });
 
     const fetchAllDashboardData = async () => {
@@ -47,7 +58,9 @@ const DashboardLayout = ({ theme, setTheme }) => {
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/history`),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/corrections`),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/contact/messages`),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/profile`)
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/profile`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
             ]);
 
             if (designsRes.status === 'fulfilled') setDesigns(designsRes.value.data || []);
@@ -59,16 +72,27 @@ const DashboardLayout = ({ theme, setTheme }) => {
                 const data = profileRes.value.data;
                 setSettings(prev => ({
                     ...prev,
-                    orgName: data.org_name || prev.orgName,
-                    orgLogoUrl: data.org_logo_url || prev.orgLogoUrl,
-                    fullName: data.full_name || prev.fullName,
+                    orgName: data.org_name || data.orgName || prev.orgName,
+                    orgLogoUrl: data.org_logo_url || data.orgLogo || prev.orgLogoUrl,
+                    fullName: data.full_name || data.fullName || prev.fullName,
                     designation: data.designation || prev.designation,
                     certPrefix: data.cert_prefix || 'CERT',
                     smtpHost: data.smtp_host || '',
                     smtpPort: data.smtp_port || 587,
                     smtpUser: data.smtp_user || '',
+                    smtpPass: '',  // Never pre-fill password from server for security
                     defaultHashtags: data.social_settings?.default_hashtags || '#Pramanit #Certified',
-                    allowSharing: data.social_settings?.allow_sharing ?? true
+                    allowSharing: data.social_settings?.allow_sharing ?? true,
+                    // Verification identity fields
+                    issuerType: data.issuer_type || 'institution',
+                    institutionName: data.institution_name || '',
+                    institutionWebsite: data.institution_website || '',
+                    facultyEmail: data.faculty_email || '',
+                    institutionIdNumber: data.institution_id_number || '',
+                    officialIdUrl: data.official_id_url || '',
+                    verificationStatus: data.verification_status || '',
+                    rejectionReason: data.rejection_reason || '',
+                    verifiedAt: data.verified_at || null,
                 }));
             }
         } catch (err) {

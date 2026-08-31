@@ -6,7 +6,8 @@ import BatchPreview from './components/BatchPreview';
 import ManualRecipientEntry from './components/ManualRecipientEntry';
 import RecipientTable from './components/RecipientTable';
 import axios from 'axios';
-import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe, LayoutTemplate, Download, RotateCcw, Clock, AlertCircle, Check, X, Search, Filter } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+import { CheckCircle, Loader, ArrowRight, Eye, Sparkles, Send, User, Mail, BarChart3, TrendingUp, Users, ShieldCheck, Globe, LayoutTemplate, Download, RotateCcw, Clock, AlertCircle, Check, X, Search, Filter, Lock } from 'lucide-react';
 import CustomSelect from './components/CustomSelect';
 import Papa from 'papaparse';
 
@@ -17,7 +18,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import VerifyCertificate from './components/VerifyCertificate';
 import logo from './assets/Pramanit logo.png';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -543,7 +544,18 @@ function MainApp({ theme, setTheme }) {
 
     const removedCount = rawRows.length - cleanedRows.length;
     setRawRows(cleanedRows);
-    alert(`CSV Cleaning Complete! Removed ${removedCount} duplicate/invalid rows.`);
+    setSelectedRecipientIndices(cleanedRows.map((_, i) => i));
+    toast.success(`Cleaning complete! Removed ${removedCount} duplicate/invalid rows.`);
+  };
+
+  const handleDeleteRecipientRow = (indexToDelete) => {
+    setRawRows(prev => prev.filter((_, idx) => idx !== indexToDelete));
+    setSelectedRecipientIndices(prev =>
+      prev
+        .filter(idx => idx !== indexToDelete)
+        .map(idx => (idx > indexToDelete ? idx - 1 : idx))
+    );
+    toast.success('Recipient removed from list.');
   };
 
   const handleSendTestToMe = async () => {
@@ -903,6 +915,15 @@ function MainApp({ theme, setTheme }) {
     }
   };
 
+  const outletContext = useOutletContext();
+  const settings = outletContext?.settings;
+
+  const currentStatus = settings?.verificationStatus || user?.verification_status || 'unverified';
+  const isApproved = currentStatus === 'approved';
+  const isPending = currentStatus === 'pending';
+  const isRejected = currentStatus === 'rejected';
+  const rejectionReason = settings?.rejectionReason || user?.rejection_reason || 'Profile requirements were incomplete';
+
   const isDashboardSubroute = location.pathname.startsWith('/dashboard');
 
   return (
@@ -948,38 +969,6 @@ function MainApp({ theme, setTheme }) {
                     style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                  <span>Progress: {Math.round(progress.total > 0 ? (progress.current / progress.total) * 100 : 0)}%</span>
-                  <span className="text-violet-400">Do not close tab while sending</span>
-                </div>
-              </div>
-
-              {/* Status Summary Pills */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2 text-center">
-                  <span className="text-[10px] font-black uppercase text-emerald-400 block">Done</span>
-                  <span className="text-base font-black text-emerald-400">
-                    {liveRecipients.filter(r => r.status === 'success').length}
-                  </span>
-                </div>
-                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-2 text-center">
-                  <span className="text-[10px] font-black uppercase text-violet-400 block">In Progress</span>
-                  <span className="text-base font-black text-violet-400">
-                    {liveRecipients.filter(r => r.status === 'processing').length}
-                  </span>
-                </div>
-                <div className="bg-slate-500/10 border border-slate-500/20 rounded-xl p-2 text-center">
-                  <span className="text-[10px] font-black uppercase text-slate-400 block">Next / Queued</span>
-                  <span className="text-base font-black text-slate-400">
-                    {liveRecipients.filter(r => r.status === 'queued').length}
-                  </span>
-                </div>
-                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2 text-center">
-                  <span className="text-[10px] font-black uppercase text-rose-400 block">Failed</span>
-                  <span className="text-base font-black text-rose-400">
-                    {liveRecipients.filter(r => r.status === 'failed').length}
-                  </span>
-                </div>
               </div>
 
               {/* Live Granular Recipient Feed */}
@@ -1018,41 +1007,31 @@ function MainApp({ theme, setTheme }) {
                       )}
                       {item.status === 'success' && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                          <CheckCircle size={10} /> Done
+                          <Check size={10} /> Dispatched
                         </span>
                       )}
                       {item.status === 'failed' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1" title={item.error}>
-                          <AlertCircle size={10} /> Failed
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                          <X size={10} /> Failed
                         </span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
+
+              {/* Action status summary */}
+              <div className="mt-4 flex items-center justify-between pt-3 border-t border-[var(--glass-border)]">
+                <span className="text-xs text-[var(--text-muted)] font-bold">
+                  {status === 'uploading' ? 'Sending batch...' : 'Batch process ended'}
+                </span>
+                <span className="text-xs font-mono font-black text-violet-400">
+                  {Math.round(progress.total > 0 ? (progress.current / progress.total) * 100 : 0)}%
+                </span>
+              </div>
             </div>
           </div>
         )}
-
-        <div className="text-center mb-10 md:mb-16 px-4 md:px-6">
-          <h2 className="text-3xl md:text-6xl font-black text-[var(--text-heading)] tracking-tighter mb-4 transition-colors">Certificate <span className="text-violet-500">Generator</span></h2>
-          <p className="text-[var(--text-muted)] text-[10px] md:text-sm font-bold max-w-xl mx-auto transition-colors uppercase tracking-widest">Transform your template into professional credentials.</p>
-
-          {user && !user.isVerified && (
-            <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl max-w-2xl mx-auto animate-in slide-in-from-top-4 duration-500 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 text-amber-500 font-bold text-xs">
-                <ShieldCheck size={18} />
-                <span>Your account is unverified. Please check your email to verify your identity.</span>
-              </div>
-              <button
-                onClick={() => alert("Verification email resent! (Mock)")}
-                className="px-4 py-2 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
-              >
-                Resend Email
-              </button>
-            </div>
-          )}
-        </div>
 
         {hasRestoredDraft && (
           <div className="mb-6 p-4 bg-violet-600/15 border border-violet-500/30 rounded-2xl max-w-2xl mx-auto animate-in slide-in-from-top-4 duration-500 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
@@ -1092,6 +1071,61 @@ function MainApp({ theme, setTheme }) {
 
         {/* Main Content Card */}
         <div className="glass-card rounded-[2rem] md:rounded-[32px] p-6 md:p-12 min-h-[500px] md:min-h-[600px] relative overflow-hidden transition-all duration-500">
+          {/* Verification Guard Overlay for Unapproved Accounts */}
+          {user && !isApproved && (
+            <div className="absolute inset-0 z-[100] bg-[var(--bg-card)]/90 backdrop-blur-2xl flex flex-col items-center justify-center p-6 md:p-8 text-center animate-in fade-in duration-300">
+              <div className="w-20 h-20 bg-violet-600/10 border-2 border-violet-500/30 rounded-3xl flex items-center justify-center mb-5 shadow-2xl shadow-violet-600/20">
+                {isPending ? (
+                  <Clock size={40} className="text-amber-400 animate-pulse" />
+                ) : isRejected ? (
+                  <AlertCircle size={40} className="text-rose-400" />
+                ) : (
+                  <Lock size={40} className="text-violet-400" />
+                )}
+              </div>
+
+              <span className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-full border mb-4 flex items-center gap-1.5 ${
+                isPending
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  : isRejected
+                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                    : 'bg-violet-500/10 text-violet-400 border-violet-500/30'
+              }`}>
+                <ShieldCheck size={14} />
+                {isPending
+                  ? 'Identity Review Pending'
+                  : isRejected
+                    ? 'Verification Rejected'
+                    : 'Verification Required'}
+              </span>
+
+              <h2 className="text-2xl md:text-3xl font-black text-[var(--text-heading)] tracking-tight max-w-xl">
+                {isPending
+                  ? 'Your Issuer Verification is Under Admin Review'
+                  : isRejected
+                    ? 'Verification Action Required'
+                    : 'Verify Official Identity to Issue Certificates'}
+              </h2>
+
+              <p className="text-[var(--text-muted)] text-xs md:text-sm max-w-lg mt-3 font-semibold leading-relaxed">
+                {isPending
+                  ? 'Your official identity proof document and organization details have been submitted and are under audit by Pramanit Administrators. Certificate issuance unlocks automatically upon approval.'
+                  : isRejected
+                    ? `Rejection notice: "${rejectionReason}". Update your official ID and identity details in Settings to resubmit.`
+                    : 'To enforce cryptographic trust and prevent unauthorized certificate distribution, complete your organization profile and upload official verification proof.'}
+              </p>
+
+              <div className="mt-6 flex flex-col sm:flex-row items-center gap-4 w-full max-w-md">
+                <button
+                  onClick={() => navigate('/dashboard/settings')}
+                  className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-violet-600/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isPending ? 'Check Verification Status in Settings →' : 'Complete Profile & Submit Verification →'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === 1 && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1168,6 +1202,7 @@ function MainApp({ theme, setTheme }) {
                     onToggleSelection={setSelectedRecipientIndices}
                     columnMapping={columnMapping}
                     onCleanCsvData={handleCleanCsvData}
+                    onDeleteRow={handleDeleteRecipientRow}
                   />
                 </>
               )}
@@ -1209,6 +1244,7 @@ function MainApp({ theme, setTheme }) {
                 onQrConfigChange={setQrConfig}
                 onSave={user ? handleSaveDesign : null}
                 isSaving={saving}
+                orgLogoUrl={settings?.orgLogoUrl || user?.orgLogo}
               />
               <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-12 border-t border-[var(--glass-border)] mt-8">
                 <button
@@ -1496,6 +1532,7 @@ function MainApp({ theme, setTheme }) {
           />
         )
       }
+      <Toaster position="top-right" toastOptions={{ style: { background: '#0f172a', color: '#fff', border: '1px solid rgba(139,92,246,0.3)', borderRadius: '1rem', fontWeight: 700 } }} />
     </div >
   );
 }

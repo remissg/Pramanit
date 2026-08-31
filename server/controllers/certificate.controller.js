@@ -9,6 +9,7 @@ const { PDFDocument } = require('pdf-lib');
 const JSZip = require('jszip');
 const { sendEmail } = require('../utils/emailService');
 const { sendCertificateEmail } = require('../utils/enhancedEmailService');
+const { drawCustomQRCode } = require('../utils/qrRenderer');
 const { Worker } = require('worker_threads');
 
 const User = require('../models/User');
@@ -473,8 +474,8 @@ const processSingle = async (req, res) => {
         // Draw image scaled to new canvas dimensions
         ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
 
-        const userRecord = req.user?.id ? await User.findById(req.user.id).select('cert_prefix') : null;
-        const prefix = (userRecord?.cert_prefix || 'CERT').trim().toUpperCase();
+        const branding = req.user?.id ? await User.findById(req.user.id) : null;
+        const prefix = (branding?.cert_prefix || 'CERT').trim().toUpperCase();
         const certId = `${prefix}-${crypto.randomUUID()}`;
         const recipientToken = crypto.randomBytes(32).toString('hex');
         const clientUrl = getClientUrl();
@@ -559,63 +560,10 @@ const processSingle = async (req, res) => {
             const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
             const qrX = parseFloat(qrConfig.x) * canvasWidth;
             const qrY = parseFloat(qrConfig.y) * canvasHeight;
+            const logoUrl = (qrConfig.showLogo ?? true) ? (qrConfig.logoUrl || branding?.org_logo_url) : null;
 
-            const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
-                margin: 1,
-                color: {
-                    dark: qrConfig.darkColor || qrConfig.color?.dark || '#000000',
-                    light: qrConfig.lightColor || qrConfig.color?.light || '#ffffff'
-                }
-            });
-
-            const qrImage = await loadImage(qrDataUrl);
-            ctx.drawImage(qrImage, qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
-
-            // Overlay Org Logo in center of QR Code if available
-            const logoUrl = qrConfig.logoUrl || branding?.org_logo_url;
-            if (logoUrl) {
-                try {
-                    const logoImg = await loadImage(logoUrl);
-                    const logoSize = qrSize * 0.24;
-                    const logoX = qrX - logoSize / 2;
-                    const logoY = qrY - logoSize / 2;
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(logoX - 3, logoY - 3, logoSize + 6, logoSize + 6);
-                    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-                } catch (logoErr) {
-                    console.error('QR Logo Overlay Note:', logoErr.message);
-                }
-            }
-
-            // Render Manual ID if enabled
-            if (qrConfig.showManualId) {
-                const fontSize = Math.max(10, qrSize * 0.12);
-                ctx.font = `bold ${fontSize}px "Courier New", monospace`;
-                ctx.fillStyle = '#6366f1'; // Indigo-500
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-
-                // Add a small background for legibility
-                const text = `ID: ${certId.toUpperCase()}`;
-                const metrics = ctx.measureText(text);
-                const padding = 4;
-
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(
-                    qrX - (metrics.width / 2) - padding,
-                    qrY + (qrSize / 2) + 2,
-                    metrics.width + (padding * 2),
-                    fontSize + (padding * 2)
-                );
-
-                ctx.fillStyle = '#4f46e5'; // Indigo-600
-                ctx.fillText(text, qrX, qrY + (qrSize / 2) + 4);
-            }
+            await drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logoUrl, certId);
         }
-
-        // Fetch user branding details for verification
-        const branding = await User.findById(req.user.id);
 
         // Render Watermark for Free Tier
         if (branding?.plan_type === 'free') {
@@ -975,18 +923,11 @@ const previewBatch = async (req, res) => {
                 const qrSize = (parseFloat(qrConfig.size) || 100) * scaleFactor;
                 const qrX = parseFloat(qrConfig.x) * canvasWidth;
                 const qrY = parseFloat(qrConfig.y) * canvasHeight;
-
                 const clientUrl = getClientUrl();
-                const qrDataUrl = await QRCode.toDataURL(`${clientUrl}/verify/sample-uuid`, {
-                    margin: 1,
-                    color: {
-                        dark: '#000000',
-                        light: '#ffffff'
-                    }
-                });
+                const verifyUrl = `${clientUrl}/verify/sample-uuid`;
+                const logoUrl = (qrConfig.showLogo ?? true) ? (qrConfig.logoUrl || req.user?.org_logo_url || (await User.findById(req.user?.id).select('org_logo_url'))?.org_logo_url) : null;
 
-                const qrImage = await loadImage(qrDataUrl);
-                ctx.drawImage(qrImage, qrX - qrSize / 2, qrY - qrSize / 2, qrSize, qrSize);
+                await drawCustomQRCode(ctx, qrX, qrY, qrSize, qrConfig, verifyUrl, logoUrl, 'CERT-SAMPLE-UUID');
             }
 
             const buffer = canvas.toBuffer('image/png');
@@ -1796,9 +1737,9 @@ const getAdminAllCredentials = async (req, res) => {
         }
 
         const verifications = await Verification.find({})
-            .populate('issuer_id', 'org_name full_name email')
+            .populate('issuer_id', 'org_name full_name email designation verification_category issuer_type official_id_url institution_name institution_id_number website faculty_email student_roll_number profile_completed verification_status verified_at')
             .sort({ issue_date: -1, created_at: -1 })
-            .limit(150);
+            .limit(200);
 
         const list = verifications.map(v => {
             let emailDecrypted = 'N/A';
@@ -1807,15 +1748,37 @@ const getAdminAllCredentials = async (req, res) => {
             } catch (e) {
                 emailDecrypted = v.recipient_email || 'N/A';
             }
+
+            const issuer = v.issuer_id || {};
+
             return {
                 id: v.cert_id || String(v._id),
+                cert_id: v.cert_id,
                 recipientName: v.recipient_name || 'Recipient',
                 recipientEmail: emailDecrypted,
-                orgName: v.org_name || (v.issuer_id ? v.issuer_id.org_name : 'Verified Issuer'),
-                issuerName: v.issuer_name || (v.issuer_id ? v.issuer_id.full_name : 'Signer'),
+                orgName: v.org_name || issuer.org_name || 'Verified Issuer',
+                issuerName: v.issuer_name || issuer.full_name || 'Signer',
+                issuerEmail: v.issuer_email || issuer.email || 'N/A',
+                issuerDesignation: v.issuer_designation || issuer.designation || 'N/A',
+                orgLogoUrl: v.org_logo_url || issuer.org_logo_url || '',
                 issueDate: v.issue_date || v.created_at || Date.now(),
-                status: v.status || 'valid',
-                scanCount: v.scan_count || 0
+                status: v.status || 'active',
+                scanCount: v.scan_count || 0,
+                renderedImageUrl: v.rendered_image_url || '',
+
+                // Full Issuer Details for Admin Review Modal & Table
+                verificationCategory: issuer.verification_category || v.issuer_type || 'Official Institution',
+                issuerType: v.issuer_type || issuer.issuer_type || 'institution',
+                institutionName: issuer.institution_name || 'N/A',
+                website: issuer.website || 'N/A',
+                facultyEmail: issuer.faculty_email || 'N/A',
+                studentRollNumber: issuer.student_roll_number || 'N/A',
+                institutionIdNumber: v.institution_id_number || issuer.institution_id_number || 'N/A',
+                officialIdUrl: v.official_id_url || issuer.official_id_url || '',
+                verificationStatus: v.verification_status || issuer.verification_status || 'unverified',
+                verifiedAt: v.verified_at || issuer.verified_at || null,
+                profileCompleted: issuer.profile_completed || false,
+                fieldData: v.field_data || {}
             };
         });
 

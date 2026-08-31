@@ -75,7 +75,7 @@ const OverviewPage = () => {
                             <span className="truncate">Pramanit v2.0 &bull; Production Grade Platform</span>
                         </div>
                         <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[var(--text-heading)] tracking-tight">
-                            Welcome back, {user?.orgName || user?.fullName || 'Certified Issuer'} 👋
+                            Welcome back, {user?.fullName || user?.name || user?.email?.split('@')[0] || 'Certified Issuer'} 👋
                         </h2>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">
                             Manage design blueprints, issue verifiable bulk credentials, track delivery analytics, and manage recipient inquiries in real-time.

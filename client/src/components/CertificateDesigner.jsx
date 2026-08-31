@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric'; // v6 import
-import { Type, Square, Download, Palette, Undo, RefreshCw, Check, MousePointer2, Type as TypeIcon, Circle, Triangle, LayoutTemplate, Image as ImageIcon, AlignCenter, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Bold, Italic, Underline, Plus, Minus, ChevronDown, Sparkles, Award, ZoomIn, ZoomOut, Maximize2, Hand, Move, RotateCcw, RotateCw, FileText, Maximize } from 'lucide-react';
+import { Type, Square, Download, Palette, Undo, RefreshCw, Check, MousePointer2, Type as TypeIcon, Circle, Triangle, LayoutTemplate, Image as ImageIcon, AlignCenter, AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, Bold, Italic, Underline, Plus, Minus, ChevronDown, Sparkles, Award, ZoomIn, ZoomOut, Maximize2, Hand, Move, RotateCcw, RotateCw, FileText, Maximize, QrCode, Tag } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 const FONTS = [
@@ -319,6 +319,101 @@ const CertificateDesigner = ({ initialTemplate, onSave, onCancel }) => {
 
         fabricCanvas.add(shape);
         fabricCanvas.setActiveObject(shape);
+    };
+
+    const addDynamicTag = (tagKey) => {
+        if (!fabricCanvas) return;
+        const tagText = new fabric.IText(`{{${tagKey}}}`, {
+            left: canvasWidth / 3,
+            top: canvasHeight / 2,
+            fontFamily: 'Inter, sans-serif',
+            fill: '#7c3aed',
+            fontSize: 28,
+            fontWeight: 'bold',
+            cornerColor: '#7c3aed',
+            isDynamicTag: true,
+            tagKey: tagKey
+        });
+        fabricCanvas.add(tagText);
+        fabricCanvas.setActiveObject(tagText);
+    };
+
+    const generateQRDataUrl = (text = 'https://pramanit.live/verify/SAMPLE') => {
+        const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+            <rect width="200" height="200" fill="#ffffff" rx="16"/>
+            <!-- Outer Finder Pattern Top Left -->
+            <rect x="15" y="15" width="50" height="50" fill="#0f172a" rx="8"/>
+            <rect x="23" y="23" width="34" height="34" fill="#ffffff" rx="4"/>
+            <rect x="31" y="31" width="18" height="18" fill="#7c3aed" rx="2"/>
+
+            <!-- Outer Finder Pattern Top Right -->
+            <rect x="135" y="15" width="50" height="50" fill="#0f172a" rx="8"/>
+            <rect x="143" y="23" width="34" height="34" fill="#ffffff" rx="4"/>
+            <rect x="151" y="31" width="18" height="18" fill="#7c3aed" rx="2"/>
+
+            <!-- Outer Finder Pattern Bottom Left -->
+            <rect x="15" y="135" width="50" height="50" fill="#0f172a" rx="8"/>
+            <rect x="23" y="143" width="34" height="34" fill="#ffffff" rx="4"/>
+            <rect x="31" y="151" width="18" height="18" fill="#7c3aed" rx="2"/>
+
+            <!-- Decorative Data Matrix Modules -->
+            <rect x="75" y="20" width="12" height="12" fill="#0f172a" rx="2"/>
+            <rect x="95" y="20" width="12" height="12" fill="#7c3aed" rx="2"/>
+            <rect x="110" y="35" width="12" height="12" fill="#0f172a" rx="2"/>
+
+            <rect x="20" y="75" width="12" height="12" fill="#7c3aed" rx="2"/>
+            <rect x="40" y="90" width="12" height="12" fill="#0f172a" rx="2"/>
+
+            <rect x="72" y="72" width="56" height="56" fill="#0f172a" rx="10"/>
+            <rect x="80" y="80" width="40" height="40" fill="#ffffff" rx="6"/>
+            <text x="100" y="105" font-family="system-ui, sans-serif" font-weight="900" font-size="18" fill="#7c3aed" text-anchor="middle">✓</text>
+
+            <rect x="135" y="75" width="12" height="12" fill="#0f172a" rx="2"/>
+            <rect x="155" y="95" width="12" height="12" fill="#7c3aed" rx="2"/>
+            <rect x="170" y="75" width="12" height="12" fill="#0f172a" rx="2"/>
+
+            <rect x="75" y="135" width="12" height="12" fill="#7c3aed" rx="2"/>
+            <rect x="95" y="155" width="12" height="12" fill="#0f172a" rx="2"/>
+            <rect x="110" y="135" width="12" height="12" fill="#7c3aed" rx="2"/>
+            <rect x="135" y="155" width="12" height="12" fill="#0f172a" rx="2"/>
+            <rect x="160" y="140" width="24" height="24" fill="#7c3aed" rx="6"/>
+
+            <!-- Text Stamp -->
+            <text x="100" y="190" font-family="system-ui, sans-serif" font-weight="900" font-size="9" fill="#64748b" text-anchor="middle" letter-spacing="1">SCAN TO VERIFY</text>
+        </svg>`;
+
+        return 'data:image/svg+xml;base64,' + btoa(svgString);
+    };
+
+    const addQRCode = () => {
+        if (!fabricCanvas) return;
+        const objects = fabricCanvas.getObjects();
+        const existingQR = objects.find(o => o.isQRCode || o.id === 'qr_code_element');
+
+        if (existingQR) {
+            fabricCanvas.setActiveObject(existingQR);
+            fabricCanvas.renderAll();
+            return;
+        }
+
+        const qrDataUrl = generateQRDataUrl();
+        const imgObj = new Image();
+        imgObj.src = qrDataUrl;
+        imgObj.onload = () => {
+            const imgInstance = new fabric.Image(imgObj);
+            imgInstance.set({
+                left: canvasWidth - 160,
+                top: canvasHeight - 160,
+                scaleX: 0.65,
+                scaleY: 0.65,
+                id: 'qr_code_element',
+                isQRCode: true,
+                cornerColor: '#7c3aed'
+            });
+            fabricCanvas.add(imgInstance);
+            fabricCanvas.setActiveObject(imgInstance);
+            fabricCanvas.renderAll();
+        };
     };
 
     const handleImageUpload = (e) => {
@@ -1068,6 +1163,11 @@ const CertificateDesigner = ({ initialTemplate, onSave, onCancel }) => {
                 {/* Left Sidebar / Top Mobile Tools Ribbon */}
                 <div className="w-full md:w-24 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-row md:flex-col items-center p-2 md:py-4 gap-2 z-10 shadow-sm overflow-x-auto md:overflow-y-auto shrink-0 custom-scrollbar">
                     <div className="hidden md:block w-full px-2 mb-1"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Insert</span></div>
+
+                    <button onClick={() => addDynamicTag('column_name')} className="flex flex-col md:flex-col items-center justify-center gap-1 p-1.5 md:p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl w-14 md:w-20 shrink-0 transition-all border border-indigo-200 shadow-sm group" title="Insert a dynamic CSV merge tag {{column_name}}. Change the text to match any column header in your CSV file.">
+                        <Tag size={16} className="group-hover:scale-110 transition-transform text-indigo-600" />
+                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-tight">CSV Tag</span>
+                    </button>
 
                     <button onClick={() => addText('Text')} className="flex flex-col md:flex-col items-center justify-center gap-1 p-1.5 md:p-2 text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-xl w-14 md:w-20 shrink-0 transition-all group">
                         <Type size={16} className="group-hover:scale-110 transition-transform" />
