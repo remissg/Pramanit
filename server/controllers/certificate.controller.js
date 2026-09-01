@@ -18,6 +18,7 @@ const IssuanceHistory = require('../models/IssuanceHistory');
 const Verification = require('../models/Verification');
 const BatchReport = require('../models/BatchReport');
 const OtpToken = require('../models/OtpToken');
+const ScheduledBatch = require('../models/ScheduledBatch');
 const webhookService = require('../utils/webhookService');
 const { hash, decrypt } = require('../utils/encryption');
 const { uploadToCDN } = require('../utils/cloudinaryService');
@@ -180,35 +181,48 @@ const renderFields = async (ctx, fields, width, height, data) => {
 const renderCertificateToBuffer = async (record) => {
     let canvas, ctx, image;
 
-    if (record.design_id && record.design_id.design_json) {
-        const design = record.design_id.design_json;
-        let bgUrl = record.template_bg_url || '';
-
-        if (!bgUrl) {
-            if (design.backgroundImage && design.backgroundImage.src) {
-                bgUrl = design.backgroundImage.src;
-            } else if (typeof design.backgroundImage === 'string') {
-                bgUrl = design.backgroundImage;
-            }
+    // 1. If certificate already has a saved Cloudinary CDN image URL, load & return it directly!
+    if (record.rendered_image_url && typeof record.rendered_image_url === 'string' && record.rendered_image_url.startsWith('http')) {
+        try {
+            const cloudImg = await loadImage(record.rendered_image_url);
+            const c = createCanvas(cloudImg.width, cloudImg.height);
+            const cx = c.getContext('2d');
+            cx.drawImage(cloudImg, 0, 0);
+            return c.toBuffer('image/png');
+        } catch (e) {
+            console.error('Failed to load saved Cloudinary CDN image in renderCertificateToBuffer:', e.message);
         }
+    }
 
-        if (bgUrl && (bgUrl.startsWith('http') || bgUrl.startsWith('data:'))) {
-            try {
-                image = await loadImage(bgUrl);
-            } catch (e) {
-                console.error('Failed to load bg image:', e.message);
-            }
+    let bgUrl = record.template_bg_url || '';
+    let design = (record.design_id && record.design_id.design_json) ? record.design_id.design_json : null;
+
+    if (!bgUrl && design) {
+        if (design.backgroundImage && design.backgroundImage.src) {
+            bgUrl = design.backgroundImage.src;
+        } else if (typeof design.backgroundImage === 'string') {
+            bgUrl = design.backgroundImage;
         }
+    }
 
+    if (bgUrl && (bgUrl.startsWith('http') || bgUrl.startsWith('data:'))) {
+        try {
+            image = await loadImage(bgUrl);
+        } catch (e) {
+            console.error('Failed to load bg image:', e.message);
+        }
+    }
+
+    if (image || design || record.fields?.length) {
         if (image) {
             canvas = createCanvas(image.width, image.height);
             ctx = canvas.getContext('2d');
             ctx.drawImage(image, 0, 0);
         } else {
-            canvas = createCanvas(800, 600);
+            canvas = createCanvas(1000, 750);
             ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 800, 600);
+            ctx.fillRect(0, 0, 1000, 750);
         }
 
         const fields = [];
@@ -1333,6 +1347,7 @@ const getIssuanceHistory = async (req, res) => {
             issuer_name: v.issuer_name,
             issuer_designation: v.issuer_designation,
             issuer_email: v.issuer_email,
+            rendered_image_url: v.rendered_image_url,
             design_id: v.design_id ? String(v.design_id) : null
         }));
 
@@ -1399,17 +1414,20 @@ const getIssuanceHistory = async (req, res) => {
                         org_name: foundV.org_name,
                         issuer_name: foundV.issuer_name,
                         issuer_designation: foundV.issuer_designation,
-                        issuer_email: foundV.issuer_email
+                        issuer_email: foundV.issuer_email,
+                        rendered_image_url: foundV.rendered_image_url || `/api/certificates/og-image/${foundV.cert_id}`
                     };
                 }
+                const fallbackCertId = `CERT-${batch.id.toString().substring(0, 8)}-${idx + 1}`;
                 return {
-                    cert_id: `CERT-${batch.id.toString().substring(0, 8)}-${idx + 1}`,
+                    cert_id: fallbackCertId,
                     recipient_name: 'Recipient',
                     recipient_email: email,
                     issue_date: batch.timestamp,
                     status: 'active',
                     scan_count: 0,
-                    recipient_token: null
+                    recipient_token: null,
+                    rendered_image_url: `/api/certificates/og-image/${fallbackCertId}`
                 };
             });
 
@@ -1422,8 +1440,8 @@ const getIssuanceHistory = async (req, res) => {
             return {
                 id: batch.id,
                 design_name: batch.design_name,
-                total_certificates: batch.total_certificates,
-                total_sent: batch.total_sent,
+                total_certificates: recipientDetails.length,
+                total_sent: recipientDetails.length,
                 delivery_rate: deliveryRate,
                 open_rate: openRate,
                 verification_scans: totalScans,
@@ -1543,6 +1561,10 @@ const getCertificateOGImage = async (req, res) => {
 
         if (!record) {
             return res.status(404).send('Certificate not found');
+        }
+
+        if (record.rendered_image_url && typeof record.rendered_image_url === 'string' && record.rendered_image_url.startsWith('http')) {
+            return res.redirect(record.rendered_image_url);
         }
 
         const imageBuffer = await renderCertificateToBuffer(record);
@@ -1785,6 +1807,112 @@ const getAdminAllCredentials = async (req, res) => {
     }
 };
 
+const scheduleBatch = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const {
+            designId,
+            designName,
+            scheduledFor,
+            dispatchPace,
+            recipientsData,
+            emailConfig,
+            designConfig
+        } = req.body;
+
+        if (!scheduledFor || !recipientsData || !recipientsData.length) {
+            return res.status(400).json({ message: 'Scheduled date/time and recipient data are required.' });
+        }
+
+        const scheduledDate = new Date(scheduledFor);
+        if (isNaN(scheduledDate.getTime())) {
+            return res.status(400).json({ message: 'Invalid target date/time format.' });
+        }
+
+        const newScheduledBatch = await ScheduledBatch.create({
+            user: userId,
+            design_id: designId || null,
+            design_name: designName || 'Certificate Template',
+            scheduled_for: scheduledDate,
+            dispatch_pace: dispatchPace || 'safe',
+            recipients_data: recipientsData,
+            email_config: emailConfig || {},
+            design_config: designConfig || {},
+            total_recipients: recipientsData.length,
+            status: 'scheduled'
+        });
+
+        res.json({
+            message: `Batch successfully scheduled for ${scheduledDate.toLocaleString()}`,
+            scheduledBatch: newScheduledBatch
+        });
+    } catch (err) {
+        console.error('Schedule batch error:', err);
+        res.status(500).json({ message: 'Failed to schedule batch dispatch.' });
+    }
+};
+
+const getScheduledBatches = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const batches = await ScheduledBatch.find({ user: userId }).sort({ created_at: -1 });
+        res.json(batches);
+    } catch (err) {
+        console.error('Get scheduled batches error:', err);
+        res.status(500).json({ message: 'Failed to fetch scheduled batches.' });
+    }
+};
+
+const cancelScheduledBatch = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+        const batch = await ScheduledBatch.findOne({ _id: id, user: userId });
+        if (!batch) {
+            return res.status(404).json({ message: 'Scheduled batch not found.' });
+        }
+
+        if (batch.status === 'processing') {
+            return res.status(400).json({ message: 'Cannot cancel a batch that is currently processing.' });
+        }
+
+        batch.status = 'cancelled';
+        await batch.save();
+
+        res.json({ message: 'Scheduled batch cancelled successfully.' });
+    } catch (err) {
+        console.error('Cancel scheduled batch error:', err);
+        res.status(500).json({ message: 'Failed to cancel scheduled batch.' });
+    }
+};
+
+const runBatchNow = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+
+        const batch = await ScheduledBatch.findOne({ _id: id, user: userId });
+        if (!batch) {
+            return res.status(404).json({ message: 'Scheduled batch not found.' });
+        }
+
+        // Set scheduled_for to now to trigger immediate pick-up
+        batch.scheduled_for = new Date();
+        batch.status = 'scheduled';
+        await batch.save();
+
+        // Process immediately
+        const { processDueBatches } = require('../services/batchScheduler');
+        processDueBatches();
+
+        res.json({ message: 'Scheduled batch triggered for immediate dispatch.' });
+    } catch (err) {
+        console.error('Run batch now error:', err);
+        res.status(500).json({ message: 'Failed to trigger batch dispatch.' });
+    }
+};
+
 module.exports = {
     prepareBatch,
     processSingle,
@@ -1806,5 +1934,9 @@ module.exports = {
     correctCertificateInPerson,
     requestRecipientOtp,
     verifyRecipientOtp,
-    getAdminAllCredentials
+    getAdminAllCredentials,
+    scheduleBatch,
+    getScheduledBatches,
+    cancelScheduledBatch,
+    runBatchNow
 };

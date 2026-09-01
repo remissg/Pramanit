@@ -20,7 +20,8 @@ import {
     Eye,
     Grid,
     Search,
-    Copy
+    Copy,
+    X
 } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
@@ -597,7 +598,7 @@ export default function RecipientPortal({ theme, setTheme }) {
                                         <img
                                             src={certificate.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}`}
                                             alt={certificate.certificateTitle}
-                                            className="w-full h-auto max-h-[550px] object-contain rounded-2xl shadow-2xl transition-all group-hover:scale-[1.01]"
+                                            className="w-full h-auto max-h-[550px] object-contain rounded-sm shadow-2xl transition-all group-hover:scale-[1.01]"
                                         />
                                         <button
                                             onClick={() => setZoomModalOpen(true)}
@@ -766,6 +767,79 @@ export default function RecipientPortal({ theme, setTheme }) {
                     </div>
                 )}
             </main>
+
+            {/* Full-Screen Ultra HD Zoom Modal */}
+            {zoomModalOpen && certificate && (
+                <div
+                    className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-8 bg-slate-950/90 backdrop-blur-2xl animate-in fade-in duration-300"
+                    onClick={() => setZoomModalOpen(false)}
+                >
+                    <button
+                        onClick={() => setZoomModalOpen(false)}
+                        className="absolute top-6 right-6 p-3 text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-all z-50 border border-white/20 shadow-2xl active:scale-95"
+                        title="Close Full-Screen View"
+                    >
+                        <X size={24} />
+                    </button>
+
+                    <div
+                        className="relative max-w-6xl w-full max-h-[92vh] flex flex-col items-center justify-center p-2 sm:p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={certificate.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}`}
+                            alt={certificate.certificateTitle || 'Certificate Preview'}
+                            className="max-w-full max-h-[80vh] object-contain rounded-sm shadow-2xl border border-white/15 animate-in zoom-in-95 duration-300"
+                        />
+
+                        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const imageUrl = certificate.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}`;
+                                        const res = await fetch(imageUrl);
+                                        const blob = await res.blob();
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = blobUrl;
+                                        a.download = `certificate-${certificate.recipientName.replace(/\s+/g, '-')}.png`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(blobUrl);
+                                    } catch (e) {
+                                        window.open(certificate.renderedImageUrl || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${certificate.certId}`, '_blank');
+                                    }
+                                }}
+                                className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl transition-all active:scale-95"
+                            >
+                                <Download size={16} /> Download HD Image (PNG)
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${certificate.certId}`);
+                                        const blob = await res.blob();
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = blobUrl;
+                                        a.download = `certificate-${certificate.recipientName.replace(/\s+/g, '-')}.pdf`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(blobUrl);
+                                    } catch (e) {
+                                        window.open(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/download/${certificate.certId}`, '_blank');
+                                    }
+                                }}
+                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl transition-all active:scale-95"
+                            >
+                                <Download size={16} /> Download Official PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div>

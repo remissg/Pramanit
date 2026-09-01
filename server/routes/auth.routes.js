@@ -44,6 +44,7 @@ router.post('/resend-verification', authenticateToken, authController.resendVeri
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.get('/admin/users', authenticateToken, authController.getAllUsers);
+router.get('/admin/stats', authenticateToken, authController.getAdminStats);
 router.get('/admin/pending-verifications', authenticateToken, authController.getPendingVerifications);
 router.get('/admin/security-logs', authenticateToken, authController.getAdminSecurityLogs);
 router.get('/admin/email-logs', authenticateToken, authController.getAdminEmailLogs);

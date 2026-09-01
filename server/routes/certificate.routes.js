@@ -41,4 +41,10 @@ router.post('/correct-inperson/:id', authenticateToken, certificateController.co
 router.post('/request-otp', certificateController.requestRecipientOtp);
 router.post('/verify-otp', certificateController.verifyRecipientOtp);
 
+// Scheduled Batch & Queue Management Routes
+router.post('/schedule-batch', authenticateToken, certificateController.scheduleBatch);
+router.get('/scheduled-batches', authenticateToken, certificateController.getScheduledBatches);
+router.post('/cancel-batch/:id', authenticateToken, certificateController.cancelScheduledBatch);
+router.post('/run-batch-now/:id', authenticateToken, certificateController.runBatchNow);
+
 module.exports = router;

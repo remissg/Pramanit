@@ -77,16 +77,23 @@ const AdminPanel = ({ theme, setTheme }) => {
             const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setUsers(res.data);
+            const [resUsers, resStats] = await Promise.all([
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
+            ]);
 
-            // Calculate basic stats for the demo
-            const total = res.data.length;
-            const pro = res.data.filter(u => u.planType === 'pro').length;
+            const usersData = resUsers.data || [];
+            setUsers(usersData);
+
+            const total = usersData.length;
+            const pro = usersData.filter(u => u.planType === 'pro').length;
+            const realStats = resStats?.data;
+
             setStats({
-                totalUsers: total,
-                proUsers: pro,
-                totalCerts: total * 15,
-                activeCorrections: 4
+                totalUsers: realStats?.totalUsers ?? total,
+                proUsers: realStats?.proUsers ?? pro,
+                totalCerts: realStats?.totalCerts ?? (total * 15),
+                activeCorrections: realStats?.pendingReviews ?? 0
             });
         } catch (err) {
             console.error('Failed to fetch admin data', err);

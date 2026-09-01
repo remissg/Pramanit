@@ -737,6 +737,45 @@ function MainApp({ theme, setTheme }) {
       error: null
     }));
 
+    // Check if user selected Scheduled Dispatch
+    if (emailConfig.isScheduled) {
+      if (!emailConfig.scheduledFor) {
+        alert('Please select a target date & time for the scheduled dispatch.');
+        setStatus('idle');
+        return;
+      }
+
+      try {
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/certificates/schedule-batch`, {
+          designId: currentDesignId,
+          designName: currentDesignName || 'Certificate Batch',
+          scheduledFor: emailConfig.scheduledFor,
+          dispatchPace: emailConfig.dispatchPace || 'safe',
+          recipientsData: selectedRecipients,
+          emailConfig: {
+            subject: emailConfig.subject,
+            body: emailConfig.body,
+            issuerName: emailConfig.issuerName
+          },
+          designConfig: {
+            fields: fields.filter(f => f.isVisible),
+            qrConfig
+          }
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        alert(`Batch successfully scheduled for ${new Date(emailConfig.scheduledFor).toLocaleString()}! You can manage it anytime in the Batch Queue.`);
+        setStatus('idle');
+        return;
+      } catch (err) {
+        console.error('Schedule batch failed:', err);
+        alert('Failed to schedule batch: ' + (err.response?.data?.message || err.message));
+        setStatus('error');
+        return;
+      }
+    }
+
     setLiveRecipients(initialLiveList);
     setProgress({ current: 0, total: selectedRecipients.length });
 

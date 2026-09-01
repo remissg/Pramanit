@@ -624,7 +624,7 @@ const HistoryPage = () => {
                                 <img
                                     src={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
                                     alt={`Certificate for ${previewCertRecord.recipient_name}`}
-                                    className="w-full max-w-full h-auto object-contain rounded-xl mx-auto"
+                                    className="w-full max-w-full h-auto object-contain rounded-sm mx-auto"
                                     onLoad={() => setCertImageLoading(false)}
                                     onError={(e) => {
                                         e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`;

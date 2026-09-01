@@ -81,8 +81,11 @@ app.get('/', (req, res) => {
   res.send('Pramanit Server is running');
 });
 
+const { initBatchScheduler } = require('./services/batchScheduler');
+
 connectDB().then(() => {
   app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port} (0.0.0.0)`);
+    initBatchScheduler();
   });
 });

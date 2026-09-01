@@ -35,27 +35,32 @@ const AdminLayout = ({ theme, setTheme }) => {
     const fetchAllAdminData = async () => {
         setLoading(true);
         try {
-            const [usersRes, pendingRes] = await Promise.allSettled([
+            const [usersRes, pendingRes, statsRes] = await Promise.allSettled([
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/users`, {
                     headers: { Authorization: `Bearer ${token}` }
                 }),
                 axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/pending-verifications`, {
                     headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/admin/stats`, {
+                    headers: { Authorization: `Bearer ${token}` }
                 })
             ]);
 
-            if (usersRes.status === 'fulfilled' && usersRes.value.data) {
+            const statsData = statsRes?.status === 'fulfilled' ? statsRes.value.data : null;
+
+            if (usersRes?.status === 'fulfilled' && usersRes.value.data) {
                 const uList = usersRes.value.data;
                 setUsers(uList);
                 setStats({
-                    totalUsers: uList.length,
-                    proUsers: uList.filter(u => u.planType === 'pro').length,
-                    totalCerts: uList.length * 15,
-                    activeCorrections: 4
+                    totalUsers: statsData?.totalUsers ?? uList.length,
+                    proUsers: statsData?.proUsers ?? uList.filter(u => u.planType === 'pro').length,
+                    totalCerts: statsData?.totalCerts ?? (uList.length * 15),
+                    activeCorrections: statsData?.pendingReviews ?? 0
                 });
             }
 
-            if (pendingRes.status === 'fulfilled' && pendingRes.value.data) {
+            if (pendingRes?.status === 'fulfilled' && pendingRes.value.data) {
                 setPendingVerifications(pendingRes.value.data);
             }
         } catch (err) {

@@ -195,15 +195,15 @@ const OverviewPage = () => {
 
                 {/* SVG Visual Bar & Area Chart (Responsive Scroll & Fit) */}
                 <div className="w-full overflow-x-auto custom-scrollbar pb-2">
-                    <div className="h-48 min-w-[500px] sm:min-w-full w-full flex items-end justify-between gap-1.5 sm:gap-3 pt-6 px-1 sm:px-4 pb-2 border-b border-[var(--border-muted)]">
+                    <div className="h-56 min-w-[500px] sm:min-w-full w-full flex items-end justify-between gap-1.5 sm:gap-3 pt-8 px-1 sm:px-4 pb-2 border-b border-[var(--border-muted)]">
                         {monthlyTrendData.map((item, idx) => {
                             const heightPct = item.count === 0 ? 4 : Math.max(12, Math.min(100, (item.count / maxCount) * 100));
                             return (
-                                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 group cursor-pointer">
-                                    <div className="text-[9px] sm:text-[10px] font-black text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                        {item.count} Issued
+                                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-1.5 group cursor-pointer">
+                                    <div className="h-5 flex items-center justify-center text-[10px] sm:text-[11px] font-black text-violet-400 whitespace-nowrap transition-all">
+                                        {item.count > 0 ? `${item.count} Issued` : ''}
                                     </div>
-                                    <div className="w-full bg-violet-500/10 dark:bg-violet-950/40 rounded-2xl overflow-hidden h-36 flex items-end p-0.5 sm:p-1 border border-violet-500/20 dark:border-violet-500/10 group-hover:border-violet-500/40 transition-all">
+                                    <div className="w-full bg-violet-500/10 dark:bg-violet-950/40 rounded-2xl overflow-hidden h-32 flex items-end p-0.5 sm:p-1 border border-violet-500/20 dark:border-violet-500/10 group-hover:border-violet-500/40 transition-all">
                                         <div
                                             style={{ height: `${heightPct}%` }}
                                             className={`w-full rounded-xl transition-all duration-700 shadow-lg shadow-violet-600/30 ${

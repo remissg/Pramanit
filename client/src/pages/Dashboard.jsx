@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, ShieldCheck, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check, Archive } from 'lucide-react';
+import { Plus, Trash2, Edit, LayoutTemplate, Search, Loader, Mail, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, X, Save, History, BarChart3, Users, ExternalLink, Copy, Settings, Globe, Shield, ShieldCheck, Upload, Eye, EyeOff, Info, Zap, Lock, UserCheck, UserX, AlertCircle, CheckCircle, Wand2, Sparkles, Book, FileJson, Share2, MessageSquare, Download, Building, Award, Check, Archive, Clock } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import DeveloperGuide from '../components/DeveloperGuide';
+import BatchQueueDrawer from '../components/BatchQueueDrawer';
 
 const Dashboard = ({ theme, setTheme }) => {
     const navigate = useNavigate();
@@ -29,6 +30,7 @@ const Dashboard = ({ theme, setTheme }) => {
     const [copiedLinkCertId, setCopiedLinkCertId] = useState(null);
     const [corrections, setCorrections] = useState([]);
     const [contactMessages, setContactMessages] = useState([]);
+    const [isQueueDrawerOpen, setIsQueueDrawerOpen] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
     const [replyText, setReplyText] = useState('');
     const [sendingReply, setSendingReply] = useState(false);
@@ -483,6 +485,12 @@ const Dashboard = ({ theme, setTheme }) => {
                                 className="w-full bg-[var(--bg-input)] border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-[var(--text-main)] outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/10 transition-all font-medium"
                             />
                         </div>
+                        <button
+                            onClick={() => setIsQueueDrawerOpen(true)}
+                            className="px-5 py-3 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/30 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap"
+                        >
+                            <Clock size={16} /> Batch Queue
+                        </button>
                         {(activeTab === 'designs' || activeTab === 'email-templates') && (
                             <button
                                 onClick={() => activeTab === 'designs' ? navigate('/generate') : openTemplateModal()}
@@ -2111,7 +2119,7 @@ const Dashboard = ({ theme, setTheme }) => {
                                 <img
                                     src={previewCertRecord.rendered_image_url || `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`}
                                     alt={`Certificate for ${previewCertRecord.recipient_name}`}
-                                    className="w-full h-auto object-contain min-w-[650px] rounded-xl"
+                                    className="w-full h-auto object-contain min-w-[650px] rounded-sm"
                                     onError={(e) => {
                                         e.target.src = `${import.meta.env.VITE_API_BASE_URL}/api/certificates/og-image/${previewCertRecord.cert_id}`;
                                     }}
@@ -2289,6 +2297,8 @@ const Dashboard = ({ theme, setTheme }) => {
                     </div>
                 </div>
             )}
+
+            <BatchQueueDrawer isOpen={isQueueDrawerOpen} onClose={() => setIsQueueDrawerOpen(false)} />
 
             <Footer />
         </div>

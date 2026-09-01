@@ -298,6 +298,90 @@ const EmailForm = ({ config, onChange, templates = [] }) => {
                 </p>
             </div>
 
+            {/* Anti-Spam Pacing & Scheduling Controls */}
+            <div className="pt-6 border-t border-[var(--glass-border)] space-y-6">
+                <div>
+                    <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                        Dispatch Schedule & Timing
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => onChange({ ...config, isScheduled: false })}
+                            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                                !config.isScheduled
+                                    ? 'bg-violet-600/10 border-violet-500 text-violet-400 font-black shadow-lg shadow-violet-600/10'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-interactive)] text-[var(--text-muted)] hover:border-violet-500/40'
+                            }`}
+                        >
+                            <div>
+                                <p className="text-sm font-bold text-[var(--text-heading)]">🚀 Dispatch Immediately</p>
+                                <p className="text-[10px] text-[var(--text-muted)]">Process and send emails right after confirmation</p>
+                            </div>
+                            {!config.isScheduled && <Check size={18} className="text-violet-500" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => onChange({ ...config, isScheduled: true })}
+                            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                                config.isScheduled
+                                    ? 'bg-violet-600/10 border-violet-500 text-violet-400 font-black shadow-lg shadow-violet-600/10'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-interactive)] text-[var(--text-muted)] hover:border-violet-500/40'
+                            }`}
+                        >
+                            <div>
+                                <p className="text-sm font-bold text-[var(--text-heading)]">⏰ Schedule for Later</p>
+                                <p className="text-[10px] text-[var(--text-muted)]">Pick a target date & time for background dispatch</p>
+                            </div>
+                            {config.isScheduled && <Check size={18} className="text-violet-500" />}
+                        </button>
+                    </div>
+
+                    {config.isScheduled && (
+                        <div className="mt-4 p-4 bg-violet-950/40 border border-violet-500/30 rounded-2xl space-y-2 animate-in fade-in duration-300">
+                            <label className="block text-[10px] font-black text-violet-300 uppercase tracking-wider">Select Date & Time for Dispatch</label>
+                            <input
+                                type="datetime-local"
+                                value={config.scheduledFor || ''}
+                                onChange={(e) => onChange({ ...config, scheduledFor: e.target.value })}
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-interactive)] rounded-xl p-3 text-xs font-bold text-[var(--text-main)] outline-none focus:border-violet-500"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                        🛡️ Anti-Spam Email Pacing (Prevents Spam Filter Flags)
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[
+                            { id: 'safe', label: 'Safe Inbox Pace', gap: '2.5s gap', desc: 'Recommended for Gmail/Outlook primary inbox', badge: 'Recommended' },
+                            { id: 'fast', label: 'Fast Pace', gap: '1.0s gap', desc: 'For dedicated custom SMTP relays', badge: 'High Speed' },
+                            { id: 'drip', label: 'High Safety Drip', gap: '5.0s gap', desc: 'Maximum domain reputation safety', badge: 'Ultra Safe' }
+                        ].map((pace) => (
+                            <button
+                                key={pace.id}
+                                type="button"
+                                onClick={() => onChange({ ...config, dispatchPace: pace.id })}
+                                className={`p-3.5 rounded-2xl border text-left transition-all relative ${
+                                    (config.dispatchPace || 'safe') === pace.id
+                                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-interactive)] text-[var(--text-muted)] hover:border-emerald-500/40'
+                                }`}
+                            >
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-black text-[var(--text-heading)]">{pace.label}</span>
+                                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">{pace.gap}</span>
+                                </div>
+                                <p className="text-[10px] text-[var(--text-muted)] leading-snug">{pace.desc}</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             <div className="pt-6 border-t border-[var(--glass-border)] transition-colors">
                 <div className="flex flex-col sm:flex-gap lg:flex-row gap-4 items-stretch lg:items-end">
                     <div className="flex-grow">

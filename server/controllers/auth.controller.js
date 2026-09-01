@@ -557,6 +557,42 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+const getAdminStats = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admin only.' });
+        }
+
+        const totalUsers = await User.countDocuments({});
+        const proUsers = await User.countDocuments({ plan_type: 'pro' });
+        const pendingReviews = await User.countDocuments({ verification_status: 'pending' });
+
+        // Aggregate total certificates issued across all batch histories
+        const certAgg = await IssuanceHistory.aggregate([
+            { $group: { _id: null, sumCerts: { $sum: '$total_certificates' }, countBatches: { $sum: 1 } } }
+        ]);
+
+        const totalCertificatesIssued = certAgg[0]?.sumCerts || 0;
+        const totalBatchesCount = certAgg[0]?.countBatches || 0;
+        const verificationRecordsCount = await Verification.countDocuments({});
+
+        // Real count is the maximum of aggregated total_certificates or verification documents
+        const certsGenerated = Math.max(totalCertificatesIssued, verificationRecordsCount);
+
+        res.json({
+            totalUsers,
+            proUsers,
+            pendingReviews,
+            totalCerts: certsGenerated,
+            totalBatches: totalBatchesCount,
+            verificationRecords: verificationRecordsCount
+        });
+    } catch (err) {
+        console.error('Failed to fetch admin stats:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 const toggleUserPlan = async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -934,6 +970,7 @@ module.exports = {
     adminVerifyUser,
     resendVerification,
     getAllUsers,
+    getAdminStats,
     toggleUserPlan,
     forgotPassword,
     resetPassword,

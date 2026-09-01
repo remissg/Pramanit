@@ -175,6 +175,12 @@ const processBatch = async () => {
                             subject, // Issuer's custom subject
                             emailBody // Issuer's custom email body
                         );
+
+                        // Anti-Spam Throttle Gap (2.5s default for Safe Inbox Delivery)
+                        const paceDelay = designConfig.throttleDelayMs ?? 2500;
+                        if (paceDelay > 0) {
+                            await sleep(paceDelay);
+                        }
                     }
 
                     return { success: true, email: recipient.email };
